@@ -127,6 +127,11 @@ fn claim_key(claim_id: u64) -> string {
 // ============================================================================
 
 // ID 0: stake
+// stake.
+// @caller: any user
+// @params: amount - u64
+// @returns: u
+// @security: when_not_paused
 entry stake(amount: u64) -> u64 {
     when_not_paused()
     require(amount > 0, "amtgt0")
@@ -153,6 +158,11 @@ entry stake(amount: u64) -> u64 {
 }
 
 // ID 1: unstake
+// unstake.
+// @caller: any user
+// @params: amount - u64
+// @returns: u
+// @security: when_not_paused
 entry unstake(amount: u64) -> u64 {
     when_not_paused()
     require(amount > 0, "amtgt0")
@@ -174,6 +184,10 @@ entry unstake(amount: u64) -> u64 {
 }
 
 // ID 2: claim_premium
+// claim premium.
+// @caller: any user
+// @returns: u
+// @security: when_not_paused
 entry claim_premium() -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -214,6 +228,12 @@ entry claim_premium() -> u64 {
 }
 
 // ID 3: submit_claim
+// submit claim.
+// @caller: any user
+// @params: amount - u64
+// @params: evidence_hash - Hash
+// @returns: u
+// @security: when_not_paused
 entry submit_claim(amount: u64, evidence_hash: Hash) -> u64 {
     when_not_paused()
     require(amount > 0, "amtgt0")
@@ -236,6 +256,11 @@ entry submit_claim(amount: u64, evidence_hash: Hash) -> u64 {
 }
 
 // ID 4: approve_claim
+// approve claim.
+// @caller: any user
+// @params: claim_id - u64
+// @returns: u
+// @security: only_guardian_or_admin
 entry approve_claim(claim_id: u64) -> u64 {
     only_guardian_or_admin()
     let s: Storage = Storage::new()
@@ -253,6 +278,11 @@ entry approve_claim(claim_id: u64) -> u64 {
 }
 
 // ID 5: reject_claim
+// reject claim.
+// @caller: any user
+// @params: claim_id - u64
+// @returns: u
+// @security: when_not_paused, only_guardian_or_admin
 entry reject_claim(claim_id: u64) -> u64 {
     only_guardian_or_admin()
     let s: Storage = Storage::new()
@@ -264,6 +294,11 @@ entry reject_claim(claim_id: u64) -> u64 {
 }
 
 // ID 6: pay_premium
+// pay premium.
+// @caller: user / authorized caller
+// @params: amount - u64
+// @returns: u
+// @security: when_not_paused
 entry pay_premium(amount: u64) -> u64 {
     when_not_paused()
     require(amount > 0, "amtgt0")
@@ -290,6 +325,10 @@ entry pay_premium(amount: u64) -> u64 {
 }
 
 // ID 7: get_pool_info_entry
+// get pool info entry.
+// @caller: user / authorized caller
+// @returns: tuple: (
+// @security: standard access control
 entry get_pool_info_entry() -> (u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     let asset: Hash = s.load(ASSET_KEY).expect("err")
@@ -302,6 +341,11 @@ entry get_pool_info_entry() -> (u64, u64, u64, u64) {
 }
 
 // ID 8: get_staker_entry
+// get staker entry.
+// @caller: any user
+// @params: addr - Address
+// @returns: tuple: (
+// @security: standard access control
 entry get_staker_entry(addr: Address) -> (u64, u64, u64) {
     let s: Storage = Storage::new()
     let staker_opt: optional<Staker> = s.load(STAKER_PREFIX + addr.to_string())
@@ -313,6 +357,11 @@ entry get_staker_entry(addr: Address) -> (u64, u64, u64) {
 }
 
 // ID 9: set_asset
+// set asset.
+// @caller: guardian or admin
+// @params: a - Hash
+// @returns: u
+// @security: only_admin
 entry set_asset(a: Hash) -> u64 {
     only_admin()
     Storage::new().store(ASSET_KEY, a)
@@ -320,6 +369,11 @@ entry set_asset(a: Hash) -> u64 {
 }
 
 // ID 10: set_registry
+// set registry.
+// @caller: guardian or admin
+// @params: reg - Hash
+// @returns: u
+// @security: only_admin
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -327,6 +381,11 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 11: set_timelock
+// set timelock.
+// @caller: guardian or admin
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -334,6 +393,11 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 12: set_guardian
+// set guardian.
+// @caller: guardian or admin
+// @params: g - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_guardian(g: Address) -> u64 {
     only_admin()
     Storage::new().store(GUARDIAN_KEY, g)
@@ -341,6 +405,11 @@ entry set_guardian(g: Address) -> u64 {
 }
 
 // ID 13: set_emergency
+// set emergency.
+// @caller: guardian or admin
+// @params: e - Address
+// @returns: u
+// @security: only_guardian_or_admin, only_emergency
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_KEY, e)
@@ -348,6 +417,11 @@ entry set_emergency(e: Address) -> u64 {
 }
 
 // ID 14: pause
+// pause.
+// @caller: guardian or admin
+// @params: reason - string
+// @returns: u
+// @security: only_admin, only_guardian_or_admin
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -355,6 +429,10 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 15: unpause
+// unpause.
+// @caller: admin (or timelock)
+// @returns: u
+// @security: only_admin
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -362,6 +440,11 @@ entry unpause() -> u64 {
 }
 
 // ID 16: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -369,11 +452,19 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 17: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 18: request_emergency_withdraw
+// request emergency withdraw.
+// @caller: any user
+// @returns: u
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -381,6 +472,11 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 19: execute_emergency_withdraw
+// execute emergency withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -402,6 +498,10 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// get pool info.
+// @caller: anyone (read-only)
+// @returns: tuple: (
+// @security: standard access control
 pub fn get_pool_info() -> (u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     let asset: Hash = s.load(ASSET_KEY).expect("err")
@@ -413,6 +513,11 @@ pub fn get_pool_info() -> (u64, u64, u64, u64) {
     )
 }
 
+// get staker.
+// @caller: anyone (read-only)
+// @params: addr - Address
+// @returns: tuple: (
+// @security: standard access control
 pub fn get_staker(addr: Address) -> (u64, u64, u64) {
     let s: Storage = Storage::new()
     let staker_opt: optional<Staker> = s.load(STAKER_PREFIX + addr.to_string())
@@ -423,6 +528,11 @@ pub fn get_staker(addr: Address) -> (u64, u64, u64) {
     return (staker.stake_amount, staker.earned, staker.last_accum)
 }
 
+// set timelock tl.
+// @caller: anyone (read-only)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

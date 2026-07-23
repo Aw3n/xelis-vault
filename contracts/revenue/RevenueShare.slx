@@ -87,6 +87,12 @@ fn when_not_paused() {
 // ============================================================================
 
 // ID 0: deposit_revenue
+// deposit revenue.
+// @caller: any user
+// @params: asset - Hash
+// @params: amount - u64
+// @returns: u
+// @security: when_not_paused, only_admin
 entry deposit_revenue(asset: Hash, amount: u64) -> u64 {
     when_not_paused()
     only_admin()
@@ -106,6 +112,11 @@ entry deposit_revenue(asset: Hash, amount: u64) -> u64 {
 
     let total_distributed: u64 = s.load(TOTAL_DISTRIBUTED_PREFIX + asset.to_hex()).unwrap_or(0)
     let accum_per_token: u64 = s.load(ACCUM_PER_TOKEN_PREFIX + asset.to_hex()).unwrap_or(0)
+    if total_supply == 0 {
+        // No stakers yet — just accumulate without distributing
+        s.store(TOTAL_DISTRIBUTED_PREFIX + asset.to_hex(), total_distributed + amount)
+        return 0
+    }
     let increment: u64 = (amount as u128 * 1000000000000u128 / total_supply as u128) as u64
     let new_accum: u64 = accum_per_token + increment
     s.store(TOTAL_DISTRIBUTED_PREFIX + asset.to_hex(), total_distributed + amount)
@@ -114,6 +125,11 @@ entry deposit_revenue(asset: Hash, amount: u64) -> u64 {
 }
 
 // ID 1: claim
+// claim.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: when_not_paused
 entry claim(asset: Hash) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -156,6 +172,11 @@ entry claim(asset: Hash) -> u64 {
 }
 
 // ID 2: set_share_token
+// set share token.
+// @caller: admin (or timelock)
+// @params: st - Hash
+// @returns: u
+// @security: only_admin
 entry set_share_token(st: Hash) -> u64 {
     only_admin()
     Storage::new().store(SHARE_TOKEN_KEY, st)
@@ -163,6 +184,11 @@ entry set_share_token(st: Hash) -> u64 {
 }
 
 // ID 3: set_total_supply
+// set total supply.
+// @caller: admin (or timelock)
+// @params: ts - u64
+// @returns: u
+// @security: only_admin
 entry set_total_supply(ts: u64) -> u64 {
     only_admin()
     require(ts > 0, "badts")
@@ -171,6 +197,11 @@ entry set_total_supply(ts: u64) -> u64 {
 }
 
 // ID 4: set_registry
+// set registry.
+// @caller: admin (or timelock)
+// @params: reg - Hash
+// @returns: u
+// @security: only_admin
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -178,6 +209,11 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 5: set_timelock
+// set timelock.
+// @caller: admin (or timelock)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -185,6 +221,11 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 6: set_emergency
+// set emergency.
+// @caller: admin (or timelock)
+// @params: e - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_KEY, e)
@@ -192,6 +233,11 @@ entry set_emergency(e: Address) -> u64 {
 }
 
 // ID 7: pause
+// pause.
+// @caller: admin (or timelock)
+// @params: reason - string
+// @returns: u
+// @security: only_admin
 entry pause(reason: string) -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -199,6 +245,10 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 8: unpause
+// unpause.
+// @caller: admin (or timelock)
+// @returns: u
+// @security: only_admin
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -206,6 +256,11 @@ entry unpause() -> u64 {
 }
 
 // ID 9: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -216,26 +271,50 @@ entry transfer_admin(new_admin: Address) -> u64 {
 // NOTE: returns 0 because Silex's get_deposit_for_asset only exposes the
 // current caller's deposit; per-addr share balances must be queried against
 // the share token contract instead.
+// get claimable entry.
+// @caller: any user
+// @params: addr - Address
+// @params: asset - Hash
+// @returns: u
+// @security: standard access control
 entry get_claimable_entry(addr: Address, asset: Hash) -> u64 {
     return 0
 }
 
 // ID 11: get_total_distributed_entry
+// get total distributed entry.
+// @caller: user / authorized caller
+// @params: asset - Hash
+// @returns: u
+// @security: standard access control
 entry get_total_distributed_entry(asset: Hash) -> u64 {
     return Storage::new().load(TOTAL_DISTRIBUTED_PREFIX + asset.to_hex()).unwrap_or(0)
 }
 
 // ID 12: get_accum_per_token_entry
+// get accum per token entry.
+// @caller: user / authorized caller
+// @params: asset - Hash
+// @returns: u
+// @security: standard access control
 entry get_accum_per_token_entry(asset: Hash) -> u64 {
     return Storage::new().load(ACCUM_PER_TOKEN_PREFIX + asset.to_hex()).unwrap_or(0)
 }
 
 // ID 13: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 14: request_emergency_withdraw
+// request emergency withdraw.
+// @caller: any user
+// @returns: u
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -243,6 +322,11 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 15: execute_emergency_withdraw
+// execute emergency withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -264,18 +348,39 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// get claimable.
+// @caller: anyone (read-only)
+// @params: addr - Address
+// @params: asset - Hash
+// @returns: u
+// @security: standard access control
 pub fn get_claimable(addr: Address, asset: Hash) -> u64 {
     return 0
 }
 
+// get total distributed.
+// @caller: anyone (read-only)
+// @params: asset - Hash
+// @returns: u
+// @security: standard access control
 pub fn get_total_distributed(asset: Hash) -> u64 {
     return Storage::new().load(TOTAL_DISTRIBUTED_PREFIX + asset.to_hex()).unwrap_or(0)
 }
 
+// get accum per token.
+// @caller: anyone (read-only)
+// @params: asset - Hash
+// @returns: u
+// @security: only_admin
 pub fn get_accum_per_token(asset: Hash) -> u64 {
     return Storage::new().load(ACCUM_PER_TOKEN_PREFIX + asset.to_hex()).unwrap_or(0)
 }
 
+// set timelock tl.
+// @caller: anyone (read-only)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

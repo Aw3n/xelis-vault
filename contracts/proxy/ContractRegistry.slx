@@ -45,6 +45,11 @@ fn only_admin() {
 // ENTRIES (sequential IDs starting at 0)
 // ============================================================================
 
+// Resolve a registered contract hash by name (cross-contract callable wrapper around pub fn get).
+// @caller: anyone (intended for other contracts via Contract::call)
+// @params: name - registered contract name (e.g., "StakedOracle")
+// @returns: current contract hash registered under `name`
+// @security: read-only; panics if name not found (FIX #3)
 // ID 0: get_entry — wrapper around pub fn get() so it is callable cross-contract
 entry get_entry(name: string) -> Hash {
     let s: Storage = Storage::new()
@@ -53,6 +58,12 @@ entry get_entry(name: string) -> Hash {
     return h_opt.expect("err")
 }
 
+// Register a new contract name -> hash mapping (one-time per name).
+// @caller: admin (or timelock via contract call)
+// @params: name - human-readable contract name (non-empty)
+// @params: contract_hash - hash of the contract to register
+// @returns: 0 on success
+// @security: only_admin; rejects empty names and duplicate registrations; initializes version=1
 // ID 1: register
 entry register(name: string, contract_hash: Hash) -> u64 {
     only_admin()
@@ -69,6 +80,12 @@ entry register(name: string, contract_hash: Hash) -> u64 {
     return 0
 }
 
+// Upgrade a registered contract to a new hash, with a cooldown between upgrades.
+// @caller: admin (or timelock via contract call)
+// @params: name - registered contract name to upgrade
+// @params: new_hash - new contract hash (must differ from current and not be zero)
+// @returns: 0 on success
+// @security: only_admin; rejects zero/same hash; enforces COOLDOWN_BLOCKS since last upgrade; stores previous hash for rollback
 // ID 2: upgrade
 entry upgrade(name: string, new_hash: Hash) -> u64 {
     only_admin()
@@ -93,6 +110,11 @@ entry upgrade(name: string, new_hash: Hash) -> u64 {
     return 0
 }
 
+// Rollback a registered contract to its previous hash (one level back).
+// @caller: admin (or timelock via contract call)
+// @params: name - registered contract name to roll back
+// @returns: 0 on success
+// @security: only_admin; requires a previous hash to exist; swaps current<->previous; decrements version
 // ID 3: rollback
 entry rollback(name: string) -> u64 {
     only_admin()
@@ -109,11 +131,20 @@ entry rollback(name: string) -> u64 {
     return 0
 }
 
+// Returns the total number of registered contract names (entry wrapper).
+// @caller: anyone
+// @returns: count of registered names
+// @security: read-only, no access restrictions
 // ID 4: list_names_entry
 entry list_names_entry() -> u64 {
     return Storage::new().load(NAMES_COUNT_KEY).unwrap_or(0)
 }
 
+// Returns the registered name at a given index (entry wrapper for off-chain enumeration).
+// @caller: anyone
+// @params: index - position in [0, list_names_entry())
+// @returns: registered name at `index`
+// @security: read-only; range-checked (panics if index >= count)
 // ID 5: get_name_at_entry
 entry get_name_at_entry(index: u64) -> string {
     let s: Storage = Storage::new()
@@ -122,11 +153,21 @@ entry get_name_at_entry(index: u64) -> string {
     return s.load(NAME_PREFIX + index.to_string(10u32)).expect("err")
 }
 
+// Returns the current version number for a registered contract (entry wrapper).
+// @caller: anyone
+// @params: name - registered contract name
+// @returns: version number (starts at 1 on register, increments on upgrade, decrements on rollback; 0 if not registered)
+// @security: read-only, no access restrictions
 // ID 6: get_version_entry
 entry get_version_entry(name: string) -> u64 {
     return Storage::new().load(VERSION_NUM_PREFIX + name).unwrap_or(0)
 }
 
+// Returns the previous (pre-upgrade) hash for a registered contract (entry wrapper).
+// @caller: anyone
+// @params: name - registered contract name
+// @returns: previous hash, or Hash::zero() if no upgrade has occurred
+// @security: read-only, no access restrictions
 // ID 7: get_previous_entry
 entry get_previous_entry(name: string) -> Hash {
     let s: Storage = Storage::new()
@@ -135,12 +176,27 @@ entry get_previous_entry(name: string) -> Hash {
     return h_opt.expect("err")
 }
 
+// Set the timelock contract hash (allowed to call admin entries via contract call).
+// @caller: admin (or timelock via contract call)
+// @params: tl - timelock contract hash
+// @returns: 0 on success
+// @security: only_admin
 // ID 8: set_timelock
 entry set_timelock(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }
 
+// Transfer admin role to a new address (single-step).
+// @caller: admin (or timelock via contract call)
+// @params: new_admin - address that will become admin
+// @returns: 0 on success
+// @security: only_admin, single-step transfer (verify new_admin before calling)
 // ID 9: transfer_admin
 entry transfer_admin(new_admin: Address) -> u64 { only_admin() Storage::new().store(ADMIN_KEY, new_admin) return 0 }
 
+// Set the emergency admin address (only the current emergency admin can change it).
+// @caller: emergency admin only
+// @params: e - new emergency admin address
+// @returns: 0 on success
+// @security: only current emergency admin (self-managed role)
 // ID 10: set_emergency
 entry set_emergency(e: Address) -> u64 {
     let s: Storage = Storage::new()
@@ -151,6 +207,10 @@ entry set_emergency(e: Address) -> u64 {
     return 0
 }
 
+// Returns the contract version string.
+// @caller: anyone
+// @returns: VERSION constant ("ContractRegistry v5.0")
+// @security: read-only, no access restrictions
 // ID 11: get_version_str
 entry get_version_str() -> string { return VERSION }
 
@@ -160,6 +220,10 @@ entry get_version_str() -> string { return VERSION }
 const EMERGENCY_REQUEST_TOPO_KEY: string = "ert"
 const EMERGENCY_DELAY_BLOCKS: u64 = 17280
 
+// Step 1 of 2-step emergency withdrawal: record the request topoheight (starts delay window).
+// @caller: emergency admin only
+// @returns: 0 on success
+// @security: only emergency admin, stores request topo for delay verification (FIX #14)
 // ID 12: request_emergency_withdraw
 entry request_emergency_withdraw() -> u64 {
     let s: Storage = Storage::new()
@@ -170,6 +234,11 @@ entry request_emergency_withdraw() -> u64 {
     return 0
 }
 
+// Step 2 of 2-step emergency withdrawal: drain all of `asset` after EMERGENCY_DELAY_BLOCKS elapsed.
+// @caller: emergency admin only
+// @params: asset - hash of asset to withdraw (Hash::zero() for XEL)
+// @returns: 0 on success
+// @security: requires caller == emergency admin; requires prior request + EMERGENCY_DELAY_BLOCKS delay (2-step protection, FIX #14)
 // ID 13: execute_emergency_withdraw
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
@@ -186,6 +255,11 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
     return 0
 }
 
+// Resolve a registered contract hash by name (read-only view, panics if not found).
+// @caller: anyone
+// @params: name - registered contract name
+// @returns: current contract hash registered under `name`
+// @security: read-only; panics if name not found
 // ============================================================================
 // pub fn (read-only)
 // ============================================================================
@@ -196,6 +270,11 @@ pub fn get(name: string) -> Hash {
     return h_opt.expect("err")
 }
 
+// Resolve a registered contract hash by name (read-only view, returns Hash::zero() if not found).
+// @caller: anyone
+// @params: name - registered contract name
+// @returns: current contract hash, or Hash::zero() if name is not registered
+// @security: read-only, no access restrictions; non-panicking variant of get
 pub fn try_get(name: string) -> Hash {
     let s: Storage = Storage::new()
     let h_opt: optional<Hash> = s.load(CURRENT_PREFIX + name)
@@ -203,10 +282,20 @@ pub fn try_get(name: string) -> Hash {
     return h_opt.expect("err")
 }
 
+// Returns the current version number for a registered contract (read-only view).
+// @caller: anyone
+// @params: name - registered contract name
+// @returns: version number (0 if not registered)
+// @security: read-only, no access restrictions
 pub fn get_version(name: string) -> u64 {
     return Storage::new().load(VERSION_NUM_PREFIX + name).unwrap_or(0)
 }
 
+// Returns the previous (pre-upgrade) hash for a registered contract (read-only view).
+// @caller: anyone
+// @params: name - registered contract name
+// @returns: previous hash, or Hash::zero() if no upgrade has occurred
+// @security: read-only, no access restrictions
 pub fn get_previous(name: string) -> Hash {
     let s: Storage = Storage::new()
     let h_opt: optional<Hash> = s.load(PREVIOUS_PREFIX + name)
@@ -214,4 +303,9 @@ pub fn get_previous(name: string) -> Hash {
     return h_opt.expect("err")
 }
 
+// Legacy read-only invoke setter for the timelock hash (kept for ABI compatibility).
+// @caller: admin (or timelock via contract call)
+// @params: tl - timelock contract hash
+// @returns: 0 on success
+// @security: only_admin — note: pub fn in Silex is read-only; prefer entry set_timelock (ID 8) for state mutation
 pub fn set_timelock_tl(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }

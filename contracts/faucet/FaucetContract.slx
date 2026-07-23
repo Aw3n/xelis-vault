@@ -215,6 +215,10 @@ fn claim_vlt() -> u64 {
 // ============================================================================
 
 // ID 0: claim_both
+// claim both.
+// @caller: any user
+// @returns: u
+// @security: when_not_paused, only_admin
 entry claim_both() -> u64 {
     when_not_paused()
     let _ = claim_xel()
@@ -223,6 +227,11 @@ entry claim_both() -> u64 {
 }
 
 // ID 1: refill_xel
+// refill xel.
+// @caller: user / authorized caller
+// @params: amount - u64
+// @returns: u
+// @security: only_admin
 entry refill_xel(amount: u64) -> u64 {
     only_admin()
     require(amount > 0, "amtgt0")
@@ -236,6 +245,11 @@ entry refill_xel(amount: u64) -> u64 {
 }
 
 // ID 2: refill_vlt
+// refill vlt.
+// @caller: user / authorized caller
+// @params: amount - u64
+// @returns: u
+// @security: only_admin
 entry refill_vlt(amount: u64) -> u64 {
     only_admin()
     require(amount > 0, "amtgt0")
@@ -251,6 +265,12 @@ entry refill_vlt(amount: u64) -> u64 {
 }
 
 // ID 3: set_claim_amounts
+// set claim amounts.
+// @caller: admin (or timelock)
+// @params: xel_amt - u64
+// @params: vlt_amt - u64
+// @returns: u
+// @security: only_admin
 entry set_claim_amounts(xel_amt: u64, vlt_amt: u64) -> u64 {
     only_admin()
     require(xel_amt > 0 && vlt_amt > 0, "badval")
@@ -261,6 +281,11 @@ entry set_claim_amounts(xel_amt: u64, vlt_amt: u64) -> u64 {
 }
 
 // ID 4: set_cooldown_blocks
+// set cooldown blocks.
+// @caller: admin (or timelock)
+// @params: n - u64
+// @returns: u
+// @security: only_admin
 entry set_cooldown_blocks(n: u64) -> u64 {
     only_admin()
     require(n >= 1440 && n <= 60480, "badval")
@@ -269,6 +294,12 @@ entry set_cooldown_blocks(n: u64) -> u64 {
 }
 
 // ID 5: set_daily_caps
+// set daily caps.
+// @caller: admin (or timelock)
+// @params: xel_cap - u64
+// @params: vlt_cap - u64
+// @returns: u
+// @security: only_admin
 entry set_daily_caps(xel_cap: u64, vlt_cap: u64) -> u64 {
     only_admin()
     require(xel_cap > 0 && vlt_cap > 0, "badval")
@@ -279,6 +310,12 @@ entry set_daily_caps(xel_cap: u64, vlt_cap: u64) -> u64 {
 }
 
 // ID 6: set_lifetime_caps
+// set lifetime caps.
+// @caller: admin (or timelock)
+// @params: xel_cap - u64
+// @params: vlt_cap - u64
+// @returns: u
+// @security: only_admin, only_guardian_or_admin
 entry set_lifetime_caps(xel_cap: u64, vlt_cap: u64) -> u64 {
     only_admin()
     require(xel_cap > 0 && vlt_cap > 0, "badval")
@@ -289,6 +326,11 @@ entry set_lifetime_caps(xel_cap: u64, vlt_cap: u64) -> u64 {
 }
 
 // ID 7: pause
+// pause.
+// @caller: guardian or admin
+// @params: reason - string
+// @returns: u
+// @security: only_admin, only_guardian_or_admin
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -296,6 +338,10 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 8: unpause
+// unpause.
+// @caller: guardian or admin
+// @returns: u
+// @security: only_admin
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -303,6 +349,11 @@ entry unpause() -> u64 {
 }
 
 // ID 9: set_vlt_asset
+// set vlt asset.
+// @caller: guardian or admin
+// @params: va - Hash
+// @returns: u
+// @security: only_admin
 entry set_vlt_asset(va: Hash) -> u64 {
     only_admin()
     Storage::new().store(VLT_ASSET_KEY, va)
@@ -310,6 +361,11 @@ entry set_vlt_asset(va: Hash) -> u64 {
 }
 
 // ID 10: set_vlt_contract
+// set vlt contract.
+// @caller: guardian or admin
+// @params: vc - Hash
+// @returns: u
+// @security: only_admin
 entry set_vlt_contract(vc: Hash) -> u64 {
     only_admin()
     Storage::new().store(VLT_CONTRACT_KEY, vc)
@@ -317,6 +373,11 @@ entry set_vlt_contract(vc: Hash) -> u64 {
 }
 
 // ID 11: set_guardian
+// set guardian.
+// @caller: guardian or admin
+// @params: g - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_guardian(g: Address) -> u64 {
     only_admin()
     Storage::new().store(GUARDIAN_KEY, g)
@@ -324,6 +385,11 @@ entry set_guardian(g: Address) -> u64 {
 }
 
 // ID 12: set_emergency (kept for v4.2 compat; not used by two-step withdraw)
+// set emergency.
+// @caller: admin (or timelock)
+// @params: e - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_KEY, e)
@@ -331,6 +397,11 @@ entry set_emergency(e: Address) -> u64 {
 }
 
 // ID 13: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -338,7 +409,11 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 14: get_faucet_info_entry
-pub fn get_faucet_info_entry() -> (u64, u64, u64, u64, u64, u64, u64, u64, bool) {
+// get faucet info entry.
+// @caller: user / authorized caller
+// @returns: tuple: (
+// @security: standard access control
+entry get_faucet_info_entry() -> (u64, u64, u64, u64, u64, u64, u64, u64, bool) {
     let s: Storage = Storage::new()
     return (
         s.load(CLAIM_XEL_AMOUNT_KEY).unwrap_or(DEFAULT_CLAIM_XEL),
@@ -354,7 +429,12 @@ pub fn get_faucet_info_entry() -> (u64, u64, u64, u64, u64, u64, u64, u64, bool)
 }
 
 // ID 15: get_user_claims_entry
-pub fn get_user_claims_entry(addr: Address) -> (u64, u64, u64, u64) {
+// get user claims entry.
+// @caller: any user
+// @params: addr - Address
+// @returns: tuple: (
+// @security: standard access control
+entry get_user_claims_entry(addr: Address) -> (u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     let last_xel: u64 = s.load(LAST_XEL_CLAIM_PREFIX + addr.to_string()).unwrap_or(0)
     let last_vlt: u64 = s.load(LAST_VLT_CLAIM_PREFIX + addr.to_string()).unwrap_or(0)
@@ -364,7 +444,11 @@ pub fn get_user_claims_entry(addr: Address) -> (u64, u64, u64, u64) {
 }
 
 // ID 16: get_faucet_vlt_balance_entry
-pub fn get_faucet_vlt_balance_entry() -> u64 {
+// get faucet vlt balance entry.
+// @caller: user / authorized caller
+// @returns: u
+// @security: standard access control
+entry get_faucet_vlt_balance_entry() -> u64 {
     let s: Storage = Storage::new()
     let vlt_asset_opt: optional<Hash> = s.load(VLT_ASSET_KEY)
     if vlt_asset_opt.is_none() { return 0 }
@@ -373,11 +457,19 @@ pub fn get_faucet_vlt_balance_entry() -> u64 {
 }
 
 // ID 17: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: only_admin, 2-step withdraw (24h delay)
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 18: request_emergency_withdraw (admin-only)
+// request emergency withdraw.
+// @caller: any user
+// @returns: u
+// @security: only_admin, 2-step withdraw (24h delay)
 entry request_emergency_withdraw() -> u64 {
     only_admin()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -385,6 +477,11 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 19: execute_emergency_withdraw (admin-only)
+// execute emergency withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -406,14 +503,27 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// get faucet info.
+// @caller: anyone (read-only)
+// @returns: tuple: (
+// @security: standard access control
 pub fn get_faucet_info() -> (u64, u64, u64, u64, u64, u64, u64, u64, bool) {
     return get_faucet_info_entry()
 }
 
+// get user claims.
+// @caller: anyone (read-only)
+// @params: addr - Address
+// @returns: tuple: (
+// @security: standard access control
 pub fn get_user_claims(addr: Address) -> (u64, u64, u64, u64) {
     return get_user_claims_entry(addr)
 }
 
+// get faucet vlt balance.
+// @caller: anyone (read-only)
+// @returns: u
+// @security: standard access control
 pub fn get_faucet_vlt_balance() -> u64 {
     return get_faucet_vlt_balance_entry()
 }

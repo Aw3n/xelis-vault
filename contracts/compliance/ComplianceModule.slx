@@ -75,10 +75,20 @@ fn only_verifier() {
 }
 
 // ============================================================================
-// Internal helpers (shared by entry + pub fn)
+// ENTRIES
 // ============================================================================
 
-fn check_transfer_internal(from: Address, to: Address, asset: Hash, amount: u64) -> bool {
+// ID 0: check_transfer_entry — called by AssetVault v5.0 entry 2
+// Cross-contract hook: return true if a transfer of `asset` from `from` to `to` is allowed under KYC rules.
+// @caller: AssetVault (or other RWA contracts) via Contract::call, or anyone
+// @params: from - sender address
+// @params: to - recipient address
+// @params: asset - asset Hash being transferred
+// @params: amount - amount being transferred (reserved for future use)
+// @returns: true if both parties are compliant or asset is not gated
+// @security: read-only view, no access control; returns true if asset not flagged compliance-required
+// check transfer entry.
+entry check_transfer_entry(from: Address, to: Address, asset: Hash, amount: u64) -> bool {
     let s: Storage = Storage::new()
     let required: bool = s.load(ASSET_COMPLIANCE_PREFIX + asset.to_hex()).unwrap_or(false)
     if !required { return true }
@@ -87,42 +97,58 @@ fn check_transfer_internal(from: Address, to: Address, asset: Hash, amount: u64)
     return from_ok && to_ok
 }
 
-fn verify_proof_internal(merkle_proof: Hash, merkle_root: Hash) -> bool {
+// ID 1: verify_proof_entry
+// Verify a Merkle proof against the current compliance Merkle root.
+// @caller: anyone
+// @params: merkle_proof - proof Hash to verify (must be non-zero)
+// @params: merkle_root - root Hash supplied by the prover (must match stored root)
+// @returns: true if root matches current and proof is non-zero
+// @security: read-only view, no access control
+// verify proof entry.
+entry verify_proof_entry(merkle_proof: Hash, merkle_root: Hash) -> bool {
     let s: Storage = Storage::new()
     let current_root: Hash = s.load(CURRENT_MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
     return merkle_root == current_root && merkle_proof != Hash::zero()
 }
 
-// ============================================================================
-// ENTRIES
-// ============================================================================
-
-// ID 0: check_transfer_entry — called by AssetVault v5.0 entry 2
-entry check_transfer_entry(from: Address, to: Address, asset: Hash, amount: u64) -> bool {
-    return check_transfer_internal(from, to, asset, amount)
-}
-
-// ID 1: verify_proof_entry
-entry verify_proof_entry(merkle_proof: Hash, merkle_root: Hash) -> bool {
-    return verify_proof_internal(merkle_proof, merkle_root)
-}
-
 // ID 2: is_compliant_entry
+// Return whether an address is currently marked compliant.
+// @caller: anyone
+// @params: addr - address to check
+// @returns: true if address is marked compliant
+// @security: read-only view, no access control
+// is compliant entry.
 entry is_compliant_entry(addr: Address) -> bool {
     return Storage::new().load(COMPLIANT_PREFIX + addr.to_string()).unwrap_or(false)
 }
 
 // ID 3: get_current_root_entry
+// Return the current compliance Merkle root.
+// @caller: anyone
+// @returns: current Merkle root Hash (zero if never set)
+// @security: read-only view, no access control
+// get current root entry.
 entry get_current_root_entry() -> Hash {
     return Storage::new().load(CURRENT_MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
 }
 
 // ID 4: get_verifiers_count_entry
+// Return the number of authorized verifiers.
+// @caller: anyone
+// @returns: count of verifiers
+// @security: read-only view, no access control
+// get verifiers count entry.
 entry get_verifiers_count_entry() -> u64 {
     return Storage::new().load(VERIFIERS_COUNT_KEY).unwrap_or(0)
 }
 
 // ID 5: update_merkle_root
+// Update the compliance Merkle root to a new value (verifier-only).
+// @caller: authorized verifier
+// @params: new_root - new Merkle root Hash (must be non-zero)
+// @returns: 0 on success
+// @security: only_verifier, rejects zero root
+// update merkle root.
 entry update_merkle_root(new_root: Hash) -> u64 {
     only_verifier()
     require(new_root != Hash::zero(), "badroot")
@@ -131,6 +157,13 @@ entry update_merkle_root(new_root: Hash) -> u64 {
 }
 
 // ID 6: mark_compliant
+// Mark (or unmark) an address as KYC-compliant (verifier-only).
+// @caller: authorized verifier
+// @params: addr - address whose compliance status to set
+// @params: compliant - true to mark compliant, false to revoke
+// @returns: 0 on success
+// @security: only_verifier
+// mark compliant.
 entry mark_compliant(addr: Address, compliant: bool) -> u64 {
     only_verifier()
     Storage::new().store(COMPLIANT_PREFIX + addr.to_string(), compliant)
@@ -138,6 +171,12 @@ entry mark_compliant(addr: Address, compliant: bool) -> u64 {
 }
 
 // ID 7: add_verifier
+// Authorize a new verifier address (admin-only).
+// @caller: admin or timelock
+// @params: verifier - address to authorize
+// @returns: 0 on success
+// @security: only_admin, rejects duplicates
+// add verifier.
 entry add_verifier(verifier: Address) -> u64 {
     only_admin()
     let s: Storage = Storage::new()
@@ -150,6 +189,12 @@ entry add_verifier(verifier: Address) -> u64 {
 }
 
 // ID 8: remove_verifier
+// Revoke a verifier's authorization (admin-only).
+// @caller: admin or timelock
+// @params: verifier - address to revoke
+// @returns: 0 on success
+// @security: only_admin, decrements verifier count
+// remove verifier.
 entry remove_verifier(verifier: Address) -> u64 {
     only_admin()
     let s: Storage = Storage::new()
@@ -162,6 +207,13 @@ entry remove_verifier(verifier: Address) -> u64 {
 }
 
 // ID 9: set_compliance_required
+// Enable or disable the compliance-required flag for a specific asset.
+// @caller: admin or timelock
+// @params: asset - asset Hash to gate/un-gate
+// @params: required - true to require KYC for transfers of this asset
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set compliance required.
 entry set_compliance_required(asset: Hash, required: bool) -> u64 {
     only_admin()
     Storage::new().store(ASSET_COMPLIANCE_PREFIX + asset.to_hex(), required)
@@ -169,6 +221,12 @@ entry set_compliance_required(asset: Hash, required: bool) -> u64 {
 }
 
 // ID 10: set_registry
+// Update the ContractRegistry hash (reserved).
+// @caller: admin or timelock
+// @params: reg - new registry contract Hash
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set registry.
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -176,6 +234,12 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 11: set_timelock
+// Set the timelock contract hash allowed to invoke admin-gated entries.
+// @caller: admin or timelock
+// @params: tl - new timelock contract Hash
+// @returns: 0 on success
+// @security: only_admin, sets the alternate admin path
+// set timelock.
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -183,6 +247,12 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 12: pause
+// Pause the compliance module (advisory flag; verification logic still callable but gated contracts may choose to halt).
+// @caller: admin or timelock
+// @params: reason - human-readable pause reason
+// @returns: 0 on success
+// @security: only_admin, sets PAUSED_KEY to true
+// pause.
 entry pause(reason: string) -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -190,6 +260,11 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 13: unpause
+// Resume compliance module operations after a pause.
+// @caller: admin or timelock
+// @returns: 0 on success
+// @security: only_admin
+// unpause.
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -197,6 +272,12 @@ entry unpause() -> u64 {
 }
 
 // ID 14: transfer_admin
+// Transfer the admin role to a new address (single-step; verify before calling).
+// @caller: admin or timelock
+// @params: new_admin - address that will become the new admin
+// @returns: 0 on success
+// @security: only_admin, single-step transfer — ensure new_admin is correct before committing
+// transfer admin.
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -204,6 +285,11 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 15: get_version
+// Return the contract version string.
+// @caller: anyone
+// @returns: semantic version string (e.g. "ComplianceModule v5.0")
+// @security: read-only view, no access control
+// get version.
 entry get_version() -> string {
     return VERSION
 }
@@ -212,26 +298,64 @@ entry get_version() -> string {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// Return whether a transfer of `asset` from `from` to `to` is allowed under KYC rules (read-only wrapper).
+// @caller: anyone
+// @params: from - sender address
+// @params: to - recipient address
+// @params: asset - asset Hash being transferred
+// @params: amount - amount being transferred (reserved)
+// @returns: true if both parties are compliant or asset is not gated
+// @security: read-only view, no access control
+// check transfer.
 pub fn check_transfer(from: Address, to: Address, asset: Hash, amount: u64) -> bool {
-    return check_transfer_internal(from, to, asset, amount)
+    return check_transfer_entry(from, to, asset, amount)
 }
 
+// Verify a Merkle proof against the current compliance Merkle root (read-only wrapper).
+// @caller: anyone
+// @params: merkle_proof - proof Hash to verify
+// @params: merkle_root - root Hash supplied by the prover
+// @returns: true if root matches and proof is non-zero
+// @security: read-only view, no access control
+// verify proof.
 pub fn verify_proof(merkle_proof: Hash, merkle_root: Hash) -> bool {
-    return verify_proof_internal(merkle_proof, merkle_root)
+    return verify_proof_entry(merkle_proof, merkle_root)
 }
 
+// Return whether an address is currently marked compliant.
+// @caller: anyone
+// @params: addr - address to check
+// @returns: true if address is marked compliant
+// @security: read-only view, no access control
+// is compliant.
 pub fn is_compliant(addr: Address) -> bool {
     return Storage::new().load(COMPLIANT_PREFIX + addr.to_string()).unwrap_or(false)
 }
 
+// Return the current compliance Merkle root.
+// @caller: anyone
+// @returns: current Merkle root Hash (zero if never set)
+// @security: read-only view, no access control
+// get current root.
 pub fn get_current_root() -> Hash {
     return Storage::new().load(CURRENT_MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
 }
 
+// Return the number of authorized verifiers.
+// @caller: anyone
+// @returns: count of verifiers
+// @security: read-only view, no access control
+// get verifiers count.
 pub fn get_verifiers_count() -> u64 {
     return Storage::new().load(VERIFIERS_COUNT_KEY).unwrap_or(0)
 }
 
+// Set the timelock contract hash (alternate admin path via contract-caller check).
+// @caller: admin or timelock
+// @params: tl - new timelock contract Hash
+// @returns: 0 on success
+// @security: only_admin, mirrors the entry version for read-only callers
+// set timelock tl.
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

@@ -95,6 +95,15 @@ fn when_not_paused() {
 // ============================================================================
 
 // ID 0: add_employee
+// add employee.
+// @caller: user / authorized caller
+// @params: addr - Address
+// @params: asset - Hash
+// @params: rate_per_block - u64
+// @params: start_topo - u64
+// @params: end_topo - u64
+// @returns: u
+// @security: when_not_paused, only_admin
 entry add_employee(
     addr: Address,
     asset: Hash,
@@ -127,6 +136,13 @@ entry add_employee(
 }
 
 // ID 1: update_employee
+// update employee.
+// @caller: user / authorized caller
+// @params: addr - Address
+// @params: rate_per_block - u64
+// @params: end_topo - u64
+// @returns: u
+// @security: when_not_paused, only_admin
 entry update_employee(addr: Address, rate_per_block: u64, end_topo: u64) -> u64 {
     when_not_paused()
     only_admin()
@@ -143,6 +159,11 @@ entry update_employee(addr: Address, rate_per_block: u64, end_topo: u64) -> u64 
 }
 
 // ID 2: remove_employee
+// remove employee.
+// @caller: user / authorized caller
+// @params: addr - Address
+// @returns: u
+// @security: when_not_paused, only_admin
 entry remove_employee(addr: Address) -> u64 {
     only_admin()
     let s: Storage = Storage::new()
@@ -154,6 +175,10 @@ entry remove_employee(addr: Address) -> u64 {
 }
 
 // ID 3: claim
+// claim.
+// @caller: any user
+// @returns: u
+// @security: when_not_paused
 entry claim() -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -199,6 +224,11 @@ entry claim() -> u64 {
 }
 
 // ID 4: set_treasury
+// set treasury.
+// @caller: admin (or timelock)
+// @params: t - Address
+// @returns: u
+// @security: only_admin
 entry set_treasury(t: Address) -> u64 {
     only_admin()
     Storage::new().store(TREASURY_KEY, t)
@@ -206,6 +236,11 @@ entry set_treasury(t: Address) -> u64 {
 }
 
 // ID 5: set_registry
+// set registry.
+// @caller: admin (or timelock)
+// @params: reg - Hash
+// @returns: u
+// @security: only_admin
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -213,6 +248,11 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 6: set_timelock
+// set timelock.
+// @caller: admin (or timelock)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -220,6 +260,11 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 7: set_emergency
+// set emergency.
+// @caller: admin (or timelock)
+// @params: e - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_KEY, e)
@@ -227,6 +272,11 @@ entry set_emergency(e: Address) -> u64 {
 }
 
 // ID 8: pause
+// pause.
+// @caller: admin (or timelock)
+// @params: reason - string
+// @returns: u
+// @security: only_admin
 entry pause(reason: string) -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -234,6 +284,10 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 9: unpause
+// unpause.
+// @caller: admin (or timelock)
+// @returns: u
+// @security: only_admin
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -241,6 +295,11 @@ entry unpause() -> u64 {
 }
 
 // ID 10: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -248,6 +307,12 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 11: deposit_funds
+// deposit funds.
+// @caller: any user
+// @params: asset - Hash
+// @params: amount - u64
+// @returns: u
+// @security: standard access control
 entry deposit_funds(asset: Hash, amount: u64) -> u64 {
     require(amount > 0, "amtgt0")
     let caller: Address = get_caller().expect("err")
@@ -260,7 +325,12 @@ entry deposit_funds(asset: Hash, amount: u64) -> u64 {
 }
 
 // ID 12: get_pending_entry
-pub fn get_pending_entry(addr: Address) -> u64 {
+// get pending entry.
+// @caller: user / authorized caller
+// @params: addr - Address
+// @returns: u
+// @security: standard access control
+entry get_pending_entry(addr: Address) -> u64 {
     let s: Storage = Storage::new()
     let employee_opt: optional<Employee> = s.load(EMPLOYEE_PREFIX + addr.to_string())
     if employee_opt.is_none() { return 0 }
@@ -286,16 +356,28 @@ pub fn get_pending_entry(addr: Address) -> u64 {
 }
 
 // ID 13: get_employees_count_entry
+// get employees count entry.
+// @caller: user / authorized caller
+// @returns: u
+// @security: standard access control
 entry get_employees_count_entry() -> u64 {
     return Storage::new().load(EMPLOYEES_COUNT_KEY).unwrap_or(0)
 }
 
 // ID 14: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 15: request_emergency_withdraw
+// request emergency withdraw.
+// @caller: any user
+// @returns: u
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -303,6 +385,11 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 16: execute_emergency_withdraw
+// execute emergency withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -324,14 +411,28 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// get pending.
+// @caller: anyone (read-only)
+// @params: addr - Address
+// @returns: u
+// @security: only_admin
 pub fn get_pending(addr: Address) -> u64 {
     return get_pending_entry(addr)
 }
 
+// get employees count.
+// @caller: anyone (read-only)
+// @returns: u
+// @security: only_admin
 pub fn get_employees_count() -> u64 {
     return Storage::new().load(EMPLOYEES_COUNT_KEY).unwrap_or(0)
 }
 
+// set timelock tl.
+// @caller: anyone (read-only)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

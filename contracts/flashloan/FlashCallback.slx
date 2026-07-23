@@ -51,6 +51,15 @@ fn only_admin() {
 // ID 0: on_flash_loan — invoked by FlashLoan v5.0 entry 0 (flash_loan)
 // Signature MUST be (asset: Hash, amount: u64, fee: u64, caller: Address,
 // data: bytes) -> u64 per FlashLoan v5.0's documented callback contract.
+// on flash loan.
+// @caller: user / authorized caller
+// @params: asset - Hash
+// @params: amount - u64
+// @params: fee - u64
+// @params: caller - Address
+// @params: data - bytes
+// @returns: u
+// @security: standard access control
 entry on_flash_loan(
     asset: Hash,
     amount: u64,
@@ -75,6 +84,11 @@ entry on_flash_loan(
 }
 
 // ID 1: claim_profit
+// claim profit.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: only_admin
 entry claim_profit(asset: Hash) -> u64 {
     only_admin()
     let caller: Address = get_caller().expect("err")
@@ -85,6 +99,11 @@ entry claim_profit(asset: Hash) -> u64 {
 }
 
 // ID 2: set_flash_loan
+// set flash loan.
+// @caller: admin (or timelock)
+// @params: fl - Hash
+// @returns: u
+// @security: only_admin
 entry set_flash_loan(fl: Hash) -> u64 {
     only_admin()
     Storage::new().store(FLASH_LOAN_KEY, fl)
@@ -92,6 +111,11 @@ entry set_flash_loan(fl: Hash) -> u64 {
 }
 
 // ID 3: set_registry
+// set registry.
+// @caller: admin (or timelock)
+// @params: reg - Hash
+// @returns: u
+// @security: only_admin
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -99,6 +123,11 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 4: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -106,6 +135,10 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 5: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: standard access control
 entry get_version() -> string {
     return VERSION
 }

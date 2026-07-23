@@ -278,6 +278,14 @@ fn current_fee_bps(pool_key: string) -> u64 {
 // ============================================================================
 
 // ID 0: create_pool
+// Register a new AMM pool (or PSM pool) for an asset pair, indexing it for enumeration.
+// @caller: admin or timelock
+// @params: asset_a - first asset Hash
+// @params: asset_b - second asset Hash (must differ from asset_a)
+// @params: is_psm - whether this pool is a Peg Stability Module (oracle-priced) pool
+// @returns: 0 on success
+// @security: only_admin, requires asset_a != asset_b, rejects duplicate pools
+// create pool.
 entry create_pool(asset_a: Hash, asset_b: Hash, is_psm: bool) -> u64 {
     only_admin()
     require(asset_a != asset_b, "sameasset")
@@ -302,6 +310,15 @@ entry create_pool(asset_a: Hash, asset_b: Hash, is_psm: bool) -> u64 {
 }
 
 // ID 1: add_liquidity
+// Deposit proportional amounts of both assets into an existing non-PSM pool, seeding price on first deposit.
+// @caller: any liquidity provider
+// @params: asset_a - first asset Hash
+// @params: asset_b - second asset Hash
+// @params: amount_a - amount of asset_a to deposit
+// @params: amount_b - amount of asset_b to deposit (must match pool ratio after first deposit)
+// @returns: 0 on success
+// @security: when_not_paused, non_reentrant, ratio check on subsequent deposits, requires pre-deposit of both assets
+// add liquidity.
 entry add_liquidity(asset_a: Hash, asset_b: Hash, amount_a: u64, amount_b: u64) -> u64 {
     when_not_paused()
     non_reentrant()
@@ -340,6 +357,15 @@ entry add_liquidity(asset_a: Hash, asset_b: Hash, amount_a: u64, amount_b: u64) 
 }
 
 // ID 2: swap
+// Swap asset_in for asset_out using constant-product AMM with TWAP-based dynamic fees and circuit breaker.
+// @caller: any user
+// @params: asset_in - asset to sell
+// @params: asset_out - asset to buy
+// @params: amount_in - amount of asset_in to spend
+// @params: min_amount_out - slippage protection (minimum output accepted)
+// @returns: 0 on success
+// @security: when_not_paused, non_reentrant, max swap % of reserve enforced, circuit breaker trips if price moves > MAX_VOLATILITY_BPS in one swap
+// swap.
 entry swap(
     asset_in: Hash,
     asset_out: Hash,
@@ -431,6 +457,13 @@ entry swap(
 }
 
 // ID 3: psm_mint — FIX #12: oracle.call(9u16, [asset], {})
+// Mint xUSD from XEL via the PSM pool at the oracle XEL/USD price (no AMM curve, fixed price).
+// @caller: any user
+// @params: xel_amount - amount of XEL to deposit
+// @params: min_xusd_out - slippage protection (minimum net xUSD accepted)
+// @returns: 0 on success
+// @security: when_not_paused, non_reentrant, requires PSM pool configured, oracle price > 0 enforced, cross-contract call to xUSD.mint_split
+// psm mint.
 entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     when_not_paused()
     non_reentrant()
@@ -477,6 +510,13 @@ entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
 }
 
 // ID 4: psm_redeem — FIX #12: oracle.call(9u16, [asset], {})
+// Burn xUSD and receive XEL from the PSM pool at the oracle price.
+// @caller: any user
+// @params: xusd_amount - amount of xUSD to burn
+// @params: min_xel_out - slippage protection (minimum net XEL accepted)
+// @returns: 0 on success
+// @security: when_not_paused, non_reentrant, requires PSM pool configured, oracle price > 0 enforced, XEL reserve sufficiency, cross-contract call to xUSD.burn_tokens
+// psm redeem.
 entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     when_not_paused()
     non_reentrant()
@@ -522,6 +562,13 @@ entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
 }
 
 // ID 5: get_pool_entry
+// Return the reserves, last price, and PSM flag for a pool identified by asset pair.
+// @caller: anyone
+// @params: asset_a - first asset Hash
+// @params: asset_b - second asset Hash
+// @returns: tuple (reserve_a, reserve_b, last_price, is_psm); returns (0,0,0,false) if pool doesn't exist
+// @security: read-only view, no access control
+// get pool entry.
 entry get_pool_entry(asset_a: Hash, asset_b: Hash) -> (u64, u64, u64, bool) {
     let s: Storage = Storage::new()
     let key: string = get_pool_key(asset_a, asset_b)
@@ -534,6 +581,14 @@ entry get_pool_entry(asset_a: Hash, asset_b: Hash) -> (u64, u64, u64, bool) {
 }
 
 // ID 6: get_amount_out_view_entry
+// Compute the expected output amount for a swap given current reserves and dynamic fee.
+// @caller: anyone
+// @params: asset_in - asset being sold
+// @params: asset_out - asset being bought
+// @params: amount_in - input amount to quote
+// @returns: expected output amount (0 if pool missing)
+// @security: read-only view, no access control
+// get amount out view entry.
 entry get_amount_out_view_entry(asset_in: Hash, asset_out: Hash, amount_in: u64) -> u64 {
     let s: Storage = Storage::new()
     let key: string = get_pool_key(asset_in, asset_out)
@@ -558,23 +613,48 @@ entry get_amount_out_view_entry(asset_in: Hash, asset_out: Hash, amount_in: u64)
 }
 
 // ID 7: get_twap_entry
+// Return the 30-sample time-weighted average price for a pool.
+// @caller: anyone
+// @params: asset_a - first asset Hash
+// @params: asset_b - second asset Hash
+// @returns: TWAP price (reserve_a / reserve_b scaled by PRICE_DECIMALS), 0 if no samples
+// @security: read-only view, no access control
+// get twap entry.
 entry get_twap_entry(asset_a: Hash, asset_b: Hash) -> u64 {
     let key: string = get_pool_key(asset_a, asset_b)
     return twap_get(key)
 }
 
 // ID 8: get_volatility_bps_entry
+// Return the TWAP-based volatility (max-min)/mean in basis points for a pool.
+// @caller: anyone
+// @params: asset_a - first asset Hash
+// @params: asset_b - second asset Hash
+// @returns: volatility in bps; 0 if fewer than 2 samples
+// @security: read-only view, no access control
+// get volatility bps entry.
 entry get_volatility_bps_entry(asset_a: Hash, asset_b: Hash) -> u64 {
     let key: string = get_pool_key(asset_a, asset_b)
     return twap_volatility_bps(key)
 }
 
 // ID 9: get_pools_count_entry
+// Return the total number of registered pools.
+// @caller: anyone
+// @returns: count of pools
+// @security: read-only view, no access control
+// get pools count entry.
 entry get_pools_count_entry() -> u64 {
     return Storage::new().load(POOLS_COUNT_KEY).unwrap_or(0)
 }
 
 // ID 10: get_pool_by_index_entry
+// Return the pool details at a given numeric index (enumeration helper).
+// @caller: anyone
+// @params: index - pool index (0..pools_count-1)
+// @returns: tuple (asset_a, asset_b, reserve_a, reserve_b, last_price, is_psm)
+// @security: read-only view, no access control; panics if index out of range
+// get pool by index entry.
 entry get_pool_by_index_entry(index: u64) -> (Hash, Hash, u64, u64, u64, bool) {
     let s: Storage = Storage::new()
     let key: string = s.load(POOL_ID_PREFIX + index.to_string(10u32)).expect("err")
@@ -583,6 +663,11 @@ entry get_pool_by_index_entry(index: u64) -> (Hash, Hash, u64, u64, u64, bool) {
 }
 
 // ID 11: get_fees_entry
+// Return all current fee configuration values in basis points.
+// @caller: anyone
+// @returns: tuple (base_fee, treasury_fee, max_volatility, high_vol_fee, max_swap_pct, psm_mint_fee)
+// @security: read-only view, no access control
+// get fees entry.
 entry get_fees_entry() -> (u64, u64, u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     return (
@@ -596,6 +681,12 @@ entry get_fees_entry() -> (u64, u64, u64, u64, u64, u64) {
 }
 
 // ID 12: pause
+// Pause all swap / liquidity / PSM operations, recording the pause reason.
+// @caller: guardian or admin
+// @params: reason - human-readable pause reason (stored on-chain)
+// @returns: 0 on success
+// @security: only_guardian_or_admin, sets PAUSED_KEY to true
+// pause.
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     let s: Storage = Storage::new()
@@ -605,6 +696,11 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 13: unpause
+// Resume all swap / liquidity / PSM operations after a pause.
+// @caller: admin or timelock
+// @returns: 0 on success
+// @security: only_admin (stricter than pause)
+// unpause.
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -612,6 +708,12 @@ entry unpause() -> u64 {
 }
 
 // ID 14: set_base_fee_bps
+// Update the base AMM swap fee in basis points (capped at 500 bps = 5%).
+// @caller: admin or timelock
+// @params: f - new base fee bps (0..=500)
+// @returns: 0 on success
+// @security: only_admin, bounds-checked
+// set base fee bps.
 entry set_base_fee_bps(f: u64) -> u64 {
     only_admin()
     require(f <= 500, "badval")
@@ -620,6 +722,12 @@ entry set_base_fee_bps(f: u64) -> u64 {
 }
 
 // ID 15: set_treasury_fee_bps
+// Update the treasury fee (taken from swap output) in basis points (capped at 100 bps = 1%).
+// @caller: admin or timelock
+// @params: f - new treasury fee bps (0..=100)
+// @returns: 0 on success
+// @security: only_admin, bounds-checked
+// set treasury fee bps.
 entry set_treasury_fee_bps(f: u64) -> u64 {
     only_admin()
     require(f <= 100, "badval")
@@ -628,6 +736,12 @@ entry set_treasury_fee_bps(f: u64) -> u64 {
 }
 
 // ID 16: set_max_volatility_bps
+// Update the circuit-breaker threshold: max allowed single-swap price move in bps (100..=5000).
+// @caller: admin or timelock
+// @params: v - new max volatility bps
+// @returns: 0 on success
+// @security: only_admin, bounds-checked (1%..=50%)
+// set max volatility bps.
 entry set_max_volatility_bps(v: u64) -> u64 {
     only_admin()
     require(v >= 100 && v <= 5000, "badval")
@@ -636,6 +750,12 @@ entry set_max_volatility_bps(v: u64) -> u64 {
 }
 
 // ID 17: set_max_swap_pct_bps
+// Update the per-swap cap as a percentage of input reserve in bps (100..=2000 = 1%..=20%).
+// @caller: admin or timelock
+// @params: p - new max swap pct bps
+// @returns: 0 on success
+// @security: only_admin, bounds-checked
+// set max swap pct bps.
 entry set_max_swap_pct_bps(p: u64) -> u64 {
     only_admin()
     require(p >= 100 && p <= 2000, "badval")
@@ -644,6 +764,12 @@ entry set_max_swap_pct_bps(p: u64) -> u64 {
 }
 
 // ID 18: set_psm_mint_fee_bps
+// Update the PSM mint fee in basis points (capped at 500 bps = 5%).
+// @caller: admin or timelock
+// @params: f - new PSM mint fee bps (0..=500)
+// @returns: 0 on success
+// @security: only_admin, bounds-checked
+// set psm mint fee bps.
 entry set_psm_mint_fee_bps(f: u64) -> u64 {
     only_admin()
     require(f <= 500, "badval")
@@ -652,6 +778,12 @@ entry set_psm_mint_fee_bps(f: u64) -> u64 {
 }
 
 // ID 19: set_psm_redeem_fee_bps
+// Update the PSM redeem fee in basis points (capped at 500 bps = 5%).
+// @caller: admin or timelock
+// @params: f - new PSM redeem fee bps (0..=500)
+// @returns: 0 on success
+// @security: only_admin, bounds-checked
+// set psm redeem fee bps.
 entry set_psm_redeem_fee_bps(f: u64) -> u64 {
     only_admin()
     require(f <= 500, "badval")
@@ -660,6 +792,12 @@ entry set_psm_redeem_fee_bps(f: u64) -> u64 {
 }
 
 // ID 20: set_registry
+// Update the ContractRegistry hash used to look up the StakedOracle contract.
+// @caller: admin or timelock
+// @params: reg - new registry contract Hash
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set registry.
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -667,6 +805,12 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 21: set_xusd_asset
+// Update the xUSD asset Hash used in PSM pool key generation.
+// @caller: admin or timelock
+// @params: xa - new xUSD asset Hash
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set xusd asset.
 entry set_xusd_asset(xa: Hash) -> u64 {
     only_admin()
     Storage::new().store(XUSD_ASSET_KEY, xa)
@@ -674,6 +818,12 @@ entry set_xusd_asset(xa: Hash) -> u64 {
 }
 
 // ID 22: set_xusd_contract
+// Update the xUSD token contract hash for cross-contract mint/burn calls.
+// @caller: admin or timelock
+// @params: xc - new xUSD contract Hash
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set xusd contract.
 entry set_xusd_contract(xc: Hash) -> u64 {
     only_admin()
     Storage::new().store(XUSD_CONTRACT_KEY, xc)
@@ -681,6 +831,12 @@ entry set_xusd_contract(xc: Hash) -> u64 {
 }
 
 // ID 23: set_treasury
+// Update the treasury address that receives swap and PSM fees.
+// @caller: admin or timelock
+// @params: t - new treasury Address
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set treasury.
 entry set_treasury(t: Address) -> u64 {
     only_admin()
     Storage::new().store(TREASURY_KEY, t)
@@ -688,6 +844,12 @@ entry set_treasury(t: Address) -> u64 {
 }
 
 // ID 24: set_timelock
+// Set the timelock contract hash that may invoke admin-gated entries as contract caller.
+// @caller: admin or timelock
+// @params: tl - new timelock contract Hash
+// @returns: 0 on success
+// @security: only_admin, sets the alternate admin path
+// set timelock.
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -695,6 +857,12 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 25: set_guardian
+// Update the guardian address that may pause the contract.
+// @caller: admin or timelock
+// @params: g - new guardian Address
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set guardian.
 entry set_guardian(g: Address) -> u64 {
     only_admin()
     Storage::new().store(GUARDIAN_KEY, g)
@@ -702,6 +870,12 @@ entry set_guardian(g: Address) -> u64 {
 }
 
 // ID 26: set_emergency
+// Hand off the emergency role to a new address (requires current emergency role to call).
+// @caller: emergency role
+// @params: e - new emergency Address
+// @returns: 0 on success
+// @security: only_emergency, two-party handoff
+// set emergency.
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_KEY, e)
@@ -709,6 +883,12 @@ entry set_emergency(e: Address) -> u64 {
 }
 
 // ID 27: transfer_admin
+// Transfer the admin role to a new address (single-step; verify before calling).
+// @caller: admin or timelock
+// @params: new_admin - address that will become the new admin
+// @returns: 0 on success
+// @security: only_admin, single-step transfer — ensure new_admin is correct before committing
+// transfer admin.
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -716,11 +896,21 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 28: get_version
+// Return the contract version string.
+// @caller: anyone
+// @returns: semantic version string (e.g. "VaultSwapV2.5")
+// @security: read-only view, no access control
+// get version.
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 29: request_emergency_withdraw
+// First step of the 2-step emergency withdraw: record the current topoheight as the request timestamp.
+// @caller: emergency role
+// @returns: 0 on success
+// @security: only_emergency, starts 17280-block (~24h) timelock before execution
+// request emergency withdraw.
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -728,6 +918,12 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 30: execute_emergency_withdraw
+// Second step of the 2-step emergency withdraw: sweep the entire balance of an asset to the emergency role.
+// @caller: emergency role
+// @params: asset - which asset Hash to withdraw fully
+// @returns: 0 on success
+// @security: only_emergency, requires prior request_emergency_withdraw, enforced 17280-block delay, single-use (deletes request key)
+// execute emergency withdraw.
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -749,6 +945,13 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// Return the reserves, last price, and PSM flag for a pool identified by asset pair.
+// @caller: anyone
+// @params: asset_a - first asset Hash
+// @params: asset_b - second asset Hash
+// @returns: tuple (reserve_a, reserve_b, last_price, is_psm); returns (0,0,0,false) if pool doesn't exist
+// @security: read-only view, no access control
+// get pool.
 pub fn get_pool(asset_a: Hash, asset_b: Hash) -> (u64, u64, u64, bool) {
     let s: Storage = Storage::new()
     let key: string = get_pool_key(asset_a, asset_b)
@@ -758,6 +961,14 @@ pub fn get_pool(asset_a: Hash, asset_b: Hash) -> (u64, u64, u64, bool) {
     return (pool.reserve_a, pool.reserve_b, pool.last_price, pool.is_psm)
 }
 
+// Compute the expected output amount for a swap given current reserves and dynamic fee.
+// @caller: anyone
+// @params: asset_in - asset being sold
+// @params: asset_out - asset being bought
+// @params: amount_in - input amount to quote
+// @returns: expected output amount (0 if pool missing)
+// @security: read-only view, no access control
+// get amount out view.
 pub fn get_amount_out_view(asset_in: Hash, asset_out: Hash, amount_in: u64) -> u64 {
     let s: Storage = Storage::new()
     let key: string = get_pool_key(asset_in, asset_out)
@@ -773,20 +984,45 @@ pub fn get_amount_out_view(asset_in: Hash, asset_out: Hash, amount_in: u64) -> u
     return get_amount_out(amount_in, reserve_in, reserve_out, fee_bps)
 }
 
+// Return the 30-sample time-weighted average price for a pool.
+// @caller: anyone
+// @params: asset_a - first asset Hash
+// @params: asset_b - second asset Hash
+// @returns: TWAP price scaled by PRICE_DECIMALS, 0 if no samples
+// @security: read-only view, no access control
+// get twap.
 pub fn get_twap(asset_a: Hash, asset_b: Hash) -> u64 {
     let key: string = get_pool_key(asset_a, asset_b)
     return twap_get(key)
 }
 
+// Return the TWAP-based volatility (max-min)/mean in basis points for a pool.
+// @caller: anyone
+// @params: asset_a - first asset Hash
+// @params: asset_b - second asset Hash
+// @returns: volatility in bps; 0 if fewer than 2 samples
+// @security: read-only view, no access control
+// get volatility bps.
 pub fn get_volatility_bps(asset_a: Hash, asset_b: Hash) -> u64 {
     let key: string = get_pool_key(asset_a, asset_b)
     return twap_volatility_bps(key)
 }
 
+// Return the total number of registered pools.
+// @caller: anyone
+// @returns: count of pools
+// @security: read-only view, no access control
+// get pools count.
 pub fn get_pools_count() -> u64 {
     return Storage::new().load(POOLS_COUNT_KEY).unwrap_or(0)
 }
 
+// Return the pool details at a given numeric index (enumeration helper).
+// @caller: anyone
+// @params: index - pool index (0..pools_count-1)
+// @returns: tuple (asset_a, asset_b, reserve_a, reserve_b, last_price, is_psm)
+// @security: read-only view, no access control; panics if index out of range
+// get pool by index.
 pub fn get_pool_by_index(index: u64) -> (Hash, Hash, u64, u64, u64, bool) {
     let s: Storage = Storage::new()
     let key: string = s.load(POOL_ID_PREFIX + index.to_string(10u32)).expect("err")
@@ -794,6 +1030,11 @@ pub fn get_pool_by_index(index: u64) -> (Hash, Hash, u64, u64, u64, bool) {
     return (pool.asset_a, pool.asset_b, pool.reserve_a, pool.reserve_b, pool.last_price, pool.is_psm)
 }
 
+// Return all current fee configuration values in basis points.
+// @caller: anyone
+// @returns: tuple (base_fee, treasury_fee, max_volatility, high_vol_fee, max_swap_pct, psm_mint_fee)
+// @security: read-only view, no access control
+// get fees.
 pub fn get_fees() -> (u64, u64, u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     return (
@@ -806,6 +1047,12 @@ pub fn get_fees() -> (u64, u64, u64, u64, u64, u64) {
     )
 }
 
+// Set the timelock contract hash (alternate admin path via contract-caller check).
+// @caller: admin or timelock
+// @params: tl - new timelock contract Hash
+// @returns: 0 on success
+// @security: only_admin, mirrors the entry version for read-only callers
+// set timelock tl.
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

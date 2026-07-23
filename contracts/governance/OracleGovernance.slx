@@ -160,6 +160,16 @@ fn get_voting_power(addr: Address) -> u64 {
     return vp
 }
 
+// Propose adding a new price feed to the StakedOracle.
+// @caller: any voting-power holder
+// @params: name - human-readable feed name
+// @params: asset - asset hash the feed tracks
+// @params: decimals - price decimals (e.g. 8)
+// @params: min_price - sanity-check minimum accepted price
+// @params: max_price - sanity-check maximum accepted price
+// @params: description - human-readable proposal description
+// @returns: the new proposal ID
+// @security: requires caller voting power > 0; voting_deadline = current_topo + voting_period
 // ============================================================================
 // ID 0: propose_add_feed
 // ============================================================================
@@ -206,6 +216,15 @@ entry propose_add_feed(
     return id
 }
 
+// Propose updating an existing price feed's bounds and decimals.
+// @caller: any voting-power holder
+// @params: feed_id - target feed to update
+// @params: min_price - new sanity-check minimum accepted price
+// @params: max_price - new sanity-check maximum accepted price
+// @params: decimals - new decimals value
+// @params: description - human-readable proposal description
+// @returns: the new proposal ID
+// @security: requires caller voting power > 0
 // ============================================================================
 // ID 1: propose_update_feed
 // ============================================================================
@@ -250,6 +269,12 @@ entry propose_update_feed(
     return id
 }
 
+// Propose deactivating (removing) an existing price feed.
+// @caller: any voting-power holder
+// @params: feed_id - target feed to deactivate
+// @params: description - human-readable proposal description
+// @returns: the new proposal ID
+// @security: requires caller voting power > 0
 // ============================================================================
 // ID 2: propose_remove_feed
 // ============================================================================
@@ -288,6 +313,13 @@ entry propose_remove_feed(feed_id: u64, description: string) -> u64 {
     return id
 }
 
+// Propose changing a StakedOracle parameter (max_stale, hard_stale, max_dev, cb_thresh, submit_window).
+// @caller: any voting-power holder
+// @params: param_key - parameter selector (2..=6)
+// @params: param_value - new value for the parameter
+// @params: description - human-readable proposal description
+// @returns: the new proposal ID
+// @security: requires caller voting power > 0; param_key range-checked 2..=6
 // ============================================================================
 // ID 3: propose_set_param
 // ----------------------------------------------------------------------------
@@ -330,6 +362,12 @@ entry propose_set_param(param_key: u8, param_value: u64, description: string) ->
     return id
 }
 
+// Propose changing the XelisVaultMiner base reward oracle amount (FIX #15).
+// @caller: any voting-power holder
+// @params: reward_amount - new base reward oracle value
+// @params: description - human-readable proposal description
+// @returns: the new proposal ID
+// @security: requires caller voting power > 0
 // ============================================================================
 // ID 4: propose_set_reward
 // ============================================================================
@@ -368,6 +406,12 @@ entry propose_set_reward(reward_amount: u64, description: string) -> u64 {
     return id
 }
 
+// Propose triggering an emergency circuit-breaker on a price feed.
+// @caller: any voting-power holder
+// @params: feed_id - target feed to trigger CB on
+// @params: description - human-readable proposal description
+// @returns: the new proposal ID
+// @security: requires caller voting power > 0
 // ============================================================================
 // ID 5: propose_emergency_cb
 // ============================================================================
@@ -406,6 +450,12 @@ entry propose_emergency_cb(feed_id: u64, description: string) -> u64 {
     return id
 }
 
+// Propose resetting the circuit-breaker state on a price feed.
+// @caller: any voting-power holder
+// @params: feed_id - target feed to reset CB on
+// @params: description - human-readable proposal description
+// @returns: the new proposal ID
+// @security: requires caller voting power > 0
 // ============================================================================
 // ID 6: propose_reset_feed
 // ============================================================================
@@ -444,6 +494,12 @@ entry propose_reset_feed(feed_id: u64, description: string) -> u64 {
     return id
 }
 
+// Cast a yes/no vote on an active oracle governance proposal. One-vote-per-voter.
+// @caller: any voting-power holder
+// @params: proposal_id - target proposal to vote on
+// @params: support - true=yes, false=no (no abstain option)
+// @returns: 0 on success
+// @security: requires voting power > 0; voting must be within deadline; double-voting blocked
 // ============================================================================
 // ID 7: vote
 // ============================================================================
@@ -482,6 +538,11 @@ entry vote(proposal_id: u64, support: bool) -> u64 {
     return 0
 }
 
+// Returns whether a proposal currently satisfies all conditions for execution (read-only view).
+// @caller: anyone
+// @params: proposal_id - target proposal to check
+// @returns: true if voting ended, quorum + approval met, and execution delay elapsed; false otherwise
+// @security: read-only, no state mutation
 pub fn is_executable(proposal_id: u64) -> bool {
     let s: Storage = Storage::new()
     let proposal_opt: optional<Proposal> = s.load(PROPOSAL_PREFIX + proposal_id.to_string(10u32))
@@ -514,6 +575,11 @@ pub fn is_executable(proposal_id: u64) -> bool {
     return true
 }
 
+// Execute a passed oracle governance proposal, dispatching the action to StakedOracle/Miner.
+// @caller: anyone (open access once executable)
+// @params: proposal_id - target proposal to execute
+// @returns: 0 on success
+// @security: requires is_executable(proposal_id); one-shot execution; dispatches via StakedOracle entries (FIX #2) or XelisVaultMiner entry 21 (FIX #15)
 // ============================================================================
 // ID 8: execute_proposal
 // ----------------------------------------------------------------------------
@@ -588,6 +654,11 @@ entry execute_proposal(proposal_id: u64) -> u64 {
     return 0
 }
 
+// Cancel a pending (unexecuted) proposal.
+// @caller: original proposer OR admin
+// @params: proposal_id - target proposal to cancel
+// @returns: 0 on success
+// @security: only proposer or admin; cannot cancel executed proposals
 // ============================================================================
 // ID 9: cancel_proposal
 // ============================================================================
@@ -605,6 +676,11 @@ entry cancel_proposal(proposal_id: u64) -> u64 {
     return 0
 }
 
+// Set the voting period (in topo blocks) for new proposals.
+// @caller: admin (or timelock via contract call)
+// @params: blocks - voting period length (17280–518400 blocks = 1–30 days)
+// @returns: 0 on success
+// @security: only_admin, range-checked
 // ============================================================================
 // ID 10: set_voting_period
 // ============================================================================
@@ -615,6 +691,11 @@ entry set_voting_period(blocks: u64) -> u64 {
     return 0
 }
 
+// Set the quorum threshold (in bps of total voting power) required to execute.
+// @caller: admin (or timelock via contract call)
+// @params: bps - quorum in bps (100–5000 = 1%–50%)
+// @returns: 0 on success
+// @security: only_admin, range-checked
 // ============================================================================
 // ID 11: set_quorum_bps
 // ============================================================================
@@ -625,6 +706,11 @@ entry set_quorum_bps(bps: u64) -> u64 {
     return 0
 }
 
+// Set the approval threshold (in bps of yes/no votes) required to execute.
+// @caller: admin (or timelock via contract call)
+// @params: bps - approval in bps (5000–8000 = 50%–80%)
+// @returns: 0 on success
+// @security: only_admin, range-checked
 // ============================================================================
 // ID 12: set_approval_bps
 // ============================================================================
@@ -635,6 +721,11 @@ entry set_approval_bps(bps: u64) -> u64 {
     return 0
 }
 
+// Set the post-voting execution delay (in topo blocks) before a passed proposal can be executed.
+// @caller: admin (or timelock via contract call)
+// @params: blocks - execution delay (720–604800 blocks)
+// @returns: 0 on success
+// @security: only_admin, range-checked
 // ============================================================================
 // ID 13: set_execution_delay
 // ============================================================================
@@ -645,6 +736,11 @@ entry set_execution_delay(blocks: u64) -> u64 {
     return 0
 }
 
+// Set the StakedOracle contract hash (destination for execute_proposal dispatch).
+// @caller: admin (or timelock via contract call)
+// @params: oracle - StakedOracle contract hash
+// @returns: 0 on success
+// @security: only_admin
 // ============================================================================
 // ID 14: set_oracle
 // ============================================================================
@@ -654,6 +750,11 @@ entry set_oracle(oracle: Hash) -> u64 {
     return 0
 }
 
+// Set the GovernanceVault contract hash (used to read voting power).
+// @caller: admin (or timelock via contract call)
+// @params: gv - GovernanceVault contract hash
+// @returns: 0 on success
+// @security: only_admin
 // ============================================================================
 // ID 15: set_governance_vault
 // ============================================================================
@@ -663,6 +764,11 @@ entry set_governance_vault(gv: Hash) -> u64 {
     return 0
 }
 
+// Set the XelisVaultMiner contract hash (destination for TYPE_SET_REWARD dispatch).
+// @caller: admin (or timelock via contract call)
+// @params: mc - XelisVaultMiner contract hash
+// @returns: 0 on success
+// @security: only_admin (FIX #15 — new entry)
 // ============================================================================
 // ID 16: set_miner_contract  [NEW — FIX #15]
 // ============================================================================
@@ -672,6 +778,11 @@ entry set_miner_contract(mc: Hash) -> u64 {
     return 0
 }
 
+// Set the timelock contract hash (allowed to call admin entries via contract call).
+// @caller: admin (or timelock via contract call)
+// @params: tl - timelock contract hash
+// @returns: 0 on success
+// @security: only_admin
 // ============================================================================
 // ID 17: set_timelock
 // ============================================================================
@@ -681,6 +792,11 @@ entry set_timelock(tl: Hash) -> u64 {
     return 0
 }
 
+// Set the guardian address (currently stored but not enforced in this contract).
+// @caller: admin (or timelock via contract call)
+// @params: g - guardian address
+// @returns: 0 on success
+// @security: only_admin
 // ============================================================================
 // ID 18: set_guardian
 // ============================================================================
@@ -690,6 +806,11 @@ entry set_guardian(g: Address) -> u64 {
     return 0
 }
 
+// Transfer admin role to a new address (single-step).
+// @caller: admin (or timelock via contract call)
+// @params: new_admin - address that will become admin
+// @returns: 0 on success
+// @security: only_admin, single-step transfer (verify new_admin before calling)
 // ============================================================================
 // ID 19: transfer_admin
 // ============================================================================
@@ -699,6 +820,10 @@ entry transfer_admin(new_admin: Address) -> u64 {
     return 0
 }
 
+// Returns the contract version string.
+// @caller: anyone
+// @returns: VERSION constant ("OracleGovernance v5.0")
+// @security: read-only, no access restrictions
 // ============================================================================
 // ID 20: get_version
 // ============================================================================
@@ -706,6 +831,11 @@ entry get_version() -> string {
     return VERSION
 }
 
+// Returns an oracle-governance proposal snapshot by ID (read-only view).
+// @caller: anyone
+// @params: proposal_id - target proposal to read
+// @returns: (proposal_type, proposer, created_at, voting_deadline, executed, cancelled, yes_votes, no_votes, description)
+// @security: read-only, no access restrictions, panics if proposal missing
 // ----------------------------------------------------------------------------
 // Read-only helpers (do NOT count toward entry IDs)
 // ----------------------------------------------------------------------------
@@ -724,10 +854,20 @@ pub fn get_proposal(proposal_id: u64) -> (u8, Address, u64, u64, bool, bool, u64
     )
 }
 
+// Returns the total number of oracle-governance proposals ever created (read-only view).
+// @caller: anyone
+// @returns: proposal counter value
+// @security: read-only, no access restrictions
 pub fn get_proposal_count() -> u64 {
     return Storage::new().load(PROPOSAL_COUNT_KEY).unwrap_or(0)
 }
 
+// Returns whether a given voter has voted on a given proposal (read-only view).
+// @caller: anyone
+// @params: proposal_id - target proposal to check
+// @params: voter - address whose vote to verify
+// @returns: true if `voter` has voted on `proposal_id`, false otherwise
+// @security: read-only, no access restrictions
 pub fn has_voted(proposal_id: u64, voter: Address) -> bool {
     let key: string = VOTE_PREFIX + proposal_id.to_string(10u32) + "_" + voter.to_string()
     return Storage::new().load(key).is_some()

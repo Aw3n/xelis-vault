@@ -142,6 +142,13 @@ fn get_xel_price() -> u64 {
 // ============================================================================
 
 // ID 0: mint
+// Mint xUSD by depositing XEL at the oracle XEL/USD price, charging a mint fee to treasury.
+// @caller: any user
+// @params: xel_amount - amount of XEL to deposit (in atomic units)
+// @params: min_xusd_out - slippage protection (minimum net xUSD accepted)
+// @returns: 0 on success
+// @security: when_not_paused, daily mint cap enforced, slippage check, requires pre-deposit of XEL via get_deposit_for_asset
+// mint.
 entry mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     when_not_paused()
     require(xel_amount > 0, "amtgt0")
@@ -172,6 +179,13 @@ entry mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
 }
 
 // ID 1: redeem
+// Burn xUSD and receive XEL at the oracle price, charging a redeem fee to treasury.
+// @caller: any user (must hold xUSD via deposit)
+// @params: xusd_amount - amount of xUSD to burn
+// @params: min_xel_out - slippage protection (minimum net XEL accepted)
+// @returns: 0 on success
+// @security: when_not_paused, daily redeem cap enforced, slippage check, XEL reserve sufficiency check, xUSD burn via cross-contract call
+// redeem.
 entry redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     when_not_paused()
     require(xusd_amount > 0, "amtgt0")
@@ -204,6 +218,11 @@ entry redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
 }
 
 // ID 2: get_reserves_entry
+// Return the current XEL and xUSD balances held by the PSM contract.
+// @caller: anyone
+// @returns: tuple (xel_reserve, xusd_balance)
+// @security: read-only view, no access control
+// get reserves entry.
 entry get_reserves_entry() -> (u64, u64) {
     let s: Storage = Storage::new()
     let xel_reserve: u64 = get_balance_for_asset(get_xel_asset()).unwrap_or(0)
@@ -213,16 +232,31 @@ entry get_reserves_entry() -> (u64, u64) {
 }
 
 // ID 3: get_mint_fee_entry
+// Return the current mint fee in basis points.
+// @caller: anyone
+// @returns: mint fee bps (e.g. 50 = 0.5%)
+// @security: read-only view, no access control
+// get mint fee entry.
 entry get_mint_fee_entry() -> u64 {
     return Storage::new().load(MINT_FEE_BPS_KEY).unwrap_or(DEFAULT_MINT_FEE_BPS)
 }
 
 // ID 4: get_redeem_fee_entry
+// Return the current redeem fee in basis points.
+// @caller: anyone
+// @returns: redeem fee bps (e.g. 10 = 0.1%)
+// @security: read-only view, no access control
+// get redeem fee entry.
 entry get_redeem_fee_entry() -> u64 {
     return Storage::new().load(REDEEM_FEE_BPS_KEY).unwrap_or(DEFAULT_REDEEM_FEE_BPS)
 }
 
 // ID 5: get_daily_usage_entry
+// Return the daily mint/redeem usage and caps (resets every DAILY_RESET_BLOCKS topoheights).
+// @caller: anyone
+// @returns: tuple (mint_used, redeem_used, mint_cap, redeem_cap)
+// @security: read-only view, no access control
+// get daily usage entry.
 entry get_daily_usage_entry() -> (u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     return (
@@ -234,6 +268,12 @@ entry get_daily_usage_entry() -> (u64, u64, u64, u64) {
 }
 
 // ID 6: set_mint_fee_bps
+// Update the mint fee in basis points (capped at 500 bps = 5%).
+// @caller: admin or timelock
+// @params: bps - new mint fee in basis points (0..=500)
+// @returns: 0 on success
+// @security: only_admin (admin EOA or timelock contract caller), bounds-checked
+// set mint fee bps.
 entry set_mint_fee_bps(bps: u64) -> u64 {
     only_admin()
     require(bps <= 500, "badval")
@@ -242,6 +282,12 @@ entry set_mint_fee_bps(bps: u64) -> u64 {
 }
 
 // ID 7: set_redeem_fee_bps
+// Update the redeem fee in basis points (capped at 500 bps = 5%).
+// @caller: admin or timelock
+// @params: bps - new redeem fee in basis points (0..=500)
+// @returns: 0 on success
+// @security: only_admin (admin EOA or timelock contract caller), bounds-checked
+// set redeem fee bps.
 entry set_redeem_fee_bps(bps: u64) -> u64 {
     only_admin()
     require(bps <= 500, "badval")
@@ -250,6 +296,13 @@ entry set_redeem_fee_bps(bps: u64) -> u64 {
 }
 
 // ID 8: set_daily_caps
+// Update the per-day mint and redeem volume caps (must both be > 0).
+// @caller: admin or timelock
+// @params: mint_cap - maximum XEL mintable per day
+// @params: redeem_cap - maximum xUSD redeemable per day
+// @returns: 0 on success
+// @security: only_admin, both caps must be positive
+// set daily caps.
 entry set_daily_caps(mint_cap: u64, redeem_cap: u64) -> u64 {
     only_admin()
     require(mint_cap > 0 && redeem_cap > 0, "badval")
@@ -260,6 +313,12 @@ entry set_daily_caps(mint_cap: u64, redeem_cap: u64) -> u64 {
 }
 
 // ID 9: pause
+// Pause all mint/redeem operations (reason recorded for auditability).
+// @caller: guardian or admin
+// @params: reason - human-readable pause reason (stored on-chain)
+// @returns: 0 on success
+// @security: only_guardian_or_admin, sets PAUSED_KEY to true blocking entry points
+// pause.
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -267,6 +326,11 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 10: unpause
+// Resume mint/redeem operations after a pause.
+// @caller: admin or timelock
+// @returns: 0 on success
+// @security: only_admin (stricter than pause, requires full admin to resume)
+// unpause.
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -274,6 +338,11 @@ entry unpause() -> u64 {
 }
 
 // ID 11: request_emergency_withdraw
+// First step of the 2-step emergency withdraw: record the current topoheight as request timestamp.
+// @caller: emergency role
+// @returns: 0 on success
+// @security: only_emergency, starts 17280-block (~24h) timelock before execution
+// request emergency withdraw.
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -281,6 +350,12 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 12: execute_emergency_withdraw
+// Second step of the 2-step emergency withdraw: sweep the entire balance of an asset to the emergency role.
+// @caller: emergency role
+// @params: asset - which asset Hash to withdraw fully
+// @returns: 0 on success
+// @security: only_emergency, requires prior request_emergency_withdraw, enforced 17280-block delay, single-use (deletes request key)
+// execute emergency withdraw.
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -299,6 +374,12 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 }
 
 // ID 13: set_xusd_contract
+// Update the xUSD token contract hash used for mint/burn cross-contract calls.
+// @caller: admin or timelock
+// @params: xc - new xUSD contract Hash
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set xusd contract.
 entry set_xusd_contract(xc: Hash) -> u64 {
     only_admin()
     Storage::new().store(XUSD_CONTRACT_KEY, xc)
@@ -306,6 +387,12 @@ entry set_xusd_contract(xc: Hash) -> u64 {
 }
 
 // ID 14: set_xusd_asset
+// Update the xUSD asset Hash used for balance lookups.
+// @caller: admin or timelock
+// @params: xa - new xUSD asset Hash
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set xusd asset.
 entry set_xusd_asset(xa: Hash) -> u64 {
     only_admin()
     Storage::new().store(XUSD_ASSET_KEY, xa)
@@ -313,6 +400,12 @@ entry set_xusd_asset(xa: Hash) -> u64 {
 }
 
 // ID 15: set_oracle
+// Update the StakedOracle contract hash used to fetch the XEL/USD price.
+// @caller: admin or timelock
+// @params: oracle - new oracle contract Hash
+// @returns: 0 on success
+// @security: only_admin, privileged configuration; price source trust assumption
+// set oracle.
 entry set_oracle(oracle: Hash) -> u64 {
     only_admin()
     Storage::new().store(ORACLE_KEY, oracle)
@@ -320,6 +413,12 @@ entry set_oracle(oracle: Hash) -> u64 {
 }
 
 // ID 16: set_treasury
+// Update the treasury address that receives mint/redeem fees.
+// @caller: admin or timelock
+// @params: t - new treasury Address
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set treasury.
 entry set_treasury(t: Address) -> u64 {
     only_admin()
     Storage::new().store(TREASURY_KEY, t)
@@ -327,6 +426,12 @@ entry set_treasury(t: Address) -> u64 {
 }
 
 // ID 17: set_registry
+// Update the ContractRegistry hash (reserved for future use).
+// @caller: admin or timelock
+// @params: reg - new registry contract Hash
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set registry.
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -334,6 +439,12 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 18: set_timelock
+// Set the timelock contract hash that is allowed to invoke admin-gated entries.
+// @caller: admin or timelock
+// @params: tl - new timelock contract Hash
+// @returns: 0 on success
+// @security: only_admin, sets the alternate admin path (timelock as contract caller)
+// set timelock.
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -341,6 +452,12 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 19: set_guardian
+// Update the guardian address that can pause the contract.
+// @caller: admin or timelock
+// @params: g - new guardian Address
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set guardian.
 entry set_guardian(g: Address) -> u64 {
     only_admin()
     Storage::new().store(GUARDIAN_KEY, g)
@@ -348,6 +465,12 @@ entry set_guardian(g: Address) -> u64 {
 }
 
 // ID 20: set_emergency
+// Hand off the emergency role to a new address (requires current emergency role to call).
+// @caller: emergency role
+// @params: e - new emergency Address
+// @returns: 0 on success
+// @security: only_emergency, two-party handoff (current emergency signer controls transfer)
+// set emergency.
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_KEY, e)
@@ -355,6 +478,12 @@ entry set_emergency(e: Address) -> u64 {
 }
 
 // ID 21: transfer_admin
+// Transfer the admin role to a new address (single-step; verify new admin before calling).
+// @caller: admin or timelock
+// @params: new_admin - address that will become the new admin
+// @returns: 0 on success
+// @security: only_admin, single-step transfer — ensure new_admin is correct before committing
+// transfer admin.
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -362,6 +491,11 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 22: get_version
+// Return the contract version string.
+// @caller: anyone
+// @returns: semantic version string (e.g. "PSM v5.0")
+// @security: read-only view, no access control
+// get version.
 entry get_version() -> string {
     return VERSION
 }
@@ -370,6 +504,11 @@ entry get_version() -> string {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// Return the current XEL and xUSD balances held by the PSM contract.
+// @caller: anyone
+// @returns: tuple (xel_reserve, xusd_balance)
+// @security: read-only view, no access control
+// get reserves.
 pub fn get_reserves() -> (u64, u64) {
     let s: Storage = Storage::new()
     let xel_reserve: u64 = get_balance_for_asset(get_xel_asset()).unwrap_or(0)
@@ -378,14 +517,29 @@ pub fn get_reserves() -> (u64, u64) {
     return (xel_reserve, xusd_balance)
 }
 
+// Return the current mint fee in basis points.
+// @caller: anyone
+// @returns: mint fee bps
+// @security: read-only view, no access control
+// get mint fee.
 pub fn get_mint_fee() -> u64 {
     return Storage::new().load(MINT_FEE_BPS_KEY).unwrap_or(DEFAULT_MINT_FEE_BPS)
 }
 
+// Return the current redeem fee in basis points.
+// @caller: anyone
+// @returns: redeem fee bps
+// @security: read-only view, no access control
+// get redeem fee.
 pub fn get_redeem_fee() -> u64 {
     return Storage::new().load(REDEEM_FEE_BPS_KEY).unwrap_or(DEFAULT_REDEEM_FEE_BPS)
 }
 
+// Return the daily mint/redeem usage and caps.
+// @caller: anyone
+// @returns: tuple (mint_used, redeem_used, mint_cap, redeem_cap)
+// @security: read-only view, no access control
+// get daily usage.
 pub fn get_daily_usage() -> (u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     return (
@@ -396,6 +550,12 @@ pub fn get_daily_usage() -> (u64, u64, u64, u64) {
     )
 }
 
+// Set the timelock contract hash (alternate admin path via contract-caller check).
+// @caller: admin or timelock
+// @params: tl - new timelock contract Hash
+// @returns: 0 on success
+// @security: only_admin, mirrors the entry version for read-only callers
+// set timelock tl.
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

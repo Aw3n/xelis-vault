@@ -147,6 +147,14 @@ fn only_guardian_or_admin() {
     require(false, "notauth")
 }
 
+// Submit a timelocked proposal to call a target entry after `delay` blocks.
+// @caller: admin or Governor contract (via contract call)
+// @params: target - hash of contract to execute
+// @params: entry_id - entry ID on target to call
+// @params: params - ABI-encoded call params for the target entry
+// @params: delay - delay in blocks before execution (clamped to [MIN_DELAY, MAX_DELAY])
+// @returns: the new proposal ID
+// @security: only_admin_or_governor, delay range-checked
 // ============================================================================
 // ID 0: submit_proposal
 // ============================================================================
@@ -180,6 +188,11 @@ entry submit_proposal(
     return id
 }
 
+// Execute a timelocked proposal after its delay has elapsed.
+// @caller: anyone (open access once delay elapsed)
+// @params: proposal_id - target proposal to execute
+// @returns: 0 on success
+// @security: requires current_topo >= submitted_at + delay; one-shot execution; calls target contract
 // ============================================================================
 // ID 1: execute_proposal
 // ============================================================================
@@ -201,6 +214,11 @@ entry execute_proposal(proposal_id: u64) -> u64 {
     return 0
 }
 
+// Cancel a pending (unexecuted) proposal. Used by guardian to veto.
+// @caller: admin or guardian (EOA or GuardianMultisig contract)
+// @params: proposal_id - target proposal to cancel
+// @returns: 0 on success
+// @security: only_guardian_or_admin (FIX #7: guardian EOA OR guardian contract), cannot cancel executed proposals
 // ============================================================================
 // ID 2: cancel_proposal (FIX #7: also accepts guardian EOA/contract)
 // ============================================================================
@@ -214,6 +232,13 @@ entry cancel_proposal(proposal_id: u64) -> u64 {
     return 0
 }
 
+// Submit a guardian emergency proposal with the short EMERGENCY_DELAY (no quorum).
+// @caller: guardian (EOA or GuardianMultisig contract)
+// @params: target - hash of contract to execute
+// @params: entry_id - entry ID on target to call
+// @params: params - ABI-encoded call params for the target entry
+// @returns: the new proposal ID
+// @security: only_guardian (FIX #7: guardian EOA OR GuardianMultisig contract), uses EMERGENCY_DELAY_KEY
 // ============================================================================
 // ID 3: submit_emergency_proposal
 // ----------------------------------------------------------------------------
@@ -245,6 +270,11 @@ entry submit_emergency_proposal(
     return id
 }
 
+// Set the minimum timelock delay for non-emergency proposals.
+// @caller: admin
+// @params: delay - minimum delay in blocks (144–43200)
+// @returns: 0 on success
+// @security: only_admin, range-checked
 // ============================================================================
 // ID 4: set_min_delay
 // ============================================================================
@@ -255,6 +285,11 @@ entry set_min_delay(delay: u64) -> u64 {
     return 0
 }
 
+// Set the maximum timelock delay for non-emergency proposals.
+// @caller: admin
+// @params: delay - maximum delay in blocks (1440–2592000)
+// @returns: 0 on success
+// @security: only_admin, range-checked
 // ============================================================================
 // ID 5: set_max_delay
 // ============================================================================
@@ -265,6 +300,11 @@ entry set_max_delay(delay: u64) -> u64 {
     return 0
 }
 
+// Set the Governor contract hash (allowed to submit_proposal via contract call).
+// @caller: admin
+// @params: gov - Governor contract hash
+// @returns: 0 on success
+// @security: only_admin
 // ============================================================================
 // ID 6: set_governor
 // ============================================================================
@@ -274,6 +314,11 @@ entry set_governor(gov: Hash) -> u64 {
     return 0
 }
 
+// Set the guardian EOA address (allowed to submit/cancel emergency proposals).
+// @caller: admin
+// @params: g - guardian address
+// @returns: 0 on success
+// @security: only_admin
 // ============================================================================
 // ID 7: set_guardian
 // ============================================================================
@@ -283,6 +328,11 @@ entry set_guardian(g: Address) -> u64 {
     return 0
 }
 
+// Set the guardian contract hash (e.g., GuardianMultisig) allowed to invoke guardian-only entries.
+// @caller: admin
+// @params: gc - guardian contract hash
+// @returns: 0 on success
+// @security: only_admin (FIX #7 — new entry)
 // ============================================================================
 // ID 8: set_guardian_contract  (FIX #7 — new entry)
 // ============================================================================
@@ -292,6 +342,11 @@ entry set_guardian_contract(gc: Hash) -> u64 {
     return 0
 }
 
+// Set the emergency admin address (only the current emergency admin can change it).
+// @caller: emergency admin only
+// @params: e - new emergency admin address
+// @returns: 0 on success
+// @security: only current emergency admin (self-managed role)
 // ============================================================================
 // ID 9: set_emergency
 // ============================================================================
@@ -304,6 +359,11 @@ entry set_emergency(e: Address) -> u64 {
     return 0
 }
 
+// Transfer admin role to a new address (single-step).
+// @caller: admin
+// @params: new_admin - address that will become admin
+// @returns: 0 on success
+// @security: only_admin, single-step transfer (verify new_admin before calling)
 // ============================================================================
 // ID 10: transfer_admin
 // ============================================================================
@@ -313,6 +373,10 @@ entry transfer_admin(new_admin: Address) -> u64 {
     return 0
 }
 
+// Returns the contract version string.
+// @caller: anyone
+// @returns: VERSION constant ("Timelock v5.0")
+// @security: read-only, no access restrictions
 // ============================================================================
 // ID 11: get_version
 // ============================================================================
@@ -320,6 +384,10 @@ entry get_version() -> string {
     return VERSION
 }
 
+// Step 1 of 2-step emergency withdrawal: record the request topoheight (starts delay window).
+// @caller: emergency admin only
+// @returns: 0 on success
+// @security: only emergency admin, stores request topo for delay verification
 // ============================================================================
 // ID 12: request_emergency_withdraw
 // ----------------------------------------------------------------------------
@@ -335,6 +403,11 @@ entry request_emergency_withdraw() -> u64 {
     return 0
 }
 
+// Step 2 of 2-step emergency withdrawal: drain all of `asset` after EMERGENCY_WITHDRAW_DELAY_BLOCKS elapsed.
+// @caller: emergency admin only
+// @params: asset - hash of asset to withdraw (Hash::zero() for XEL)
+// @returns: 0 on success
+// @security: only emergency admin, requires prior request + EMERGENCY_WITHDRAW_DELAY_BLOCKS delay (2-step protection)
 // ============================================================================
 // ID 13: execute_emergency_withdraw
 // ============================================================================
@@ -353,6 +426,11 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
     return 0
 }
 
+// Returns a proposal snapshot by ID (read-only view).
+// @caller: anyone
+// @params: proposal_id - target proposal to read
+// @returns: (target_contract, entry_id, submitted_at, delay, executed, cancelled, is_emergency)
+// @security: read-only, no access restrictions, panics if proposal missing
 // ----------------------------------------------------------------------------
 // Read-only helpers (do NOT count toward entry IDs)
 // ----------------------------------------------------------------------------
@@ -361,10 +439,18 @@ pub fn get_proposal(proposal_id: u64) -> (Hash, u16, u64, u64, bool, bool, bool)
     return (p.target_contract, p.entry_id, p.submitted_at, p.delay, p.executed, p.cancelled, p.is_emergency)
 }
 
+// Returns the total number of timelock proposals ever created (read-only view).
+// @caller: anyone
+// @returns: proposal counter value
+// @security: read-only, no access restrictions
 pub fn get_proposals_count() -> u64 {
     return Storage::new().load(PROPOSALS_COUNT_KEY).unwrap_or(0)
 }
 
+// Returns the (min, max, emergency) delay configuration tuple (read-only view).
+// @caller: anyone
+// @returns: (min_delay, max_delay, emergency_delay)
+// @security: read-only, no access restrictions
 pub fn get_delays() -> (u64, u64, u64) {
     let s: Storage = Storage::new()
     return (

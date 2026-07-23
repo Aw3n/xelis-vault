@@ -98,6 +98,15 @@ fn policy_key(policy_id: u64) -> string {
 // ============================================================================
 
 // ID 0: create_policy
+// create policy.
+// @caller: user / authorized caller
+// @params: asset - Hash
+// @params: coverage_amount - u64
+// @params: premium - u64
+// @params: duration_blocks - u64
+// @params: trigger_hash - Hash
+// @returns: u
+// @security: when_not_paused
 entry create_policy(
     asset: Hash,
     coverage_amount: u64,
@@ -140,6 +149,11 @@ entry create_policy(
 }
 
 // ID 1: buy_policy
+// buy policy.
+// @caller: any user
+// @params: policy_id - u64
+// @returns: u
+// @security: when_not_paused
 entry buy_policy(policy_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -165,6 +179,12 @@ entry buy_policy(policy_id: u64) -> u64 {
 }
 
 // ID 2: claim
+// claim.
+// @caller: any user
+// @params: policy_id - u64
+// @params: evidence_hash - Hash
+// @returns: u
+// @security: when_not_paused
 entry claim(policy_id: u64, evidence_hash: Hash) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -181,6 +201,11 @@ entry claim(policy_id: u64, evidence_hash: Hash) -> u64 {
 }
 
 // ID 3: approve_claim
+// approve claim.
+// @caller: any user
+// @params: policy_id - u64
+// @returns: u
+// @security: standard access control
 entry approve_claim(policy_id: u64) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -196,6 +221,11 @@ entry approve_claim(policy_id: u64) -> u64 {
 }
 
 // ID 4: cancel_policy
+// cancel policy.
+// @caller: any user
+// @params: policy_id - u64
+// @returns: u
+// @security: when_not_paused
 entry cancel_policy(policy_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -211,6 +241,11 @@ entry cancel_policy(policy_id: u64) -> u64 {
 }
 
 // ID 5: expire_policy
+// expire policy.
+// @caller: user / authorized caller
+// @params: policy_id - u64
+// @returns: u
+// @security: standard access control
 entry expire_policy(policy_id: u64) -> u64 {
     let s: Storage = Storage::new()
     let policy: Policy = s.load(policy_key(policy_id)).expect("err")
@@ -225,6 +260,11 @@ entry expire_policy(policy_id: u64) -> u64 {
 }
 
 // ID 6: get_policy_entry
+// get policy entry.
+// @caller: user / authorized caller
+// @params: policy_id - u64
+// @returns: tuple: (
+// @security: standard access control
 entry get_policy_entry(policy_id: u64) -> (Address, optional<Address>, Hash, u64, u64, u64, u64, u8) {
     let p: Policy = Storage::new().load(policy_key(policy_id)).expect("err")
     return (
@@ -234,11 +274,20 @@ entry get_policy_entry(policy_id: u64) -> (Address, optional<Address>, Hash, u64
 }
 
 // ID 7: get_policies_count_entry
+// get policies count entry.
+// @caller: user / authorized caller
+// @returns: u
+// @security: only_admin
 entry get_policies_count_entry() -> u64 {
     return Storage::new().load(POLICIES_COUNT_KEY).unwrap_or(0)
 }
 
 // ID 8: set_registry
+// set registry.
+// @caller: admin (or timelock)
+// @params: reg - Hash
+// @returns: u
+// @security: only_admin
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -246,6 +295,11 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 9: set_timelock
+// set timelock.
+// @caller: admin (or timelock)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -253,6 +307,11 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 10: set_emergency
+// set emergency.
+// @caller: admin (or timelock)
+// @params: e - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_KEY, e)
@@ -260,6 +319,11 @@ entry set_emergency(e: Address) -> u64 {
 }
 
 // ID 11: pause
+// pause.
+// @caller: admin (or timelock)
+// @params: reason - string
+// @returns: u
+// @security: only_admin
 entry pause(reason: string) -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -267,6 +331,10 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 12: unpause
+// unpause.
+// @caller: admin (or timelock)
+// @returns: u
+// @security: only_admin
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -274,6 +342,11 @@ entry unpause() -> u64 {
 }
 
 // ID 13: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -281,11 +354,19 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 14: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 15: request_emergency_withdraw
+// request emergency withdraw.
+// @caller: any user
+// @returns: u
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -293,6 +374,11 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 16: execute_emergency_withdraw
+// execute emergency withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -314,6 +400,11 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// get policy.
+// @caller: anyone (read-only)
+// @params: policy_id - u64
+// @returns: tuple: (
+// @security: standard access control
 pub fn get_policy(policy_id: u64) -> (Address, optional<Address>, Hash, u64, u64, u64, u64, u8) {
     let p: Policy = Storage::new().load(policy_key(policy_id)).expect("err")
     return (
@@ -322,10 +413,19 @@ pub fn get_policy(policy_id: u64) -> (Address, optional<Address>, Hash, u64, u64
     )
 }
 
+// get policies count.
+// @caller: anyone (read-only)
+// @returns: u
+// @security: only_admin
 pub fn get_policies_count() -> u64 {
     return Storage::new().load(POLICIES_COUNT_KEY).unwrap_or(0)
 }
 
+// set timelock tl.
+// @caller: anyone (read-only)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

@@ -116,6 +116,16 @@ fn offer_key(offer_id: u64) -> string {
 // ============================================================================
 
 // ID 0: create_offer
+// create offer.
+// @caller: any user
+// @params: asset_lent - Hash
+// @params: amount - u64
+// @params: interest_bps - u64
+// @params: duration_blocks - u64
+// @params: collateral_asset - Hash
+// @params: collateral_amount - u64
+// @returns: u
+// @security: when_not_paused
 entry create_offer(
     asset_lent: Hash,
     amount: u64,
@@ -163,6 +173,11 @@ entry create_offer(
 }
 
 // ID 1: cancel_offer
+// cancel offer.
+// @caller: any user
+// @params: offer_id - u64
+// @returns: u
+// @security: when_not_paused
 entry cancel_offer(offer_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -179,6 +194,11 @@ entry cancel_offer(offer_id: u64) -> u64 {
 }
 
 // ID 2: accept_offer — FIX: actually transfer fee to treasury
+// accept offer.
+// @caller: any user
+// @params: offer_id - u64
+// @returns: u
+// @security: when_not_paused
 entry accept_offer(offer_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -211,6 +231,11 @@ entry accept_offer(offer_id: u64) -> u64 {
 }
 
 // ID 3: repay
+// repay.
+// @caller: any user
+// @params: offer_id - u64
+// @returns: u
+// @security: when_not_paused
 entry repay(offer_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -246,6 +271,11 @@ entry repay(offer_id: u64) -> u64 {
 }
 
 // ID 4: claim_collateral
+// claim collateral.
+// @caller: any user
+// @params: offer_id - u64
+// @returns: u
+// @security: when_not_paused
 entry claim_collateral(offer_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -267,6 +297,11 @@ entry claim_collateral(offer_id: u64) -> u64 {
 }
 
 // ID 5: get_offer_entry
+// get offer entry.
+// @caller: user / authorized caller
+// @params: offer_id - u64
+// @returns: tuple: (
+// @security: standard access control
 entry get_offer_entry(offer_id: u64) -> (Address, optional<Address>, Hash, u64, u64, u64, Hash, u64, u64, u64, u8) {
     let o: Offer = Storage::new().load(offer_key(offer_id)).expect("err")
     return (
@@ -285,11 +320,20 @@ entry get_offer_entry(offer_id: u64) -> (Address, optional<Address>, Hash, u64, 
 }
 
 // ID 6: get_offers_count_entry
+// get offers count entry.
+// @caller: user / authorized caller
+// @returns: u
+// @security: only_guardian_or_admin
 entry get_offers_count_entry() -> u64 {
     return Storage::new().load(OFFERS_COUNT_KEY).unwrap_or(0)
 }
 
 // ID 7: pause
+// pause.
+// @caller: guardian or admin
+// @params: reason - string
+// @returns: u
+// @security: only_admin, only_guardian_or_admin
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -297,6 +341,10 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 8: unpause
+// unpause.
+// @caller: guardian or admin
+// @returns: u
+// @security: only_admin
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -304,6 +352,11 @@ entry unpause() -> u64 {
 }
 
 // ID 9: set_oracle
+// set oracle.
+// @caller: guardian or admin
+// @params: oracle - Hash
+// @returns: u
+// @security: only_admin
 entry set_oracle(oracle: Hash) -> u64 {
     only_admin()
     Storage::new().store(ORACLE_KEY, oracle)
@@ -311,6 +364,11 @@ entry set_oracle(oracle: Hash) -> u64 {
 }
 
 // ID 10: set_treasury
+// set treasury.
+// @caller: guardian or admin
+// @params: t - Address
+// @returns: u
+// @security: only_admin
 entry set_treasury(t: Address) -> u64 {
     only_admin()
     Storage::new().store(TREASURY_KEY, t)
@@ -318,6 +376,11 @@ entry set_treasury(t: Address) -> u64 {
 }
 
 // ID 11: set_registry
+// set registry.
+// @caller: guardian or admin
+// @params: reg - Hash
+// @returns: u
+// @security: only_admin
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -325,6 +388,11 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 12: set_timelock
+// set timelock.
+// @caller: guardian or admin
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -332,6 +400,11 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 13: set_guardian
+// set guardian.
+// @caller: guardian or admin
+// @params: g - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_guardian(g: Address) -> u64 {
     only_admin()
     Storage::new().store(GUARDIAN_KEY, g)
@@ -339,6 +412,11 @@ entry set_guardian(g: Address) -> u64 {
 }
 
 // ID 14: set_emergency
+// set emergency.
+// @caller: admin (or timelock)
+// @params: e - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_KEY, e)
@@ -346,6 +424,11 @@ entry set_emergency(e: Address) -> u64 {
 }
 
 // ID 15: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -353,11 +436,19 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 16: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 17: request_emergency_withdraw
+// request emergency withdraw.
+// @caller: any user
+// @returns: u
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -365,6 +456,11 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 18: execute_emergency_withdraw
+// execute emergency withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -386,6 +482,11 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// get offer.
+// @caller: anyone (read-only)
+// @params: offer_id - u64
+// @returns: tuple: (
+// @security: standard access control
 pub fn get_offer(offer_id: u64) -> (Address, optional<Address>, Hash, u64, u64, u64, Hash, u64, u64, u64, u8) {
     let o: Offer = Storage::new().load(offer_key(offer_id)).expect("err")
     return (
@@ -403,10 +504,19 @@ pub fn get_offer(offer_id: u64) -> (Address, optional<Address>, Hash, u64, u64, 
     )
 }
 
+// get offers count.
+// @caller: anyone (read-only)
+// @returns: u
+// @security: only_admin
 pub fn get_offers_count() -> u64 {
     return Storage::new().load(OFFERS_COUNT_KEY).unwrap_or(0)
 }
 
+// set timelock tl.
+// @caller: anyone (read-only)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

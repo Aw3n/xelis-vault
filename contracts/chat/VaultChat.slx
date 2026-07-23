@@ -133,6 +133,12 @@ fn when_not_paused() {
 // ============================================================================
 
 // ID 0: register_session
+// Register or update the caller's chat session by storing their E2E chat public key.
+// @caller: any user
+// @params: chat_pubkey - Hash of the user's chat public key (must be non-zero)
+// @returns: 0 on success
+// @security: when_not_paused, rejects zero pubkey, creates new session or reactivates existing one
+// register session.
 entry register_session(chat_pubkey: Hash) -> u64 {
     when_not_paused()
     require(chat_pubkey != Hash::zero(), "badpubkey")
@@ -156,6 +162,12 @@ entry register_session(chat_pubkey: Hash) -> u64 {
 }
 
 // ID 1: create_group
+// Create a new encrypted group chat with the creator's group public key.
+// @caller: any user (becomes group creator)
+// @params: group_pubkey - Hash of the group's shared public key (must be non-zero)
+// @returns: new group id
+// @security: when_not_paused, rejects zero pubkey, increments GROUPS_COUNT_KEY
+// create group.
 entry create_group(group_pubkey: Hash) -> u64 {
     when_not_paused()
     require(group_pubkey != Hash::zero(), "badpubkey")
@@ -176,6 +188,14 @@ entry create_group(group_pubkey: Hash) -> u64 {
 }
 
 // ID 2: add_group_member
+// Add a member to an existing group by storing their encrypted group key (creator-only).
+// @caller: group creator only
+// @params: group_id - target group id
+// @params: member - address of the member to add (must have an active session)
+// @params: encrypted_group_key - per-member encrypted group key bytes
+// @returns: 0 on success
+// @security: when_not_paused, only creator, requires group active, requires member has active session
+// add group member.
 entry add_group_member(group_id: u64, member: Address, encrypted_group_key: bytes) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -194,6 +214,13 @@ entry add_group_member(group_id: u64, member: Address, encrypted_group_key: byte
 }
 
 // ID 3: remove_group_member
+// Remove a member from a group (creator-only).
+// @caller: group creator only
+// @params: group_id - target group id
+// @params: member - address of the member to remove
+// @returns: 0 on success
+// @security: only creator, deletes stored encrypted group key, decrements member count
+// remove group member.
 entry remove_group_member(group_id: u64, member: Address) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -210,6 +237,14 @@ entry remove_group_member(group_id: u64, member: Address) -> u64 {
 }
 
 // ID 4: anchor_messages — distributes reward to relayer via XelisVaultMiner v5.0
+// Anchor a Merkle root of off-chain encrypted messages on-chain and reward the relayer.
+// @caller: authorized relayer (admin or whitelisted relayer)
+// @params: merkle_root - Hash of the Merkle root being anchored (must be non-zero)
+// @params: message_count - number of messages included in this batch (must be > 0)
+// @params: msg_type - message type tag (reserved for protocol routing)
+// @returns: 0 on success
+// @security: only_authorized_relayer, updates last anchor + total messages counter, optional reward via cross-contract call to XelisVaultMiner entry 8 (skipped if miner contract unset)
+// anchor messages.
 entry anchor_messages(merkle_root: Hash, message_count: u64, msg_type: u8) -> u64 {
     only_authorized_relayer()
     require(merkle_root != Hash::zero(), "badroot")
@@ -235,6 +270,12 @@ entry anchor_messages(merkle_root: Hash, message_count: u64, msg_type: u8) -> u6
 }
 
 // ID 5: revoke_session
+// Revoke (deactivate) a user's chat session (guardian/admin only; compliance lever).
+// @caller: guardian or admin
+// @params: user - address whose session should be revoked
+// @returns: 0 on success
+// @security: only_guardian_or_admin, requires existing session, sets active=false
+// revoke session.
 entry revoke_session(user: Address) -> u64 {
     only_guardian_or_admin()
     let s: Storage = Storage::new()
@@ -247,6 +288,12 @@ entry revoke_session(user: Address) -> u64 {
 }
 
 // ID 6: get_session_entry
+// Return the chat session details for a user.
+// @caller: anyone
+// @params: user - address whose session to look up
+// @returns: tuple (chat_pubkey, registered_at_topo, active); returns (zero, 0, false) if no session
+// @security: read-only view, no access control
+// get session entry.
 entry get_session_entry(user: Address) -> (Hash, u64, bool) {
     let s: Storage = Storage::new()
     let session_opt: optional<Session> = s.load(SESSION_PREFIX + user.to_string())
@@ -258,6 +305,12 @@ entry get_session_entry(user: Address) -> (Hash, u64, bool) {
 }
 
 // ID 7: get_group_entry
+// Return the public metadata of a group.
+// @caller: anyone
+// @params: group_id - target group id
+// @returns: tuple (group_pubkey, creator, created_at_topo, active)
+// @security: read-only view, no access control
+// get group entry.
 entry get_group_entry(group_id: u64) -> (Hash, Address, u64, bool) {
     let s: Storage = Storage::new()
     let group: Group = s.load(GROUP_PREFIX + group_id.to_string(10u32)).expect("err")
@@ -265,6 +318,13 @@ entry get_group_entry(group_id: u64) -> (Hash, Address, u64, bool) {
 }
 
 // ID 8: get_group_member_key_entry
+// Return the encrypted group key stored for a specific member in a group.
+// @caller: anyone
+// @params: group_id - target group id
+// @params: member - address whose encrypted key to retrieve
+// @returns: encrypted group key Hash (zero if member not in group)
+// @security: read-only view, no access control
+// get group member key entry.
 entry get_group_member_key_entry(group_id: u64, member: Address) -> Hash {
     let key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
     let s: Storage = Storage::new()
@@ -276,6 +336,12 @@ entry get_group_member_key_entry(group_id: u64, member: Address) -> Hash {
 }
 
 // ID 9: is_session_active_entry
+// Return whether a user has an active chat session.
+// @caller: anyone
+// @params: user - address to check
+// @returns: true if user has a session and it is active
+// @security: read-only view, no access control
+// is session active entry.
 entry is_session_active_entry(user: Address) -> bool {
     let s: Storage = Storage::new()
     let session_opt: optional<Session> = s.load(SESSION_PREFIX + user.to_string())
@@ -287,6 +353,11 @@ entry is_session_active_entry(user: Address) -> bool {
 }
 
 // ID 10: get_last_anchor_entry
+// Return the last anchored Merkle root, its topoheight, and the cumulative message count.
+// @caller: anyone
+// @returns: tuple (merkle_root, anchor_topo, total_messages)
+// @security: read-only view, no access control
+// get last anchor entry.
 entry get_last_anchor_entry() -> (Hash, u64, u64) {
     let s: Storage = Storage::new()
     return (
@@ -297,17 +368,35 @@ entry get_last_anchor_entry() -> (Hash, u64, u64) {
 }
 
 // ID 11: get_groups_count_entry
+// Return the total number of groups created.
+// @caller: anyone
+// @returns: count of groups
+// @security: read-only view, no access control
+// get groups count entry.
 entry get_groups_count_entry() -> u64 {
     return Storage::new().load(GROUPS_COUNT_KEY).unwrap_or(0)
 }
 
 // ID 12: get_group_members_count_entry
+// Return the current member count of a group.
+// @caller: anyone
+// @params: group_id - target group id
+// @returns: member count
+// @security: read-only view, no access control
+// get group members count entry.
 entry get_group_members_count_entry(group_id: u64) -> u64 {
     let key: string = GROUP_MEMBERS_COUNT_PREFIX + group_id.to_string(10u32)
     return Storage::new().load(key).unwrap_or(0)
 }
 
 // ID 13: set_relayer
+// Whitelist (or remove) an address as an authorized message relayer.
+// @caller: admin or timelock
+// @params: addr - address to whitelist/unwhitelist
+// @params: enabled - true to authorize, false to revoke
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set relayer.
 entry set_relayer(addr: Address, enabled: bool) -> u64 {
     only_admin()
     Storage::new().store(RELAYER_PREFIX + addr.to_string(), enabled)
@@ -315,6 +404,12 @@ entry set_relayer(addr: Address, enabled: bool) -> u64 {
 }
 
 // ID 14: set_timelock
+// Set the timelock contract hash allowed to invoke admin-gated entries.
+// @caller: admin or timelock
+// @params: tl - new timelock contract Hash
+// @returns: 0 on success
+// @security: only_admin, sets the alternate admin path
+// set timelock.
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -322,6 +417,12 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 15: set_guardian
+// Update the guardian address that may revoke sessions and pause the contract.
+// @caller: admin or timelock
+// @params: g - new guardian Address
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set guardian.
 entry set_guardian(g: Address) -> u64 {
     only_admin()
     Storage::new().store(GUARDIAN_KEY, g)
@@ -329,6 +430,12 @@ entry set_guardian(g: Address) -> u64 {
 }
 
 // ID 16: pause
+// Pause session registration, group creation, member add/remove, and message anchoring.
+// @caller: guardian or admin
+// @params: reason - human-readable pause reason
+// @returns: 0 on success
+// @security: only_guardian_or_admin, sets PAUSED_KEY to true
+// pause.
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -336,6 +443,11 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 17: unpause
+// Resume chat operations after a pause.
+// @caller: admin or timelock
+// @returns: 0 on success
+// @security: only_admin (stricter than pause)
+// unpause.
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -343,6 +455,12 @@ entry unpause() -> u64 {
 }
 
 // ID 18: transfer_admin
+// Transfer the admin role to a new address (single-step; verify before calling).
+// @caller: admin or timelock
+// @params: new_admin - address that will become the new admin
+// @returns: 0 on success
+// @security: only_admin, single-step transfer — ensure new_admin is correct before committing
+// transfer admin.
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -350,11 +468,21 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 19: get_version
+// Return the contract version string.
+// @caller: anyone
+// @returns: semantic version string (e.g. "VaultChat v5.0")
+// @security: read-only view, no access control
+// get version.
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 20: request_emergency_withdraw
+// First step of the 2-step emergency withdraw: record the current topoheight as request timestamp.
+// @caller: emergency role
+// @returns: 0 on success
+// @security: only_emergency, starts 17280-block (~24h) timelock before execution
+// request emergency withdraw.
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -362,6 +490,12 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 21: execute_emergency_withdraw
+// Second step of the 2-step emergency withdraw: sweep the entire balance of an asset to the emergency role.
+// @caller: emergency role
+// @params: asset - which asset Hash to withdraw fully
+// @returns: 0 on success
+// @security: only_emergency, requires prior request_emergency_withdraw, enforced 17280-block delay, single-use (deletes request key)
+// execute emergency withdraw.
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -383,6 +517,12 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // pub fn (read-only / admin helpers) — not counted for entry IDs
 // ============================================================================
 
+// Return the chat session details for a user.
+// @caller: anyone
+// @params: user - address whose session to look up
+// @returns: tuple (chat_pubkey, registered_at_topo, active); returns (zero, 0, false) if no session
+// @security: read-only view, no access control
+// get session.
 pub fn get_session(user: Address) -> (Hash, u64, bool) {
     let s: Storage = Storage::new()
     let session_opt: optional<Session> = s.load(SESSION_PREFIX + user.to_string())
@@ -393,12 +533,25 @@ pub fn get_session(user: Address) -> (Hash, u64, bool) {
     return (session.chat_pubkey, session.registered_at, session.active)
 }
 
+// Return the public metadata of a group.
+// @caller: anyone
+// @params: group_id - target group id
+// @returns: tuple (group_pubkey, creator, created_at_topo, active)
+// @security: read-only view, no access control
+// get group.
 pub fn get_group(group_id: u64) -> (Hash, Address, u64, bool) {
     let s: Storage = Storage::new()
     let group: Group = s.load(GROUP_PREFIX + group_id.to_string(10u32)).expect("err")
     return (group.group_pubkey, group.creator, group.created_at, group.active)
 }
 
+// Return the encrypted group key stored for a specific member in a group.
+// @caller: anyone
+// @params: group_id - target group id
+// @params: member - address whose encrypted key to retrieve
+// @returns: encrypted group key Hash (zero if member not in group)
+// @security: read-only view, no access control
+// get group member key.
 pub fn get_group_member_key(group_id: u64, member: Address) -> Hash {
     let key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
     let s: Storage = Storage::new()
@@ -409,6 +562,12 @@ pub fn get_group_member_key(group_id: u64, member: Address) -> Hash {
     return opt.expect("err")
 }
 
+// Return whether a user has an active chat session.
+// @caller: anyone
+// @params: user - address to check
+// @returns: true if user has a session and it is active
+// @security: read-only view, no access control
+// is session active.
 pub fn is_session_active(user: Address) -> bool {
     let s: Storage = Storage::new()
     let session_opt: optional<Session> = s.load(SESSION_PREFIX + user.to_string())
@@ -419,6 +578,11 @@ pub fn is_session_active(user: Address) -> bool {
     return session.active
 }
 
+// Return the last anchored Merkle root, its topoheight, and the cumulative message count.
+// @caller: anyone
+// @returns: tuple (merkle_root, anchor_topo, total_messages)
+// @security: read-only view, no access control
+// get last anchor.
 pub fn get_last_anchor() -> (Hash, u64, u64) {
     let s: Storage = Storage::new()
     return (
@@ -428,23 +592,44 @@ pub fn get_last_anchor() -> (Hash, u64, u64) {
     )
 }
 
+// Return the total number of groups created.
+// @caller: anyone
+// @returns: count of groups
+// @security: read-only view, no access control
+// get groups count.
 pub fn get_groups_count() -> u64 {
     return Storage::new().load(GROUPS_COUNT_KEY).unwrap_or(0)
 }
 
+// Return the current member count of a group.
+// @caller: anyone
+// @params: group_id - target group id
+// @returns: member count
+// @security: read-only view, no access control
+// get group members count.
 pub fn get_group_members_count(group_id: u64) -> u64 {
     let key: string = GROUP_MEMBERS_COUNT_PREFIX + group_id.to_string(10u32)
     return Storage::new().load(key).unwrap_or(0)
 }
 
-// Admin helper: configure the XelisVaultMiner contract hash for reward
-// distribution. Not in the entry ID list (admin-only pub fn).
+// Configure the XelisVaultMiner contract hash used for relayer reward distribution.
+// @caller: admin or timelock
+// @params: mh - new XelisVaultMiner contract Hash (use Hash::zero() to disable rewards)
+// @returns: 0 on success
+// @security: only_admin, privileged configuration; anchor_messages gracefully skips reward if unset
+// set miner contract.
 pub fn set_miner_contract(mh: Hash) -> u64 {
     only_admin()
     Storage::new().store(MINER_CONTRACT_KEY, mh)
     return 0
 }
 
+// Set the timelock contract hash (alternate admin path via contract-caller check).
+// @caller: admin or timelock
+// @params: tl - new timelock contract Hash
+// @returns: 0 on success
+// @security: only_admin, mirrors the entry version for read-only callers
+// set timelock tl.
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

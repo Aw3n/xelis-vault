@@ -121,7 +121,7 @@ fn update_merkle_root(new_leaf: Hash, leaf_index: u64) {
         // Persist the current node so future deposits can use it as a sibling.
         let node_key: string = LEAF_PREFIX + level.to_string(10u32) + "_" + idx.to_string(10u32)
         s.store(node_key, current)
-        current = Hash::sha3(combined.to_bytes())
+        current = hash(combined)
         idx = idx / 2
         level += 1
     }
@@ -133,6 +133,13 @@ fn update_merkle_root(new_leaf: Hash, leaf_index: u64) {
 // ============================================================================
 
 // ID 0: deposit
+// deposit.
+// @caller: any user
+// @params: asset - Hash
+// @params: denomination_id - u64
+// @params: commitment - Hash
+// @returns: u
+// @security: when_not_paused
 entry deposit(asset: Hash, denomination_id: u64, commitment: Hash) -> u64 {
     when_not_paused()
     require(commitment != Hash::zero(), "badcommit")
@@ -154,6 +161,16 @@ entry deposit(asset: Hash, denomination_id: u64, commitment: Hash) -> u64 {
 }
 
 // ID 1: withdraw
+// withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @params: denomination_id - u64
+// @params: nullifier - Hash
+// @params: recipient - Address
+// @params: merkle_root - Hash
+// @params: zk_proof - bytes
+// @returns: u
+// @security: when_not_paused
 entry withdraw(
     asset: Hash,
     denomination_id: u64,
@@ -182,38 +199,73 @@ entry withdraw(
 }
 
 // ID 2: get_merkle_root_entry
+// get merkle root entry.
+// @caller: user / authorized caller
+// @returns: H
+// @security: standard access control
 entry get_merkle_root_entry() -> Hash {
     return Storage::new().load(MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
 }
 
 // ID 3: get_deposit_count_entry
+// get deposit count entry.
+// @caller: any user
+// @returns: u
+// @security: standard access control
 entry get_deposit_count_entry() -> u64 {
     return Storage::new().load(LEAF_COUNT_KEY).unwrap_or(0)
 }
 
 // ID 4: is_nullifier_used_entry
+// is nullifier used entry.
+// @caller: user / authorized caller
+// @params: nullifier - Hash
+// @returns: b
+// @security: standard access control
 entry is_nullifier_used_entry(nullifier: Hash) -> bool {
     return Storage::new().load(NULLIFIER_PREFIX + nullifier.to_hex()).unwrap_or(false)
 }
 
 // ID 5: get_denomination_amount_entry
+// get denomination amount entry.
+// @caller: user / authorized caller
+// @params: denom_id - u64
+// @returns: u
+// @security: standard access control
 entry get_denomination_amount_entry(denom_id: u64) -> u64 {
     return get_denom_amount(denom_id)
 }
 
 // ID 6: get_deposit_count_for_denom_entry
+// get deposit count for denom entry.
+// @caller: any user
+// @params: asset - Hash
+// @params: denom_id - u64
+// @returns: u
+// @security: standard access control
 entry get_deposit_count_for_denom_entry(asset: Hash, denom_id: u64) -> u64 {
     let key: string = DENOM_DEPOSITS_PREFIX + asset.to_hex() + "_" + denom_id.to_string(10u32)
     return Storage::new().load(key).unwrap_or(0)
 }
 
 // ID 7: get_merkle_leaf_entry
+// get merkle leaf entry.
+// @caller: user / authorized caller
+// @params: level - u64
+// @params: index - u64
+// @returns: H
+// @security: only_admin
 entry get_merkle_leaf_entry(level: u64, index: u64) -> Hash {
     let key: string = LEAF_PREFIX + level.to_string(10u32) + "_" + index.to_string(10u32)
     return Storage::new().load(key).unwrap_or(Hash::zero())
 }
 
 // ID 8: set_zk_verifier
+// set zk verifier.
+// @caller: guardian or admin
+// @params: zv - Hash
+// @returns: u
+// @security: only_admin
 entry set_zk_verifier(zv: Hash) -> u64 {
     only_admin()
     Storage::new().store(ZK_VERIFIER_KEY, zv)
@@ -221,6 +273,11 @@ entry set_zk_verifier(zv: Hash) -> u64 {
 }
 
 // ID 9: set_registry
+// set registry.
+// @caller: guardian or admin
+// @params: reg - Hash
+// @returns: u
+// @security: only_admin
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -228,6 +285,11 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 10: set_timelock
+// set timelock.
+// @caller: guardian or admin
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -235,6 +297,11 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 11: set_guardian
+// set guardian.
+// @caller: guardian or admin
+// @params: g - Address
+// @returns: u
+// @security: only_admin, only_guardian_or_admin
 entry set_guardian(g: Address) -> u64 {
     only_admin()
     Storage::new().store(GUARDIAN_KEY, g)
@@ -242,6 +309,11 @@ entry set_guardian(g: Address) -> u64 {
 }
 
 // ID 12: pause
+// pause.
+// @caller: guardian or admin
+// @params: reason - string
+// @returns: u
+// @security: only_admin, only_guardian_or_admin
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -249,6 +321,10 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 13: unpause
+// unpause.
+// @caller: admin (or timelock)
+// @returns: u
+// @security: only_admin
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -256,6 +332,11 @@ entry unpause() -> u64 {
 }
 
 // ID 14: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -263,11 +344,19 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 15: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: only_admin, 2-step withdraw (24h delay)
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 16: request_emergency_withdraw (admin-only)
+// request emergency withdraw.
+// @caller: any user
+// @returns: u
+// @security: only_admin, 2-step withdraw (24h delay)
 entry request_emergency_withdraw() -> u64 {
     only_admin()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -275,6 +364,11 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 17: execute_emergency_withdraw (admin-only)
+// execute emergency withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -296,32 +390,67 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// get merkle root.
+// @caller: anyone (read-only)
+// @returns: H
+// @security: standard access control
 pub fn get_merkle_root() -> Hash {
     return Storage::new().load(MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
 }
 
+// get deposit count.
+// @caller: anyone (read-only)
+// @returns: u
+// @security: standard access control
 pub fn get_deposit_count() -> u64 {
     return Storage::new().load(LEAF_COUNT_KEY).unwrap_or(0)
 }
 
+// is nullifier used.
+// @caller: anyone (read-only)
+// @params: nullifier - Hash
+// @returns: b
+// @security: standard access control
 pub fn is_nullifier_used(nullifier: Hash) -> bool {
     return Storage::new().load(NULLIFIER_PREFIX + nullifier.to_hex()).unwrap_or(false)
 }
 
+// get denomination amount.
+// @caller: anyone (read-only)
+// @params: denom_id - u64
+// @returns: u
+// @security: standard access control
 pub fn get_denomination_amount(denom_id: u64) -> u64 {
     return get_denom_amount(denom_id)
 }
 
+// get deposit count for denom.
+// @caller: anyone (read-only)
+// @params: asset - Hash
+// @params: denom_id - u64
+// @returns: u
+// @security: standard access control
 pub fn get_deposit_count_for_denom(asset: Hash, denom_id: u64) -> u64 {
     let key: string = DENOM_DEPOSITS_PREFIX + asset.to_hex() + "_" + denom_id.to_string(10u32)
     return Storage::new().load(key).unwrap_or(0)
 }
 
+// get merkle leaf.
+// @caller: anyone (read-only)
+// @params: level - u64
+// @params: index - u64
+// @returns: H
+// @security: only_admin
 pub fn get_merkle_leaf(level: u64, index: u64) -> Hash {
     let key: string = LEAF_PREFIX + level.to_string(10u32) + "_" + index.to_string(10u32)
     return Storage::new().load(key).unwrap_or(Hash::zero())
 }
 
+// set timelock tl.
+// @caller: anyone (read-only)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

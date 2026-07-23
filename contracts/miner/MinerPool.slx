@@ -153,6 +153,13 @@ fn get_miner_reputation(addr: Address) -> u64 {
 // ============================================================================
 
 // ID 0: create_pool
+// create pool.
+// @caller: user / authorized caller
+// @params: name - string
+// @params: description - string
+// @params: creator_commission_bps - u64
+// @returns: u
+// @security: when_not_paused
 entry create_pool(name: string, description: string, creator_commission_bps: u64) -> u64 {
     when_not_paused()
     require(name != "", "badname")
@@ -187,6 +194,11 @@ entry create_pool(name: string, description: string, creator_commission_bps: u64
 }
 
 // ID 1: join_pool
+// join pool.
+// @caller: user / authorized caller
+// @params: pool_id - u64
+// @returns: u
+// @security: when_not_paused
 entry join_pool(pool_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
@@ -214,6 +226,10 @@ entry join_pool(pool_id: u64) -> u64 {
 }
 
 // ID 2: leave_pool
+// leave pool.
+// @caller: user / authorized caller
+// @returns: u
+// @security: standard access control
 entry leave_pool() -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -248,6 +264,11 @@ entry leave_pool() -> u64 {
 }
 
 // ID 3: kick_member
+// kick member.
+// @caller: user / authorized caller
+// @params: member - Address
+// @returns: u
+// @security: standard access control
 entry kick_member(member: Address) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -275,6 +296,12 @@ entry kick_member(member: Address) -> u64 {
 }
 
 // ID 4: distribute_pool_rewards_entry — called by XelisVaultMiner
+// distribute pool rewards entry.
+// @caller: user / authorized caller
+// @params: pool_id - u64
+// @params: amount - u64
+// @returns: u
+// @security: standard access control
 entry distribute_pool_rewards_entry(pool_id: u64, amount: u64) -> u64 {
     let s: Storage = Storage::new()
     let miner_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("err")
@@ -290,6 +317,10 @@ entry distribute_pool_rewards_entry(pool_id: u64, amount: u64) -> u64 {
 }
 
 // ID 5: claim_pool_rewards
+// claim pool rewards.
+// @caller: any user
+// @returns: u
+// @security: standard access control
 entry claim_pool_rewards() -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -333,19 +364,34 @@ entry claim_pool_rewards() -> u64 {
 }
 
 // ID 6: get_pool_entry
-pub fn get_pool_entry(pool_id: u64) -> (Address, string, string, u64, u64, u64, bool) {
+// get pool entry.
+// @caller: user / authorized caller
+// @params: pool_id - u64
+// @returns: tuple: (
+// @security: standard access control
+entry get_pool_entry(pool_id: u64) -> (Address, string, string, u64, u64, u64, bool) {
     let s: Storage = Storage::new()
     let pool: Pool = s.load(pool_key(pool_id)).expect("err")
     return (pool.creator, pool.name, pool.description, pool.creator_commission_bps, pool.total_stake, pool.created_at, pool.active)
 }
 
 // ID 7: get_pool_members_entry
+// get pool members entry.
+// @caller: user / authorized caller
+// @params: pool_id - u64
+// @returns: u
+// @security: standard access control
 entry get_pool_members_entry(pool_id: u64) -> u64 {
     return Storage::new().load(pool_members_count_key(pool_id)).unwrap_or(0)
 }
 
 // ID 8: get_pool_reputation_entry
-pub fn get_pool_reputation_entry(pool_id: u64) -> u64 {
+// get pool reputation entry.
+// @caller: user / authorized caller
+// @params: pool_id - u64
+// @returns: u
+// @security: standard access control
+entry get_pool_reputation_entry(pool_id: u64) -> u64 {
     let s: Storage = Storage::new()
     let pool: Pool = s.load(pool_key(pool_id)).expect("err")
     let members_count: u64 = s.load(pool_members_count_key(pool_id)).unwrap_or(0)
@@ -354,26 +400,51 @@ pub fn get_pool_reputation_entry(pool_id: u64) -> u64 {
 }
 
 // ID 9: get_user_pool_entry
+// get user pool entry.
+// @caller: user / authorized caller
+// @params: addr - Address
+// @returns: u
+// @security: standard access control
 entry get_user_pool_entry(addr: Address) -> u64 {
     return Storage::new().load(USER_POOL_KEY + addr.to_string()).unwrap_or(0)
 }
 
 // ID 10: get_pools_count_entry
+// get pools count entry.
+// @caller: user / authorized caller
+// @returns: u
+// @security: standard access control
 entry get_pools_count_entry() -> u64 {
     return Storage::new().load(POOLS_COUNT_KEY).unwrap_or(0)
 }
 
 // ID 11: get_pool_pending_rewards_entry
+// get pool pending rewards entry.
+// @caller: user / authorized caller
+// @params: pool_id - u64
+// @returns: u
+// @security: standard access control
 entry get_pool_pending_rewards_entry(pool_id: u64) -> u64 {
     return Storage::new().load(pool_rewards_key(pool_id)).unwrap_or(0)
 }
 
 // ID 12: is_pool_member_entry
+// is pool member entry.
+// @caller: user / authorized caller
+// @params: pool_id - u64
+// @params: addr - Address
+// @returns: b
+// @security: only_admin
 entry is_pool_member_entry(pool_id: u64, addr: Address) -> bool {
     return Storage::new().load(pool_member_key(pool_id, addr)).unwrap_or(false)
 }
 
 // ID 13: set_miner_contract
+// set miner contract.
+// @caller: admin (or timelock)
+// @params: mc - Hash
+// @returns: u
+// @security: only_admin
 entry set_miner_contract(mc: Hash) -> u64 {
     only_admin()
     Storage::new().store(MINER_CONTRACT_KEY, mc)
@@ -381,6 +452,11 @@ entry set_miner_contract(mc: Hash) -> u64 {
 }
 
 // ID 14: set_vlt_asset
+// set vlt asset.
+// @caller: admin (or timelock)
+// @params: va - Hash
+// @returns: u
+// @security: only_admin
 entry set_vlt_asset(va: Hash) -> u64 {
     only_admin()
     Storage::new().store(VLT_ASSET_KEY, va)
@@ -388,6 +464,11 @@ entry set_vlt_asset(va: Hash) -> u64 {
 }
 
 // ID 15: set_registry
+// set registry.
+// @caller: admin (or timelock)
+// @params: reg - Hash
+// @returns: u
+// @security: only_admin
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -395,6 +476,11 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 16: set_timelock
+// set timelock.
+// @caller: admin (or timelock)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -402,6 +488,11 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 17: set_emergency
+// set emergency.
+// @caller: admin (or timelock)
+// @params: e - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_KEY, e)
@@ -409,6 +500,11 @@ entry set_emergency(e: Address) -> u64 {
 }
 
 // ID 18: pause
+// pause.
+// @caller: admin (or timelock)
+// @params: reason - string
+// @returns: u
+// @security: only_admin
 entry pause(reason: string) -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -416,6 +512,10 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 19: unpause
+// unpause.
+// @caller: admin (or timelock)
+// @returns: u
+// @security: only_admin
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -423,6 +523,11 @@ entry unpause() -> u64 {
 }
 
 // ID 20: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -430,11 +535,19 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 21: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 22: request_emergency_withdraw
+// request emergency withdraw.
+// @caller: any user
+// @returns: u
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -442,6 +555,11 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 23: execute_emergency_withdraw
+// execute emergency withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -463,34 +581,74 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// get pool.
+// @caller: anyone (read-only)
+// @params: pool_id - u64
+// @returns: tuple: (
+// @security: standard access control
 pub fn get_pool(pool_id: u64) -> (Address, string, string, u64, u64, u64, bool) {
     return get_pool_entry(pool_id)
 }
 
+// get pool members.
+// @caller: anyone (read-only)
+// @params: pool_id - u64
+// @returns: u
+// @security: standard access control
 pub fn get_pool_members(pool_id: u64) -> u64 {
     return Storage::new().load(pool_members_count_key(pool_id)).unwrap_or(0)
 }
 
+// get pool reputation.
+// @caller: anyone (read-only)
+// @params: pool_id - u64
+// @returns: u
+// @security: standard access control
 pub fn get_pool_reputation(pool_id: u64) -> u64 {
     return get_pool_reputation_entry(pool_id)
 }
 
+// get user pool.
+// @caller: anyone (read-only)
+// @params: addr - Address
+// @returns: u
+// @security: standard access control
 pub fn get_user_pool(addr: Address) -> u64 {
     return Storage::new().load(USER_POOL_KEY + addr.to_string()).unwrap_or(0)
 }
 
+// get pools count.
+// @caller: anyone (read-only)
+// @returns: u
+// @security: standard access control
 pub fn get_pools_count() -> u64 {
     return Storage::new().load(POOLS_COUNT_KEY).unwrap_or(0)
 }
 
+// get pool pending rewards.
+// @caller: anyone (read-only)
+// @params: pool_id - u64
+// @returns: u
+// @security: standard access control
 pub fn get_pool_pending_rewards(pool_id: u64) -> u64 {
     return Storage::new().load(pool_rewards_key(pool_id)).unwrap_or(0)
 }
 
+// is pool member.
+// @caller: anyone (read-only)
+// @params: pool_id - u64
+// @params: addr - Address
+// @returns: b
+// @security: only_admin
 pub fn is_pool_member(pool_id: u64, addr: Address) -> bool {
     return Storage::new().load(pool_member_key(pool_id, addr)).unwrap_or(false)
 }
 
+// set timelock tl.
+// @caller: anyone (read-only)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

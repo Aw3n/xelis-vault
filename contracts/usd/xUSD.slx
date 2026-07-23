@@ -83,6 +83,10 @@ fn only_emergency() {
 // ENTRIES (sequential IDs starting at 0)
 // ============================================================================
 
+// Create the xUSD asset (one-time initialization, fails if already created).
+// @caller: admin (or timelock via contract call)
+// @returns: 0 on success
+// @security: only_admin; one-shot (existing asset hash check); creates asset with MAX_SUPPLY (u64::MAX) and MaxSupplyMode::None
 // ID 0: create_asset
 entry create_asset() -> u64 {
     only_admin()
@@ -102,6 +106,12 @@ entry create_asset() -> u64 {
     return 0
 }
 
+// Mint xUSD to a recipient (callable by authorized minters, e.g., VaultEngineV3).
+// @caller: authorized minter contract or admin
+// @params: to - recipient address
+// @params: amount - xUSD atomic units to mint
+// @returns: 0 on success
+// @security: require_minter (admin or whitelisted contract)
 // ID 1: mint_tokens — callable by authorized minters (cross-contract)
 entry mint_tokens(to: Address, amount: u64) -> u64 {
     require_minter()
@@ -118,6 +128,14 @@ entry mint_tokens(to: Address, amount: u64) -> u64 {
     return 0
 }
 
+// Mint xUSD split across recipient (amount) and treasury (fee) in one atomic call.
+// @caller: authorized minter contract or admin
+// @params: to - recipient address for the principal `amount`
+// @params: amount - xUSD principal to send to `to`
+// @params: treasury - address to receive the `fee`
+// @params: fee - xUSD fee to send to `treasury`
+// @returns: 0 on success
+// @security: require_minter; mints amount+fee in one call; overflow-checked on total
 // ID 2: mint_split — mints amount+fee, transfers `amount` to `to`, `fee` to `treasury`
 entry mint_split(to: Address, amount: u64, treasury: Address, fee: u64) -> u64 {
     require_minter()
@@ -143,6 +161,11 @@ entry mint_split(to: Address, amount: u64, treasury: Address, fee: u64) -> u64 {
     return 0
 }
 
+// Burn xUSD from the contract's own balance (callable by authorized burners, e.g., VaultEngineV3).
+// @caller: authorized burner contract
+// @params: amount - xUSD atomic units to burn
+// @returns: 0 on success
+// @security: require_burner (whitelisted contract only); requires contract balance >= amount
 // ID 3: burn_tokens — callable by authorized burners
 entry burn_tokens(amount: u64) -> u64 {
     require_burner()
@@ -159,6 +182,12 @@ entry burn_tokens(amount: u64) -> u64 {
     return 0
 }
 
+// Transfer xUSD from caller's deposit to another address, refunding any excess deposit.
+// @caller: any xUSD holder with a deposit
+// @params: to - recipient address
+// @params: amount - xUSD atomic units to transfer
+// @returns: 0 on success
+// @security: requires deposit >= amount; self-transfer blocked; refunds excess deposit to caller
 // ID 4: transfer_tokens
 entry transfer_tokens(to: Address, amount: u64) -> u64 {
     require(amount > 0, "amtgt0")
@@ -181,6 +210,12 @@ entry transfer_tokens(to: Address, amount: u64) -> u64 {
     return 0
 }
 
+// Whitelist (or remove) a minter contract that may call mint_tokens / mint_split.
+// @caller: admin (or timelock via contract call)
+// @params: contract_hash - minter contract hash to whitelist
+// @params: enabled - true to allow, false to revoke
+// @returns: 0 on success
+// @security: only_admin
 // ID 5: set_minter
 entry set_minter(contract_hash: Hash, enabled: bool) -> u64 {
     only_admin()
@@ -188,6 +223,12 @@ entry set_minter(contract_hash: Hash, enabled: bool) -> u64 {
     return 0
 }
 
+// Whitelist (or remove) a burner contract that may call burn_tokens.
+// @caller: admin (or timelock via contract call)
+// @params: contract_hash - burner contract hash to whitelist
+// @params: enabled - true to allow, false to revoke
+// @returns: 0 on success
+// @security: only_admin
 // ID 6: set_burner
 entry set_burner(contract_hash: Hash, enabled: bool) -> u64 {
     only_admin()
@@ -195,6 +236,11 @@ entry set_burner(contract_hash: Hash, enabled: bool) -> u64 {
     return 0
 }
 
+// Set the ContractRegistry hash for cross-contract name resolution.
+// @caller: admin (or timelock via contract call)
+// @params: reg - ContractRegistry hash
+// @returns: 0 on success
+// @security: only_admin
 // ID 7: set_registry
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
@@ -202,6 +248,11 @@ entry set_registry(reg: Hash) -> u64 {
     return 0
 }
 
+// Set the timelock contract hash (allowed to call admin entries via contract call).
+// @caller: admin (or timelock via contract call)
+// @params: tl - timelock contract hash
+// @returns: 0 on success
+// @security: only_admin
 // ID 8: set_timelock
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
@@ -209,6 +260,11 @@ entry set_timelock(tl: Hash) -> u64 {
     return 0
 }
 
+// Transfer admin role to a new address (single-step).
+// @caller: admin (or timelock via contract call)
+// @params: new_admin - address that will become admin
+// @returns: 0 on success
+// @security: only_admin, single-step transfer (verify new_admin before calling)
 // ID 9: transfer_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
@@ -216,6 +272,11 @@ entry transfer_admin(new_admin: Address) -> u64 {
     return 0
 }
 
+// Set the emergency admin address (only the current emergency admin can change it).
+// @caller: emergency admin only
+// @params: e - new emergency admin address
+// @returns: 0 on success
+// @security: only_emergency (self-managed role)
 // ID 10: set_emergency
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
@@ -223,16 +284,28 @@ entry set_emergency(e: Address) -> u64 {
     return 0
 }
 
+// Returns the contract version string.
+// @caller: anyone
+// @returns: VERSION constant ("xUSD v5.0")
+// @security: read-only, no access restrictions
 // ID 11: get_version
 entry get_version() -> string {
     return VERSION
 }
 
+// Returns the xUSD asset hash (panics if asset not yet created).
+// @caller: anyone
+// @returns: xUSD asset hash
+// @security: read-only, no access restrictions, panics if unset
 // ID 12: get_asset_hash_entry
 entry get_asset_hash_entry() -> Hash {
     return Storage::new().load(ASSET_HASH_KEY).expect("err")
 }
 
+// Returns the xUSD asset info tuple (name, ticker, supply, decimals).
+// @caller: anyone
+// @returns: (name, ticker, current_supply, decimals)
+// @security: read-only, no access restrictions, panics if asset not yet created
 // ID 13: get_asset_info_entry
 entry get_asset_info_entry() -> (string, string, u64, u8) {
     let s: Storage = Storage::new()
@@ -241,6 +314,11 @@ entry get_asset_info_entry() -> (string, string, u64, u8) {
     return (asset.get_name(), asset.get_ticker(), asset.get_supply(), DECIMALS)
 }
 
+// Returns the contract's xUSD balance (`addr` is reserved for future per-account queries).
+// @caller: anyone
+// @params: addr - reserved for future per-account balance query (currently ignored)
+// @returns: xUSD balance held by this contract
+// @security: read-only, no access restrictions, panics if asset not yet created
 // ID 14: get_balance_entry
 entry get_balance_entry(addr: Address) -> u64 {
     let s: Storage = Storage::new()
@@ -254,6 +332,10 @@ entry get_balance_entry(addr: Address) -> u64 {
 // FIX #14: Two-step emergency_withdraw (IDs 15/16, delay 17280 blocks)
 // ============================================================================
 
+// Step 1 of 2-step emergency withdrawal: record the request topoheight (starts delay window).
+// @caller: emergency admin only
+// @returns: 0 on success
+// @security: only_emergency, stores request topo for delay verification (FIX #14)
 // ID 15: request_emergency_withdraw
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
@@ -261,6 +343,11 @@ entry request_emergency_withdraw() -> u64 {
     return 0
 }
 
+// Step 2 of 2-step emergency withdrawal: drain all of `asset` after EMERGENCY_DELAY_BLOCKS elapsed.
+// @caller: emergency admin only
+// @params: asset - hash of asset to withdraw (Hash::zero() for XEL)
+// @returns: 0 on success
+// @security: requires caller == emergency admin; requires prior request + EMERGENCY_DELAY_BLOCKS delay (2-step protection, FIX #14)
 // ID 16: execute_emergency_withdraw
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
@@ -279,6 +366,10 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
     return 0
 }
 
+// Returns the xUSD asset hash (read-only view, panics if asset not yet created).
+// @caller: anyone
+// @returns: xUSD asset hash
+// @security: read-only, no access restrictions, panics if unset
 // ============================================================================
 // pub fn (read-only) — usable internally and not counted for entry IDs
 // ============================================================================
@@ -287,6 +378,10 @@ pub fn get_asset_hash() -> Hash {
     return Storage::new().load(ASSET_HASH_KEY).expect("err")
 }
 
+// Returns the xUSD asset info tuple (name, ticker, supply, decimals) — read-only view.
+// @caller: anyone
+// @returns: (name, ticker, current_supply, decimals)
+// @security: read-only, no access restrictions, panics if asset not yet created
 pub fn get_asset_info() -> (string, string, u64, u8) {
     let s: Storage = Storage::new()
     let hash: Hash = s.load(ASSET_HASH_KEY).expect("err")
@@ -294,12 +389,22 @@ pub fn get_asset_info() -> (string, string, u64, u8) {
     return (asset.get_name(), asset.get_ticker(), asset.get_supply(), DECIMALS)
 }
 
+// Returns the contract's xUSD balance (read-only view; `addr` reserved for future use).
+// @caller: anyone
+// @params: addr - reserved for future per-account balance query (currently ignored)
+// @returns: xUSD balance held by this contract
+// @security: read-only, no access restrictions, panics if asset not yet created
 pub fn get_balance(addr: Address) -> u64 {
     let s: Storage = Storage::new()
     let hash: Hash = s.load(ASSET_HASH_KEY).expect("err")
     return get_balance_for_asset(hash).unwrap_or(0)
 }
 
+// Legacy read-only invoke setter for the timelock hash (kept for ABI compatibility).
+// @caller: admin (or timelock via contract call)
+// @params: tl - timelock contract hash
+// @returns: 0 on success
+// @security: only_admin — note: pub fn in Silex is read-only; prefer entry set_timelock (ID 8) for state mutation
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

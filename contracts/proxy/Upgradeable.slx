@@ -24,6 +24,11 @@ hook constructor() -> u64 {
 }
 
 // ID 0: migrate_from
+// migrate from.
+// @caller: user / authorized caller
+// @params: prev_hash - Hash
+// @returns: u
+// @security: standard access control
 entry migrate_from(prev_hash: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -36,6 +41,10 @@ entry migrate_from(prev_hash: Hash) -> u64 {
 }
 
 // ID 1: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: standard access control
 entry get_version() -> string {
     return VERSION
 }

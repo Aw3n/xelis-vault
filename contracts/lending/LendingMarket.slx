@@ -176,6 +176,17 @@ fn user_borrow_key(pool_id: u64, addr: Address) -> string {
 // ============================================================================
 
 // ID 0: create_pool
+// create pool.
+// @caller: user / authorized caller
+// @params: collateral_asset - Hash
+// @params: borrow_asset - Hash
+// @params: collateral_factor_bps - u64
+// @params: liquidation_threshold_bps - u64
+// @params: liquidation_penalty_bps - u64
+// @params: reserve_factor_bps - u64
+// @params: interest_rate_model - Hash
+// @returns: u
+// @security: only_admin
 entry create_pool(
     collateral_asset: Hash,
     borrow_asset: Hash,
@@ -219,73 +230,13 @@ entry create_pool(
     return count
 }
 
-// ============================================================================
-// Internal helpers — interest accrual
-// ============================================================================
-
-fn update_pool_interest(pool_id: u64, pool: Pool) {
-    let s: Storage = Storage::new()
-    let last_update: u64 = s.load(lu_key(pool_id)).unwrap_or(0)
-    let current_topo: u64 = get_current_topoheight()
-    if current_topo <= last_update { return }
-
-    let blocks_elapsed: u64 = current_topo - last_update
-    let total_supply: u64 = s.load(ts_key(pool_id)).unwrap_or(0)
-    let total_borrow: u64 = s.load(tb_key(pool_id)).unwrap_or(0)
-
-    if total_borrow == 0 {
-        s.store(lu_key(pool_id), current_topo)
-        return
-    }
-
-    let utilization: u64 = (total_borrow as u128 * 10000u128 / total_supply as u128) as u64
-
-    let irm: Contract = Contract::new(pool.interest_rate_model).expect("irmnf")
-    let borrow_rate_bps: u64 = irm.call(0u16, [utilization], {})
-
-    let borrow_index: u64 = s.load(bi_key(pool_id)).unwrap_or(INITIAL_INDEX)
-    let interest_accumulated: u128 = ((borrow_rate_bps as u128 * blocks_elapsed as u128 * borrow_index as u128) / (BLOCKS_PER_YEAR as u128 * 10000u128)) as u64 as u128
-    let new_borrow_index: u128 = borrow_index as u128 + interest_accumulated
-    if new_borrow_index > u64::MAX as u128 {
-        s.store(bi_key(pool_id), u64::MAX)
-    } else {
-        s.store(bi_key(pool_id), new_borrow_index as u64)
-    }
-
-    let reserve_factor: u64 = pool.reserve_factor_bps
-    let supply_rate: u64 = irm.call(1u16, [utilization], {})
-    let supply_index: u64 = s.load(si_key(pool_id)).unwrap_or(INITIAL_INDEX)
-    let supply_acc: u128 = ((supply_rate as u128 * blocks_elapsed as u128 * supply_index as u128) / (BLOCKS_PER_YEAR as u128 * 10000u128)) as u64 as u128
-    let new_supply_index: u128 = supply_index as u128 + supply_acc
-    if new_supply_index > u64::MAX as u128 {
-        s.store(si_key(pool_id), u64::MAX)
-    } else {
-        s.store(si_key(pool_id), new_supply_index as u64)
-    }
-
-    let reserves: u64 = s.load(res_key(pool_id)).unwrap_or(0)
-    let reserve_increment: u64 = (interest_accumulated * reserve_factor as u128 / 10000u128) as u64
-    s.store(res_key(pool_id), reserves + reserve_increment)
-
-    s.store(lu_key(pool_id), current_topo)
-}
-
-// N-01 FIX: accrued = principal * current_pool_index / position_index
-fn get_accrued_borrow(pool_id: u64, principal: u64, position_index: u64) -> u64 {
-    let s: Storage = Storage::new()
-    let current_index: u64 = s.load(bi_key(pool_id)).unwrap_or(INITIAL_INDEX)
-    if position_index == 0 { return principal }
-    return (principal as u128 * current_index as u128 / position_index as u128) as u64
-}
-
-fn get_accrued_supply(pool_id: u64, principal: u64, position_index: u64) -> u64 {
-    let s: Storage = Storage::new()
-    let current_index: u64 = s.load(si_key(pool_id)).unwrap_or(INITIAL_INDEX)
-    if position_index == 0 { return principal }
-    return (principal as u128 * current_index as u128 / position_index as u128) as u64
-}
-
 // ID 1: supply
+// supply.
+// @caller: any user
+// @params: pool_id - u64
+// @params: amount - u64
+// @returns: u
+// @security: when_not_paused
 entry supply(pool_id: u64, amount: u64) -> u64 {
     when_not_paused()
     require(amount > 0, "amtgt0")
@@ -314,6 +265,12 @@ entry supply(pool_id: u64, amount: u64) -> u64 {
 }
 
 // ID 2: borrow
+// borrow.
+// @caller: any user
+// @params: pool_id - u64
+// @params: amount - u64
+// @returns: u
+// @security: when_not_paused
 entry borrow(pool_id: u64, amount: u64) -> u64 {
     when_not_paused()
     require(amount > 0, "amtgt0")
@@ -361,6 +318,12 @@ entry borrow(pool_id: u64, amount: u64) -> u64 {
 }
 
 // ID 3: repay
+// repay.
+// @caller: any user
+// @params: pool_id - u64
+// @params: amount - u64
+// @returns: u
+// @security: when_not_paused
 entry repay(pool_id: u64, amount: u64) -> u64 {
     when_not_paused()
     require(amount > 0, "amtgt0")
@@ -393,6 +356,12 @@ entry repay(pool_id: u64, amount: u64) -> u64 {
 }
 
 // ID 4: withdraw
+// withdraw.
+// @caller: any user
+// @params: pool_id - u64
+// @params: amount - u64
+// @returns: u
+// @security: when_not_paused
 entry withdraw(pool_id: u64, amount: u64) -> u64 {
     when_not_paused()
     require(amount > 0, "amtgt0")
@@ -431,6 +400,13 @@ entry withdraw(pool_id: u64, amount: u64) -> u64 {
 }
 
 // ID 5: liquidate
+// liquidate.
+// @caller: any user
+// @params: pool_id - u64
+// @params: user - Address
+// @params: repay_amount - u64
+// @returns: u
+// @security: when_not_paused
 entry liquidate(pool_id: u64, user: Address, repay_amount: u64) -> u64 {
     when_not_paused()
     require(repay_amount > 0, "amtgt0")
@@ -482,6 +458,11 @@ entry liquidate(pool_id: u64, user: Address, repay_amount: u64) -> u64 {
 }
 
 // ID 6: get_pool_info_entry
+// get pool info entry.
+// @caller: user / authorized caller
+// @params: pool_id - u64
+// @returns: tuple: (
+// @security: standard access control
 entry get_pool_info_entry(pool_id: u64) -> (Hash, Hash, u64, u64, u64, u64, u64, u64, bool) {
     let s: Storage = Storage::new()
     let pool: Pool = s.load(pool_key(pool_id)).expect("pnf")
@@ -499,6 +480,12 @@ entry get_pool_info_entry(pool_id: u64) -> (Hash, Hash, u64, u64, u64, u64, u64,
 }
 
 // ID 7: get_user_position_entry — FIX N-01: returns accrued values
+// get user position entry.
+// @caller: user / authorized caller
+// @params: pool_id - u64
+// @params: user - Address
+// @returns: tuple: (
+// @security: standard access control
 entry get_user_position_entry(pool_id: u64, user: Address) -> (u64, u64) {
     let s: Storage = Storage::new()
     let sp_opt: optional<UserPosition> = s.load(user_supply_key(pool_id, user))
@@ -517,11 +504,20 @@ entry get_user_position_entry(pool_id: u64, user: Address) -> (u64, u64) {
 }
 
 // ID 8: get_pools_count_entry
+// get pools count entry.
+// @caller: user / authorized caller
+// @returns: u
+// @security: only_guardian_or_admin
 entry get_pools_count_entry() -> u64 {
     return Storage::new().load(POOLS_COUNT_KEY).unwrap_or(0)
 }
 
 // ID 9: pause
+// pause.
+// @caller: guardian or admin
+// @params: reason - string
+// @returns: u
+// @security: only_admin, only_guardian_or_admin
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -529,6 +525,10 @@ entry pause(reason: string) -> u64 {
 }
 
 // ID 10: unpause
+// unpause.
+// @caller: guardian or admin
+// @returns: u
+// @security: only_admin
 entry unpause() -> u64 {
     only_admin()
     Storage::new().store(PAUSED_KEY, false)
@@ -536,6 +536,11 @@ entry unpause() -> u64 {
 }
 
 // ID 11: set_oracle
+// set oracle.
+// @caller: guardian or admin
+// @params: oracle - Hash
+// @returns: u
+// @security: only_admin
 entry set_oracle(oracle: Hash) -> u64 {
     only_admin()
     Storage::new().store(ORACLE_KEY, oracle)
@@ -543,6 +548,11 @@ entry set_oracle(oracle: Hash) -> u64 {
 }
 
 // ID 12: set_treasury
+// set treasury.
+// @caller: guardian or admin
+// @params: t - Address
+// @returns: u
+// @security: only_admin
 entry set_treasury(t: Address) -> u64 {
     only_admin()
     Storage::new().store(TREASURY_KEY, t)
@@ -550,6 +560,11 @@ entry set_treasury(t: Address) -> u64 {
 }
 
 // ID 13: set_registry
+// set registry.
+// @caller: guardian or admin
+// @params: reg - Hash
+// @returns: u
+// @security: only_admin
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
@@ -557,6 +572,11 @@ entry set_registry(reg: Hash) -> u64 {
 }
 
 // ID 14: set_timelock
+// set timelock.
+// @caller: guardian or admin
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
@@ -564,6 +584,11 @@ entry set_timelock(tl: Hash) -> u64 {
 }
 
 // ID 15: set_guardian
+// set guardian.
+// @caller: guardian or admin
+// @params: g - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_guardian(g: Address) -> u64 {
     only_admin()
     Storage::new().store(GUARDIAN_KEY, g)
@@ -571,6 +596,11 @@ entry set_guardian(g: Address) -> u64 {
 }
 
 // ID 16: set_emergency
+// set emergency.
+// @caller: admin (or timelock)
+// @params: e - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_emergency(e: Address) -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_KEY, e)
@@ -578,6 +608,11 @@ entry set_emergency(e: Address) -> u64 {
 }
 
 // ID 17: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
@@ -585,11 +620,19 @@ entry transfer_admin(new_admin: Address) -> u64 {
 }
 
 // ID 18: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry get_version() -> string {
     return VERSION
 }
 
 // ID 19: request_emergency_withdraw
+// request emergency withdraw.
+// @caller: any user
+// @returns: u
+// @security: only_emergency, 2-step withdraw (24h delay)
 entry request_emergency_withdraw() -> u64 {
     only_emergency()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
@@ -597,6 +640,11 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 20: execute_emergency_withdraw
+// execute emergency withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("nocaller")
@@ -615,9 +663,80 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 }
 
 // ============================================================================
+// Internal helpers — interest accrual
+// ============================================================================
+
+fn update_pool_interest(pool_id: u64, pool: Pool) {
+    let s: Storage = Storage::new()
+    let last_update: u64 = s.load(lu_key(pool_id)).unwrap_or(0)
+    let current_topo: u64 = get_current_topoheight()
+    if current_topo <= last_update { return }
+
+    let blocks_elapsed: u64 = current_topo - last_update
+    let total_supply: u64 = s.load(ts_key(pool_id)).unwrap_or(0)
+    let total_borrow: u64 = s.load(tb_key(pool_id)).unwrap_or(0)
+
+    if total_borrow == 0 || total_supply == 0 {
+        s.store(lu_key(pool_id), current_topo)
+        return
+    }
+
+    let utilization: u64 = (total_borrow as u128 * 10000u128 / total_supply as u128) as u64
+
+    let irm: Contract = Contract::new(pool.interest_rate_model).expect("irmnf")
+    let borrow_rate_bps: u64 = irm.call(0u16, [utilization], {})
+
+    let borrow_index: u64 = s.load(bi_key(pool_id)).unwrap_or(INITIAL_INDEX)
+    let interest_accumulated: u128 = ((borrow_rate_bps as u128 * blocks_elapsed as u128 * borrow_index as u128) / (BLOCKS_PER_YEAR as u128 * 10000u128)) as u64 as u128
+    let new_borrow_index: u128 = borrow_index as u128 + interest_accumulated
+    if new_borrow_index > u64::MAX as u128 {
+        s.store(bi_key(pool_id), u64::MAX)
+    } else {
+        s.store(bi_key(pool_id), new_borrow_index as u64)
+    }
+
+    let reserve_factor: u64 = pool.reserve_factor_bps
+    let supply_rate: u64 = irm.call(1u16, [utilization], {})
+    let supply_index: u64 = s.load(si_key(pool_id)).unwrap_or(INITIAL_INDEX)
+    let supply_acc: u128 = ((supply_rate as u128 * blocks_elapsed as u128 * supply_index as u128) / (BLOCKS_PER_YEAR as u128 * 10000u128)) as u64 as u128
+    let new_supply_index: u128 = supply_index as u128 + supply_acc
+    if new_supply_index > u64::MAX as u128 {
+        s.store(si_key(pool_id), u64::MAX)
+    } else {
+        s.store(si_key(pool_id), new_supply_index as u64)
+    }
+
+    let reserves: u64 = s.load(res_key(pool_id)).unwrap_or(0)
+    let reserve_increment: u64 = (interest_accumulated as u128 * reserve_factor as u128 / 10000u128) as u64
+    s.store(res_key(pool_id), reserves + reserve_increment)
+
+    s.store(lu_key(pool_id), current_topo)
+}
+
+// N-01 FIX: accrued = principal * current_pool_index / position_index
+fn get_accrued_borrow(pool_id: u64, principal: u64, position_index: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let current_index: u64 = s.load(bi_key(pool_id)).unwrap_or(INITIAL_INDEX)
+    if position_index == 0 { return principal }
+    return (principal as u128 * current_index as u128 / position_index as u128) as u64
+}
+
+fn get_accrued_supply(pool_id: u64, principal: u64, position_index: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let current_index: u64 = s.load(si_key(pool_id)).unwrap_or(INITIAL_INDEX)
+    if position_index == 0 { return principal }
+    return (principal as u128 * current_index as u128 / position_index as u128) as u64
+}
+
+// ============================================================================
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
+// get pool info.
+// @caller: anyone (read-only)
+// @params: pool_id - u64
+// @returns: tuple: (
+// @security: standard access control
 pub fn get_pool_info(pool_id: u64) -> (Hash, Hash, u64, u64, u64, u64, u64, u64, bool) {
     let s: Storage = Storage::new()
     let pool: Pool = s.load(pool_key(pool_id)).expect("pnf")
@@ -634,6 +753,12 @@ pub fn get_pool_info(pool_id: u64) -> (Hash, Hash, u64, u64, u64, u64, u64, u64,
     )
 }
 
+// get user position.
+// @caller: anyone (read-only)
+// @params: pool_id - u64
+// @params: user - Address
+// @returns: tuple: (
+// @security: standard access control
 pub fn get_user_position(pool_id: u64, user: Address) -> (u64, u64) {
     let s: Storage = Storage::new()
     let sp_opt: optional<UserPosition> = s.load(user_supply_key(pool_id, user))
@@ -651,10 +776,19 @@ pub fn get_user_position(pool_id: u64, user: Address) -> (u64, u64) {
     return (supply, borrow)
 }
 
+// get pools count.
+// @caller: anyone (read-only)
+// @returns: u
+// @security: only_admin
 pub fn get_pools_count() -> u64 {
     return Storage::new().load(POOLS_COUNT_KEY).unwrap_or(0)
 }
 
+// set timelock tl.
+// @caller: anyone (read-only)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)

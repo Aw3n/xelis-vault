@@ -97,6 +97,14 @@ fn get_voting_power(addr: Address) -> u64 {
     return vp
 }
 
+// Submit a new governance proposal targeting a single entry on `target` contract.
+// @caller: any user with voting power >= proposal threshold
+// @params: target - hash of contract to execute on queue
+// @params: entry_id - entry ID on target to call
+// @params: params - ABI-encoded call params for the target entry
+// @params: description - human-readable proposal description
+// @returns: the new proposal ID
+// @security: requires proposer's voting power >= PROPOSAL_THRESHOLD; voting period starts immediately
 // ============================================================================
 // ID 0: propose
 // ============================================================================
@@ -137,6 +145,12 @@ entry propose(
     return id
 }
 
+// Cast a vote (no/yes/abstain) on an active proposal. One-vote-per-voter.
+// @caller: any voting-power holder
+// @params: proposal_id - target proposal to vote on
+// @params: support - 0=no, 1=yes, else=abstain
+// @returns: 0 on success
+// @security: requires voting during [start_topo, end_topo], double-voting blocked, proposal must not be queued/cancelled
 // ============================================================================
 // ID 1: vote
 // ============================================================================
@@ -170,6 +184,11 @@ entry vote(proposal_id: u64, support: u8) -> u64 {
     return 0
 }
 
+// Queue a passed proposal for execution via Timelock (subject to timelock delay).
+// @caller: anyone (open access after voting ends)
+// @params: proposal_id - target proposal to queue
+// @returns: 0 on success
+// @security: voting must be ended, quorum & approval thresholds must be met, submits to Timelock entry 0 (submit_proposal)
 // ============================================================================
 // ID 2: queue
 // ----------------------------------------------------------------------------
@@ -217,6 +236,11 @@ entry queue(proposal_id: u64) -> u64 {
     return 0
 }
 
+// Cancel a proposal that has not yet been queued or executed.
+// @caller: original proposer OR admin
+// @params: proposal_id - target proposal to cancel
+// @returns: 0 on success
+// @security: only proposer or admin; cannot cancel queued/executed proposals
 // ============================================================================
 // ID 3: cancel
 // ============================================================================
@@ -235,6 +259,10 @@ entry cancel(proposal_id: u64) -> u64 {
     return 0
 }
 
+// Returns the total number of proposals ever created (entry wrapper).
+// @caller: anyone
+// @returns: proposal counter value
+// @security: read-only, no access restrictions
 // ============================================================================
 // ID 4: get_proposal_count_entry
 // ============================================================================
@@ -242,6 +270,11 @@ entry get_proposal_count_entry() -> u64 {
     return Storage::new().load(PROPOSALS_COUNT_KEY).unwrap_or(0)
 }
 
+// Returns a proposal snapshot by ID (read-only view).
+// @caller: anyone
+// @params: proposal_id - target proposal to read
+// @returns: (proposer, target, entry_id, start_topo, end_topo, yes_votes, no_votes, abstain_votes, queued, cancelled)
+// @security: read-only, no access restrictions, panics if proposal missing
 pub fn get_proposal(proposal_id: u64) -> (Address, Hash, u16, u64, u64, u64, u64, u64, bool, bool) {
     let p: Proposal = Storage::new().load(PROPOSAL_PREFIX + proposal_id.to_string(10u32)).expect("err")
     return (
@@ -252,6 +285,10 @@ pub fn get_proposal(proposal_id: u64) -> (Address, Hash, u16, u64, u64, u64, u64
     )
 }
 
+// Returns the governor configuration tuple (read-only view).
+// @caller: anyone
+// @returns: (voting_period, quorum_bps, approval_bps, proposal_threshold)
+// @security: read-only, no access restrictions
 pub fn get_config() -> (u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     return (
@@ -262,6 +299,11 @@ pub fn get_config() -> (u64, u64, u64, u64) {
     )
 }
 
+// Set the GovernanceVault contract hash (used to read voting power).
+// @caller: admin
+// @params: gv - GovernanceVault contract hash
+// @returns: 0 on success
+// @security: only_admin
 // ============================================================================
 // ID 5: set_governance_vault
 // ============================================================================
@@ -271,6 +313,11 @@ entry set_governance_vault(gv: Hash) -> u64 {
     return 0
 }
 
+// Set the Timelock contract hash (destination for queued proposals).
+// @caller: admin
+// @params: tl - Timelock contract hash
+// @returns: 0 on success
+// @security: only_admin
 // ============================================================================
 // ID 6: set_timelock
 // ============================================================================
@@ -280,6 +327,11 @@ entry set_timelock(tl: Hash) -> u64 {
     return 0
 }
 
+// Set the voting period (in topo blocks) for new proposals.
+// @caller: admin
+// @params: blocks - voting period length (17280–604800 blocks = 1–35 days)
+// @returns: 0 on success
+// @security: only_admin, range-checked
 // ============================================================================
 // ID 7: set_voting_period
 // ============================================================================
@@ -290,6 +342,11 @@ entry set_voting_period(blocks: u64) -> u64 {
     return 0
 }
 
+// Set the quorum threshold (in bps of total voting power) required to queue.
+// @caller: admin
+// @params: bps - quorum in bps (100–5000 = 1%–50%)
+// @returns: 0 on success
+// @security: only_admin, range-checked
 // ============================================================================
 // ID 8: set_quorum_bps
 // ============================================================================
@@ -300,6 +357,11 @@ entry set_quorum_bps(bps: u64) -> u64 {
     return 0
 }
 
+// Set the approval threshold (in bps of yes/no votes) required to queue.
+// @caller: admin
+// @params: bps - approval in bps (5000–8000 = 50%–80%)
+// @returns: 0 on success
+// @security: only_admin, range-checked
 // ============================================================================
 // ID 9: set_approval_bps
 // ============================================================================
@@ -310,6 +372,11 @@ entry set_approval_bps(bps: u64) -> u64 {
     return 0
 }
 
+// Set the minimum voting power required to submit a proposal.
+// @caller: admin
+// @params: threshold - minimum voting power in atomic units
+// @returns: 0 on success
+// @security: only_admin
 // ============================================================================
 // ID 10: set_proposal_threshold
 // ============================================================================
@@ -319,6 +386,11 @@ entry set_proposal_threshold(threshold: u64) -> u64 {
     return 0
 }
 
+// Transfer admin role to a new address (single-step).
+// @caller: admin
+// @params: new_admin - address that will become admin
+// @returns: 0 on success
+// @security: only_admin, single-step transfer (verify new_admin before calling)
 // ============================================================================
 // ID 11: transfer_admin
 // ============================================================================
@@ -328,6 +400,10 @@ entry transfer_admin(new_admin: Address) -> u64 {
     return 0
 }
 
+// Returns the contract version string.
+// @caller: anyone
+// @returns: VERSION constant ("Governor v5.0")
+// @security: read-only, no access restrictions
 // ============================================================================
 // ID 12: get_version
 // ============================================================================
@@ -339,10 +415,20 @@ entry get_version() -> string {
 // Additional pub fn getters — read-only, for off-chain frontend reads
 // ============================================================================
 
+// Returns the total number of proposals ever created (read-only view).
+// @caller: anyone
+// @returns: proposal counter value
+// @security: read-only, no access restrictions
 pub fn get_proposals_count() -> u64 {
     return Storage::new().load(PROPOSALS_COUNT_KEY).unwrap_or(0)
 }
 
+// Returns whether a given voter has voted on a given proposal (read-only view).
+// @caller: anyone
+// @params: proposal_id - target proposal to check
+// @params: voter - address whose vote to verify
+// @returns: true if `voter` has voted on `proposal_id`, false otherwise
+// @security: read-only, no access restrictions
 pub fn has_voted(proposal_id: u64, voter: Address) -> bool {
     let s: Storage = Storage::new()
     let key: string = VOTE_PREFIX + proposal_id.to_string(10u32) + "_" + voter.to_string()
@@ -350,14 +436,26 @@ pub fn has_voted(proposal_id: u64, voter: Address) -> bool {
     return v
 }
 
+// Returns whether the contract is paused (Governor has no pause — always false).
+// @caller: anyone
+// @returns: false (Governor is always active)
+// @security: read-only, no access restrictions
 pub fn is_paused() -> bool {
     return false  // Governor has no pause — always active
 }
 
+// Returns the configured GovernanceVault contract hash (or Hash::zero() if unset).
+// @caller: anyone
+// @returns: GovernanceVault contract hash
+// @security: read-only, no access restrictions
 pub fn get_governance_vault() -> Hash {
     return Storage::new().load(GOVERNANCE_VAULT_KEY).unwrap_or(Hash::zero())
 }
 
+// Returns the configured Timelock contract hash (or Hash::zero() if unset).
+// @caller: anyone
+// @returns: Timelock contract hash
+// @security: read-only, no access restrictions
 pub fn get_timelock() -> Hash {
     return Storage::new().load(TIMELOCK_KEY).unwrap_or(Hash::zero())
 }

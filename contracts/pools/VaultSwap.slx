@@ -128,6 +128,7 @@ fn release_reentrancy() {
 
 fn get_xelis() -> Hash { return Hash::zero(); }
 
+
 fn get_pool_key(id: u64) -> string {
     return POOL_PREFIX + id.to_string(10u32);
 }
@@ -292,7 +293,7 @@ entry add_liquidity(asset_a: Hash, asset_b: Hash) -> u64 {
     require(asset_a != asset_b, "dup");
     let pool_id_opt: optional<u64> = load_pair(asset_a, asset_b);
     let s: Storage = Storage::new();
-    let xelis: Hash = get_xelis();
+    let xelis: Hash = Hash::zero();
     let pool_id: u64 = 0;
     if pool_id_opt.is_none() {
         let xel_dep: u64 = get_deposit_for_asset(xelis).expect("deps");
@@ -397,7 +398,7 @@ entry swap(asset_in: Hash, asset_out: Hash, amount_in: u64, min_amount_out: u64)
     require(min_amount_out > 0, "noslippage");
     require(asset_in != asset_out, "sameasset");
     let s: Storage = Storage::new();
-    let xelis: Hash = get_xelis();
+    let xelis: Hash = Hash::zero();
     let pool_id_opt: optional<u64> = load_pair(asset_in, asset_out);
     let caller: Address = get_caller().expect("nocaller");
 
@@ -410,7 +411,7 @@ entry swap(asset_in: Hash, asset_out: Hash, amount_in: u64, min_amount_out: u64)
             if is_xel_in || (asset_in == xa && asset_out == xelis) {
                 let oh: Hash = s.load(ORACLE_KEY).expect("ocns");
                 let oc: Contract = Contract::new(oh).expect("ocnf");
-                let price: u64 = oc.call(4u16, [xelis], {});
+                    let price: u64 = oc.call(3u16, [xelis], {});
                 require(price > 0, "noprice");
                 let fee_bps: u64 = s.load(FEE_PSM_MINT_KEY).unwrap_or(DEFAULT_PSM_MINT_FEE);
                 if is_xel_in {
@@ -421,7 +422,7 @@ entry swap(asset_in: Hash, asset_out: Hash, amount_in: u64, min_amount_out: u64)
                     let xc_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("xcns");
                     let treasury: Address = s.load(TREASURY_KEY).expect("trns");
                     let xc: Contract = Contract::new(xc_hash).expect("xcnf");
-                    let _: u64 = xc.call(4u16, [caller, net_xusd, treasury, fee], {});
+                    let _: u64 = xc.call(7u16, [caller, net_xusd, treasury, fee], {});
                     pool.reserve_a += amount_in;
                 } else {
                     let gross_xel: u64 = (amount_in as u128 * PRICE_DECIMALS as u128 / price as u128) as u64;
@@ -434,7 +435,7 @@ entry swap(asset_in: Hash, asset_out: Hash, amount_in: u64, min_amount_out: u64)
                     let xc: Contract = Contract::new(xc_hash).expect("xcnf");
                     let dep: u64 = get_deposit_for_asset(xa).expect("insdep");
                     require(dep >= amount_in, "insdep");
-                    let _: u64 = xc.call(5u16, [amount_in], {});
+                    let _: u64 = xc.call(8u16, [amount_in], {});
                     let bal: u64 = get_balance_for_asset(xelis).expect("nobal");
                     require(bal >= net_xel, "insxelbal");
                     let ok: bool = transfer(caller, net_xel, xelis);
@@ -526,11 +527,11 @@ entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     require(min_xusd_out > 0, "noslippage");
     let s: Storage = Storage::new();
     let xa: Hash = s.load(XUSD_ASSET_KEY).expect("xans");
-    let xelis: Hash = get_xelis();
+    let xelis: Hash = Hash::zero();
 
     let oh: Hash = s.load(ORACLE_KEY).expect("ocns");
     let oc: Contract = Contract::new(oh).expect("ocnf");
-    let price: u64 = oc.call(4u16, [xelis], {});
+    let price: u64 = oc.call(3u16, [xelis], {});
     require(price > 0, "noprice");
 
     let gross_xusd: u64 = (xel_amount as u128 * price as u128 / PRICE_DECIMALS as u128) as u64;
@@ -549,7 +550,19 @@ entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     let xc_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("xcns");
     let treasury: Address = s.load(TREASURY_KEY).expect("trns");
     let xc: Contract = Contract::new(xc_hash).expect("xcnf");
-    let _: u64 = xc.call(4u16, [caller, net_xusd, treasury, fee], {});
+    // Use psm_mint_cc (entry 26) — mints total to calling contract (VaultSwap) with u64 arg only
+    let total: u64 = net_xusd + fee;
+    if total > 0 {
+        let _: u64 = xc.call(26u16, [total], {});
+    }
+    if net_xusd > 0 {
+        let ok: bool = transfer(caller, net_xusd, xa);
+        require(ok, "txfail1");
+    }
+    if fee > 0 {
+        let ok: bool = transfer(treasury, fee, xa);
+        require(ok, "txfail2");
+    }
 
     let pool_id_opt: optional<u64> = load_pair(xelis, xa);
     if pool_id_opt.is_some() {
@@ -570,11 +583,11 @@ entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     require(min_xel_out > 0, "noslippage");
     let s: Storage = Storage::new();
     let xa: Hash = s.load(XUSD_ASSET_KEY).expect("xans");
-    let xelis: Hash = get_xelis();
+    let xelis: Hash = Hash::zero();
 
     let oh: Hash = s.load(ORACLE_KEY).expect("ocns");
     let oc: Contract = Contract::new(oh).expect("ocnf");
-    let price: u64 = oc.call(4u16, [xelis], {});
+    let price: u64 = oc.call(3u16, [xelis], {});
     require(price > 0, "noprice");
 
     let gross_xel: u64 = (xusd_amount as u128 * PRICE_DECIMALS as u128 / price as u128) as u64;
@@ -588,7 +601,7 @@ entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     let xc: Contract = Contract::new(xc_hash).expect("xcnf");
     let dep: u64 = get_deposit_for_asset(xa).expect("insdep");
     require(dep >= xusd_amount, "insdep");
-    let _: u64 = xc.call(5u16, [xusd_amount], {});
+    let _: u64 = xc.call(8u16, [xusd_amount], {});
 
     let bal: u64 = get_balance_for_asset(xelis).expect("nobal");
     require(bal >= net_xel, "insxelbal");

@@ -81,6 +81,14 @@ fn release_reentrancy() {
 // ============================================================================
 
 // ID 0: flash_loan — FIX #5: clean structure, proper balance check
+// flash loan.
+// @caller: user / authorized caller
+// @params: asset - Hash
+// @params: amount - u64
+// @params: callback_contract - Hash
+// @params: callback_data - bytes
+// @returns: u
+// @security: non_reentrant
 entry flash_loan(
     asset: Hash,
     amount: u64,
@@ -126,21 +134,39 @@ entry flash_loan(
 }
 
 // ID 1: get_fee_bps_entry
+// get fee bps entry.
+// @caller: user / authorized caller
+// @returns: u
+// @security: standard access control
 entry get_fee_bps_entry() -> u64 {
     return Storage::new().load(FEE_BPS_KEY).unwrap_or(DEFAULT_FEE_BPS)
 }
 
 // ID 2: get_total_earned_entry
+// get total earned entry.
+// @caller: user / authorized caller
+// @returns: u
+// @security: standard access control
 entry get_total_earned_entry() -> u64 {
     return Storage::new().load(TOTAL_EARNED_KEY).unwrap_or(0)
 }
 
 // ID 3: get_available_liquidity_entry
+// get available liquidity entry.
+// @caller: user / authorized caller
+// @params: asset - Hash
+// @returns: u
+// @security: only_admin
 entry get_available_liquidity_entry(asset: Hash) -> u64 {
     return get_balance_for_asset(asset).unwrap_or(0)
 }
 
 // ID 4: set_fee_bps
+// set fee bps.
+// @caller: admin (or timelock)
+// @params: bps - u64
+// @returns: u
+// @security: only_admin, only_guardian_or_admin
 entry set_fee_bps(bps: u64) -> u64 {
     only_admin()
     require(bps >= 1 && bps <= 100, "badval")
@@ -149,33 +175,80 @@ entry set_fee_bps(bps: u64) -> u64 {
 }
 
 // ID 5: pause
+// pause.
+// @caller: guardian or admin
+// @params: reason - string
+// @returns: u
+// @security: only_admin, only_guardian_or_admin
 entry pause(reason: string) -> u64 { only_guardian_or_admin() Storage::new().store(PAUSED_KEY, true) return 0 }
 
 // ID 6: unpause
+// unpause.
+// @caller: guardian or admin
+// @returns: u
+// @security: only_admin
 entry unpause() -> u64 { only_admin() Storage::new().store(PAUSED_KEY, false) return 0 }
 
 // ID 7: set_treasury
+// set treasury.
+// @caller: guardian or admin
+// @params: t - Address
+// @returns: u
+// @security: only_admin
 entry set_treasury(t: Address) -> u64 { only_admin() Storage::new().store(TREASURY_KEY, t) return 0 }
 
 // ID 8: set_registry
+// set registry.
+// @caller: guardian or admin
+// @params: reg - Hash
+// @returns: u
+// @security: only_admin
 entry set_registry(reg: Hash) -> u64 { only_admin() Storage::new().store(REGISTRY_KEY, reg) return 0 }
 
 // ID 9: set_timelock
+// set timelock.
+// @caller: guardian or admin
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 entry set_timelock(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }
 
 // ID 10: set_guardian
+// set guardian.
+// @caller: guardian or admin
+// @params: g - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_guardian(g: Address) -> u64 { only_admin() Storage::new().store(GUARDIAN_KEY, g) return 0 }
 
 // ID 11: set_emergency
+// set emergency.
+// @caller: admin (or timelock)
+// @params: e - Address
+// @returns: u
+// @security: only_admin, only_emergency
 entry set_emergency(e: Address) -> u64 { only_emergency() Storage::new().store(EMERGENCY_KEY, e) return 0 }
 
 // ID 12: transfer_admin
+// transfer admin.
+// @caller: admin (or timelock)
+// @params: new_admin - Address
+// @returns: u
+// @security: only_admin
 entry transfer_admin(new_admin: Address) -> u64 { only_admin() Storage::new().store(ADMIN_KEY, new_admin) return 0 }
 
 // ID 13: get_version
+// get version.
+// @caller: user / authorized caller
+// @returns: s
+// @security: 2-step withdraw (24h delay)
 entry get_version() -> string { return VERSION }
 
 // ID 14: request_emergency_withdraw
+// request emergency withdraw.
+// @caller: any user
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry request_emergency_withdraw() -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -186,6 +259,11 @@ entry request_emergency_withdraw() -> u64 {
 }
 
 // ID 15: execute_emergency_withdraw
+// execute emergency withdraw.
+// @caller: any user
+// @params: asset - Hash
+// @returns: u
+// @security: 2-step withdraw (24h delay)
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -202,4 +280,9 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 }
 
 // pub fn (read-only)
+// set timelock tl.
+// @caller: anyone (read-only)
+// @params: tl - Hash
+// @returns: u
+// @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }

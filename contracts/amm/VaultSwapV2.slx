@@ -1,10 +1,9 @@
 // ============================================================================
 // VaultSwapV2.slx — XELIS Vault v5.0 (AMM + PSM)
 // ----------------------------------------------------------------------------
-// FIX #3:  get_oracle() uses reg.call(0u16, ["StakedOracle"], {})
-//          (ContractRegistry v5.0 entry 0 = get_entry).
-// FIX #12: psm_mint / psm_redeem use oracle.call(9u16, [asset], {})
-//          (StakedOracle v5.0 entry 9 = get_price_for_asset_entry).
+// FIX #3:  get_oracle() loads oracle hash from storage (ORACLE_KEY).
+// FIX #12: psm_mint / psm_redeem use oracle.call(4u16, [Hash::zero()], {})
+//          (PriceOracle entry 4 = get_price(asset: Hash)).
 // FIX #14: Two-step emergency_withdraw at IDs 29/30 with 17280-block delay.
 //
 // Entry IDs (sequential, starting at 0):
@@ -52,6 +51,7 @@ const PAUSED_KEY: string = "pz"
 const RG_STATUS_KEY: string = "rg"
 
 const TREASURY_KEY: string = "tr"
+const ORACLE_KEY: string = "or"
 const XUSD_ASSET_KEY: string = "xa"
 const XUSD_CONTRACT_KEY: string = "xc"
 fn get_xel_asset() -> Hash { return Hash::zero() }
@@ -172,12 +172,9 @@ fn get_pool_key(a: Hash, b: Hash) -> string {
     return POOL_PREFIX + b.to_hex() + "_" + a.to_hex()
 }
 
-// FIX #3: ContractRegistry v5.0 entry 0 = get_entry
 fn get_oracle() -> Contract {
     let s: Storage = Storage::new()
-    let reg_hash: Hash = s.load(REGISTRY_KEY).expect("err")
-    let reg: Contract = Contract::new(reg_hash).expect("err")
-    let oracle_hash: Hash = reg.call(0u16, ["StakedOracle"], {})
+    let oracle_hash: Hash = s.load(ORACLE_KEY).expect("err")
     require(oracle_hash != Hash::zero(), "oraclenotfound")
     return Contract::new(oracle_hash).expect("err")
 }
@@ -479,7 +476,7 @@ entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     require(pool.is_psm, "notpsm")
 
     let oracle: Contract = get_oracle()
-    let xel_price: u64 = oracle.call(9u16, [get_xel_asset()], {})
+    let xel_price: u64 = oracle.call(4u16, [Hash::zero()], {})
     require(xel_price > 0, "noprice")
 
     let gross_xusd: u64 = (xel_amount as u128 * xel_price as u128 / PRICE_DECIMALS as u128) as u64
@@ -500,7 +497,7 @@ entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     let xusd_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("err")
     let xusd: Contract = Contract::new(xusd_hash).expect("err")
 
-    let _ = xusd.call(2u16, [caller, net_xusd, treasury, fee], {})
+    let _ = xusd.call(4u16, [caller, net_xusd, treasury, fee], {})
 
     pool.reserve_a += xel_amount
     s.store(key, pool)
@@ -531,7 +528,7 @@ entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     require(pool.is_psm, "notpsm")
 
     let oracle: Contract = get_oracle()
-    let xel_price: u64 = oracle.call(9u16, [get_xel_asset()], {})
+    let xel_price: u64 = oracle.call(4u16, [Hash::zero()], {})
     require(xel_price > 0, "noprice")
 
     let gross_xel: u64 = (xusd_amount as u128 * PRICE_DECIMALS as u128 / xel_price as u128) as u64
@@ -543,8 +540,9 @@ entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     require(pool.reserve_a >= net_xel, "insreserve")
 
     let xusd_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("err")
+    let _ = transfer_contract(xusd_hash, xusd_amount, xusd_asset)
     let xusd: Contract = Contract::new(xusd_hash).expect("err")
-    let _ = xusd.call(3u16, [xusd_amount], {})
+    let _ = xusd.call(5u16, [xusd_amount], {})
 
     let caller: Address = get_caller().expect("err")
     let _ = transfer(caller, net_xel, get_xel_asset())
@@ -800,7 +798,7 @@ entry set_psm_redeem_fee_bps(f: u64) -> u64 {
 // set registry.
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
-    Storage::new().store(REGISTRY_KEY, reg)
+    Storage::new().store(ORACLE_KEY, reg)
     return 0
 }
 

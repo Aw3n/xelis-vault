@@ -33,7 +33,13 @@ All contracts have been deployed, configured, and tested with full mint→redeem
 | **VaultEngine** | `667b165c8c9cd6cc3464378799e38b172e0f2e912f4b5c6202d37a8da3939bcc` | ✅ Full cycle | deposit → borrow → repay → withdraw tested |
 | **PSM (Stability Module)** | `9f2667447b9a850ba4b260c19cd2c3786bc4a3c5559a08332a9e13bfa47191ae` | ✅ Full cycle | mint xUSD → redeem XEL at oracle price |
 | **VaultSwapV2** | `1b6699398e2acecbdd1fd372952696cfc37b99eb1dcac45a7216661f96c60422` | ✅ Full cycle | create pool → psm_mint → psm_redeem tested |
-| **VLT** | `f1f40d151849f93dea6d78fddc8aa189a3b39f0606926bc1aa933d85e878ee86` | ✅ Deployed | 10M supply, pre-minted |
+| **VLT (v4 legacy)** | `f1f40d151849f93dea6d78fddc8aa189a3b39f0606926bc1aa933d85e878ee86` | ⏸ Legacy | Asset: `6a529801...` — incompatible with XelisVaultMiner |
+| **VLTToken v5** | `7be7519ee8b540b40268a9c02d03bff89f1269bd3f46acff44d75c88dd6d9d56` | ✅ New VLT | Minter pattern, asset: `09b367e4...` |
+| **XelisVaultMiner v2** | `fd370918fe99b8dd04804e3731b1b1aa6d73595a9a336b59d67063c2b52758d4` | ✅ Configured | VLT, asset, treasury set |
+| **Timelock v5** | `bf6c0004993d50d0edc31eb38cebad38aa95e522040c9ea1d48cdea2eb2df597` | ✅ Deployed | Governance delay lock |
+| **GovernanceVault v5** | `830ddfd85eb8ccd44678719cd32633806eba44aa4b455b3785ba04fb3a0b4aa9` | ✅ Configured | VLT contract + asset set |
+| **Governor v5** | `f8a5880d02616085b26fa4d2a5888bf3328d8ab679af1ed0c90d693bff09a119` | ✅ Configured | GovVault + Timelock set |
+| **GuardianMultisig v5** | `4c5783d36173e309fa47c746c37f865accf08c1a4dfee92ba84cc08392326e4a` | ✅ Configured | Timelock set |
 
 ---
 

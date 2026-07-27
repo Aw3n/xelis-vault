@@ -369,10 +369,15 @@ entry claim_pool_rewards() -> u64 {
 // @params: pool_id - u64
 // @returns: tuple: (
 // @security: standard access control
-entry get_pool_entry(pool_id: u64) -> (Address, string, string, u64, u64, u64, bool) {
+fn get_pool_impl(pool_id: u64) -> (Address, string, string, u64, u64, u64, bool) {
     let s: Storage = Storage::new()
     let pool: Pool = s.load(pool_key(pool_id)).expect("err")
     return (pool.creator, pool.name, pool.description, pool.creator_commission_bps, pool.total_stake, pool.created_at, pool.active)
+}
+
+// ID 6: get_pool_entry (entry wrapper for get_pool_impl)
+entry get_pool_entry(pool_id: u64) -> (Address, string, string, u64, u64, u64, bool) {
+    return get_pool_impl(pool_id)
 }
 
 // ID 7: get_pool_members_entry
@@ -391,12 +396,17 @@ entry get_pool_members_entry(pool_id: u64) -> u64 {
 // @params: pool_id - u64
 // @returns: u
 // @security: standard access control
-entry get_pool_reputation_entry(pool_id: u64) -> u64 {
+fn get_pool_reputation_impl(pool_id: u64) -> u64 {
     let s: Storage = Storage::new()
     let pool: Pool = s.load(pool_key(pool_id)).expect("err")
     let members_count: u64 = s.load(pool_members_count_key(pool_id)).unwrap_or(0)
     if members_count == 0 { return 0 }
     return 5000
+}
+
+// ID 8: get_pool_reputation_entry (entry wrapper)
+entry get_pool_reputation_entry(pool_id: u64) -> u64 {
+    return get_pool_reputation_impl(pool_id)
 }
 
 // ID 9: get_user_pool_entry
@@ -587,7 +597,7 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // @returns: tuple: (
 // @security: standard access control
 pub fn get_pool(pool_id: u64) -> (Address, string, string, u64, u64, u64, bool) {
-    return get_pool_entry(pool_id)
+    return get_pool_impl(pool_id)
 }
 
 // get pool members.
@@ -605,7 +615,7 @@ pub fn get_pool_members(pool_id: u64) -> u64 {
 // @returns: u
 // @security: standard access control
 pub fn get_pool_reputation(pool_id: u64) -> u64 {
-    return get_pool_reputation_entry(pool_id)
+    return get_pool_reputation_impl(pool_id)
 }
 
 // get user pool.

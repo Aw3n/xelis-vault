@@ -538,8 +538,8 @@ entry get_health_factor_entry(vault_id: u64) -> u64 {
 // @security: read-only, no access restrictions
 // ID 7: total_vaults_entry
 entry total_vaults_entry() -> u64 {
-    let c: optional<u64> = Storage::new().load(COUNTER_KEY)
-    return c.unwrap_or(1) - 1
+    let c: u64 = Storage::new().load(COUNTER_KEY).unwrap_or(1)
+    return c - 1
 }
 
 // Returns the current size of the redemption FIFO queue.
@@ -877,16 +877,6 @@ pub fn get_vault(vault_id: u64) -> (Address, Hash, u64, u64, u64, bool, u64) {
 // @params: vault_id - target vault to inspect
 // @returns: health factor in bps, or 0 if vault missing/liquidated
 // @security: read-only, no state mutation (delegates to get_health_factor)
-pub fn get_vault_health(vault_id: u64) -> u64 {
-    // Read-only version — does NOT call update_stability_fee_index (avoids state mutation in pub fn)
-    return get_health_factor(vault_id)
-}
-
-// Computes vault health factor in bps using accrued borrow (read-only view).
-// @caller: anyone
-// @params: vault_id - target vault to inspect
-// @returns: health factor in bps (u64::MAX when debt is 0), or 0 if vault missing/liquidated
-// @security: read-only, no state mutation
 pub fn get_health_factor(vault_id: u64) -> u64 {
     let rs: Storage = Storage::new()
     let vault_opt: optional<VaultSnapshot> = rs.load(VAULT_PREFIX + vault_id.to_string(10u32))
@@ -895,6 +885,16 @@ pub fn get_health_factor(vault_id: u64) -> u64 {
     if vault.liquidated { return 0 }
     let accrued_bp: u64 = get_accrued_borrow(vault)
     return calc_health_factor_bps(vault.collateral_amount, accrued_bp)
+}
+
+// Computes vault health factor in bps using accrued borrow (read-only view).
+// @caller: anyone
+// @params: vault_id - target vault to inspect
+// @returns: health factor in bps (u64::MAX when debt is 0), or 0 if vault missing/liquidated
+// @security: read-only, no state mutation
+pub fn get_vault_health(vault_id: u64) -> u64 {
+    // Read-only version — does NOT call update_stability_fee_index (avoids state mutation in pub fn)
+    return get_health_factor(vault_id)
 }
 
 // Returns accrued borrow (principal + accumulated fee) for a vault (read-only view).
@@ -945,7 +945,7 @@ pub fn get_stability_fee_bps() -> u64 {
 // @caller: anyone
 // @returns: true if paused, false otherwise
 // @security: read-only, no access restrictions
-pub fn is_paused() -> bool {
+pub fn is_paused_cc() -> bool {
     return Storage::new().load(PAUSED_KEY).unwrap_or(false)
 }
 
@@ -992,7 +992,8 @@ pub fn get_registry() -> Hash {
 // Note: This iterates all vaults — for large vault counts, prefer an off-chain indexer.
 pub fn get_vault_ids_for_user_paginated(user: Address, offset: u64, limit: u64) -> u64[] {
     let s: Storage = Storage::new()
-    let total: u64 = s.load(COUNTER_KEY).unwrap_or(1) - 1
+    let total_raw: u64 = s.load(COUNTER_KEY).unwrap_or(1)
+    let total: u64 = total_raw - 1
     let result: u64[] = []
     let i: u64 = 1  // vault IDs start at 1
     let skipped: u64 = 0

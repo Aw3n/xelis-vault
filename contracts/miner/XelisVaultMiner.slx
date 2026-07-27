@@ -566,8 +566,8 @@ entry distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) -> 
 
     let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("err")
     let vlt: Contract = Contract::new(vlt_hash).expect("err")
-    // VLTToken entry 0 = mint_to(to: Address, amount: u64) — see VLTToken v5.0
-    let _ = vlt.call(0u16, [miner_addr, reward], {})
+    // VLTToken v5 entry 4 = mint_to(to: Address, amount: u64)
+    let _ = vlt.call(4u16, [miner_addr, reward], {})
 
     miner.total_rewards_earned += reward
     miner.valid_submissions += 1

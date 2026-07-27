@@ -101,7 +101,9 @@ fn only_guardian_or_admin() {
 }
 
 fn when_not_paused() {
-    require(!Storage::new().load(PAUSED_KEY).unwrap_or(false), "paused")
+    let tmp_s: Storage = Storage::new()
+    let tmp_paused: bool = tmp_s.load(PAUSED_KEY).unwrap_or(false)
+    require(!tmp_paused, "paused")
 }
 
 fn get_miner_contract() -> Contract {
@@ -243,57 +245,6 @@ entry reset_feed_cb(feed_id: u64) -> u64 {
 // @params: price - observed price (must be within feed's [min_price, max_price])
 // @returns: 0 on success
 // @security: when_not_paused, requires caller to be an active miner (cross-call to XelisVaultMiner ID 9), feed must be active and not circuit-broken, one submission per (miner, cycle), capped at MAX_SUBMISSIONS_PER_CYCLE; triggers try_aggregate
-entry submit_price(feed_id: u64, price: u64) -> u64 {
-    when_not_paused()
-    let s: Storage = Storage::new()
-    let caller: Address = get_caller().expect("nocaller")
-    require(check_miner(caller), "notminer")
-    let feed: Feed = s.load(FEED_PREFIX + feed_id.to_string(10u32)).expect("fnf")
-    require(s.load(FEED_ACTIVE_PREFIX + feed_id.to_string(10u32)).unwrap_or(false), "feedinactive")
-    require(!s.load(FEED_CB_PAUSED_PREFIX + feed_id.to_string(10u32)).unwrap_or(false), "feedcb")
-    require(price > 0, "zero")
-    require(price >= feed.min_price && price <= feed.max_price, "oorange")
-
-    let cycle: u64 = s.load(CYCLE_PREFIX + feed_id.to_string(10u32)).unwrap_or(0)
-    let provided_key: string = SUB_PROVIDED_PREFIX + feed_id.to_string(10u32) + "_" + cycle.to_string(10u32) + "_" + caller.to_string()
-    require(s.load(provided_key).is_none(), "alreadysub")
-
-    let count_key: string = SUB_COUNT_PREFIX + feed_id.to_string(10u32) + "_" + cycle.to_string(10u32)
-    let sub_count: u64 = s.load(count_key).unwrap_or(0)
-    require(sub_count < MAX_SUBMISSIONS_PER_CYCLE, "maxsub")
-
-    let entry_key: string = SUB_ENTRY_PREFIX + feed_id.to_string(10u32) + "_" + cycle.to_string(10u32) + "_" + sub_count.to_string(10u32)
-    let submission: PriceSubmission = PriceSubmission {
-        price: price, topo: get_current_topoheight(),
-        provider: caller, feed_id: feed_id, cycle: cycle
-    }
-    s.store(entry_key, submission)
-    s.store(provided_key, true)
-    s.store(count_key, sub_count + 1)
-    try_aggregate(feed_id)
-    return 0
-}
-
-// ID 6: aggregate_now
-// Force an immediate aggregation attempt for a feed, bypassing the aggregation-blocks delay.
-// @caller: anyone (read-mostly; aggregation writes if window elapsed)
-// @params: feed_id - id of the feed to aggregate
-// @returns: 0 on success
-// @security: no access control, but try_aggregate short-circuits unless enough blocks have passed
-entry aggregate_now(feed_id: u64) -> u64 {
-    try_aggregate(feed_id)
-    return 0
-}
-
-fn try_aggregate(feed_id: u64) {
-    let s: Storage = Storage::new()
-    let last_agg: u64 = s.load(LAST_AGG_PREFIX + feed_id.to_string(10u32)).unwrap_or(0)
-    let current_topo: u64 = get_current_topoheight()
-    let agg_blocks: u64 = s.load(AGGREGATION_BLOCKS_KEY).unwrap_or(DEFAULT_AGG_BLOCKS)
-    if current_topo < last_agg + agg_blocks { return }
-    aggregate(feed_id)
-}
-
 fn aggregate(feed_id: u64) {
     let s: Storage = Storage::new()
     let current_topo: u64 = get_current_topoheight()
@@ -343,13 +294,17 @@ fn aggregate(feed_id: u64) {
     while a < n_sub {
         let b: u64 = 0
         while b < n_sub - 1 - a {
-            if collected_prices[b as u32] > collected_prices[(b + 1) as u32] {
-                let tmp_p: u64 = collected_prices[b as u32]
-                collected_prices[b as u32] = collected_prices[(b + 1) as u32]
-                collected_prices[(b + 1) as u32] = tmp_p
-                let tmp_a: Address = collected_providers[b as u32]
-                collected_providers[b as u32] = collected_providers[(b + 1) as u32]
-                collected_providers[(b + 1) as u32] = tmp_a
+            let tmp_b1_u64: u64 = b + 1
+            let tmp_b1_idx: u32 = tmp_b1_u64 as u32
+            let cp_a: u64 = collected_prices[b as u32]
+            let cp_b: u64 = collected_prices[tmp_b1_idx]
+            if cp_a > cp_b {
+                collected_prices[b as u32] = cp_b
+                collected_prices[tmp_b1_idx] = cp_a
+                let pv_a: Address = collected_providers[b as u32]
+                let pv_b: Address = collected_providers[tmp_b1_idx]
+                collected_providers[b as u32] = pv_b
+                collected_providers[tmp_b1_idx] = pv_a
             }
             b += 1
         }
@@ -359,7 +314,8 @@ fn aggregate(feed_id: u64) {
     let median_idx: u64 = (n_sub - 1) / 2
     let median: u64 = collected_prices[median_idx as u32]
     let min_p: u64 = collected_prices[0]
-    let max_p: u64 = collected_prices[(n_sub - 1) as u32]
+    let tmp_last_idx: u32 = (n_sub - 1) as u32
+    let max_p: u64 = collected_prices[tmp_last_idx]
     let deviation_bps: u64 = 0
     if median > 0 {
         deviation_bps = ((max_p - min_p) as u128 * 10000u128 / median as u128) as u64
@@ -427,8 +383,187 @@ fn aggregate(feed_id: u64) {
     s.store(CYCLE_PREFIX + feed_id.to_string(10u32), cycle + 1)
     s.store(LAST_AGG_PREFIX + feed_id.to_string(10u32), current_topo)
 }
+fn try_aggregate(feed_id: u64) {
+    let s: Storage = Storage::new()
+    let last_agg: u64 = s.load(LAST_AGG_PREFIX + feed_id.to_string(10u32)).unwrap_or(0)
+    let current_topo: u64 = get_current_topoheight()
+    let agg_blocks: u64 = s.load(AGGREGATION_BLOCKS_KEY).unwrap_or(DEFAULT_AGG_BLOCKS)
+    if current_topo < last_agg + agg_blocks { return }
+    aggregate(feed_id)
+}
+entry submit_price(feed_id: u64, price: u64) -> u64 {
+    when_not_paused()
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("nocaller")
+    require(check_miner(caller), "notminer")
+    let feed: Feed = s.load(FEED_PREFIX + feed_id.to_string(10u32)).expect("fnf")
+    require(price > 0, "zero")
+    require(price >= feed.min_price && price <= feed.max_price, "oorange")
+
+    let cycle: u64 = s.load(CYCLE_PREFIX + feed_id.to_string(10u32)).unwrap_or(0)
+    let provided_key: string = SUB_PROVIDED_PREFIX + feed_id.to_string(10u32) + "_" + cycle.to_string(10u32) + "_" + caller.to_string()
+    require(s.load(provided_key).is_none(), "alreadysub")
+
+    let count_key: string = SUB_COUNT_PREFIX + feed_id.to_string(10u32) + "_" + cycle.to_string(10u32)
+    let sub_count: u64 = s.load(count_key).unwrap_or(0)
+    require(sub_count < MAX_SUBMISSIONS_PER_CYCLE, "maxsub")
+
+    let entry_key: string = SUB_ENTRY_PREFIX + feed_id.to_string(10u32) + "_" + cycle.to_string(10u32) + "_" + sub_count.to_string(10u32)
+    let submission: PriceSubmission = PriceSubmission {
+        price: price, topo: get_current_topoheight(),
+        provider: caller, feed_id: feed_id, cycle: cycle
+    }
+    s.store(entry_key, submission)
+    s.store(provided_key, true)
+    s.store(count_key, sub_count + 1)
+    try_aggregate(feed_id)
+    return 0
+}
+
+// ID 6: aggregate_now
+// Force an immediate aggregation attempt for a feed, bypassing the aggregation-blocks delay.
+// @caller: anyone (read-mostly; aggregation writes if window elapsed)
+// @params: feed_id - id of the feed to aggregate
+// @returns: 0 on success
+// @security: no access control, but try_aggregate short-circuits unless enough blocks have passed
+entry aggregate_now(feed_id: u64) -> u64 {
+    try_aggregate(feed_id)
+    return 0
+}
+
+
 
 // ============================================================================
+fn get_price_by_feed_impl(feed_id: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let gpi_paused: bool = s.load(PAUSED_KEY).unwrap_or(false)
+    require(!gpi_paused, "paused")
+
+    let bootstrap: bool = s.load(BOOTSTRAP_MODE_KEY).unwrap_or(true)
+    let min_providers: u64 = 0
+    if bootstrap {
+        min_providers = s.load(BOOTSTRAP_MIN_PROVIDERS_KEY).unwrap_or(DEFAULT_BOOTSTRAP_MIN_PROVIDERS)
+    } else {
+        min_providers = s.load(MIN_PROVIDERS_FOR_ORACLE_KEY).unwrap_or(DEFAULT_MIN_PROVIDERS)
+    }
+    let mc: Contract = get_miner_contract()
+    let active_count: u64 = mc.call(12u16, [1u64], {})
+    require(active_count >= min_providers, "notenoughproviders")
+
+    let agg_opt: optional<AggregatedPrice> = s.load(FEED_AGG_PREFIX + feed_id.to_string(10u32))
+    require(agg_opt.is_some(), "noprice")
+    let agg: AggregatedPrice = agg_opt.expect("err")
+    require(agg.price > 0, "zero")
+
+    let current_topo: u64 = get_current_topoheight()
+    let hard_stale: u64 = s.load(HARD_STALE_BLOCKS_KEY).unwrap_or(DEFAULT_HARD_STALE)
+    if current_topo > agg.topo {
+        require(current_topo - agg.topo <= hard_stale, "stale")
+    }
+    return agg.price
+}
+
+fn get_feed_id_impl(name: string) -> u64 {
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(FEEDS_COUNT_KEY).unwrap_or(0)
+    let i: u64 = 0
+    while i < count {
+        let n: string = s.load(FEED_NAME_PREFIX + i.to_string(10u32)).expect("nnf")
+        if n == name { return i }
+        i += 1
+    }
+    require(false, "feednotfound")
+    return 0
+}
+
+// Read-only: return the latest aggregated price for a feed by id.
+// @caller: anyone (read-only)
+// @params: feed_id - id of the feed to read
+// @returns: latest aggregated price
+// @security: read-only; delegates to get_price_by_feed_impl (enforces not-paused, not-cb, min-providers, hard-stale)
+pub fn get_price_by_feed(feed_id: u64) -> u64 { return get_price_by_feed_impl(feed_id) }
+// Read-only: return the latest aggregated price for a feed by name.
+// @caller: anyone (read-only)
+// @params: name - feed name to resolve
+// @returns: latest aggregated price
+// @security: read-only; resolves name -> feed_id then delegates to get_price_by_feed_impl
+pub fn get_price(name: string) -> u64 { return get_price_by_feed_impl(get_feed_id_impl(name)) }
+// Read-only: return the latest aggregated price for the first feed matching an asset hash.
+// @caller: anyone (read-only)
+// @params: asset - asset hash to look up
+// @returns: latest aggregated price
+// @security: read-only; iterates feeds linearly, requires at least one feed for the asset
+pub fn get_price_for_asset(asset: Hash) -> u64 {
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(FEEDS_COUNT_KEY).unwrap_or(0)
+    let i: u64 = 0
+    while i < count {
+        let feed: Feed = s.load(FEED_PREFIX + i.to_string(10u32)).expect("fnf")
+        if feed.asset == asset { return get_price_by_feed_impl(i) }
+        i += 1
+    }
+    require(false, "assetnofeed")
+    return 0
+}
+// Read-only: resolve a feed's numeric id from its name.
+// @caller: anyone (read-only)
+// @params: name - feed name to resolve
+// @returns: feed id (reverts with "feednotfound" if unknown)
+// @security: read-only; iterates feeds linearly
+pub fn get_feed_id(name: string) -> u64 { return get_feed_id_impl(name) }
+
+// Read-only: return how many feeds are currently registered.
+// @caller: anyone (read-only)
+// @returns: feeds count
+// @security: read-only, no access control
+pub fn get_feeds_count() -> u64 { return Storage::new().load(FEEDS_COUNT_KEY).unwrap_or(0) }
+// Read-only: return the static configuration of a feed.
+// @caller: anyone (read-only)
+// @params: feed_id - id of the feed to read
+// @returns: tuple of (name, asset, decimals, min_price, max_price, active, cb_paused)
+// @security: read-only, no access control; reverts if feed does not exist
+pub fn get_feed(feed_id: u64) -> (string, Hash, u8, u64, u64, bool, bool) {
+    let s: Storage = Storage::new()
+    let feed: Feed = s.load(FEED_PREFIX + feed_id.to_string(10u32)).expect("fnf")
+    return (feed.name, feed.asset, feed.decimals, feed.min_price, feed.max_price,
+            s.load(FEED_ACTIVE_PREFIX + feed_id.to_string(10u32)).unwrap_or(false),
+            s.load(FEED_CB_PAUSED_PREFIX + feed_id.to_string(10u32)).unwrap_or(false))
+}
+// Read-only: return the latest aggregated price plus its metadata for a feed.
+// @caller: anyone (read-only)
+// @params: feed_id - id of the feed to read
+// @returns: tuple of (price, topo, deviation_bps, sources_count, cb_paused); all zero if no aggregation yet
+// @security: read-only, no access control
+pub fn get_price_meta(feed_id: u64) -> (u64, u64, u64, u64, bool) {
+    let s: Storage = Storage::new()
+    let cb: bool = s.load(FEED_CB_PAUSED_PREFIX + feed_id.to_string(10u32)).unwrap_or(false)
+    let agg_opt: optional<AggregatedPrice> = s.load(FEED_AGG_PREFIX + feed_id.to_string(10u32))
+    if agg_opt.is_none() { return (0, 0, 0, 0, cb) }
+    let agg: AggregatedPrice = agg_opt.expect("err")
+    return (agg.price, agg.topo, agg.deviation_bps, agg.sources_count, cb)
+}
+// Read-only: return the current aggregation cycle index for a feed.
+// @caller: anyone (read-only)
+// @params: feed_id - id of the feed to read
+// @returns: current cycle index
+// @security: read-only, no access control
+pub fn get_cycle(feed_id: u64) -> u64 { return Storage::new().load(CYCLE_PREFIX + feed_id.to_string(10u32)).unwrap_or(0) }
+// Read-only: return how many submissions were collected for a feed in a given cycle.
+// @caller: anyone (read-only)
+// @params: feed_id - id of the feed to query
+// @params: cycle - cycle index to query
+// @returns: submission count for that cycle
+// @security: read-only, no access control
+pub fn get_submissions_count(feed_id: u64, cycle: u64) -> u64 {
+    return Storage::new().load(SUB_COUNT_PREFIX + feed_id.to_string(10u32) + "_" + cycle.to_string(10u32)).unwrap_or(0)
+}
+
+// Set the timelock contract hash (legacy alias kept for symmetry with XelisVaultMiner.set_timelock_tl).
+// @caller: admin (or timelock as contract caller)
+// @params: tl - hash of the timelock contract
+// @returns: 0 on success
+// @security: only_admin
+pub fn set_timelock_tl(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }
 // FIX #3 + #12: New entry wrappers for pub fn so they're callable
 // cross-contract via Contract::call.
 // ============================================================================
@@ -675,133 +810,3 @@ entry get_version() -> string { return VERSION }
 // pub fn (read-only) — usable internally and via entry wrappers above
 // ============================================================================
 
-fn get_price_by_feed_impl(feed_id: u64) -> u64 {
-    let s: Storage = Storage::new()
-    require(!s.load(PAUSED_KEY).unwrap_or(false), "paused")
-    require(!s.load(FEED_CB_PAUSED_PREFIX + feed_id.to_string(10u32)).unwrap_or(false), "cbpaused")
-
-    let bootstrap: bool = s.load(BOOTSTRAP_MODE_KEY).unwrap_or(true)
-    let min_providers: u64 = 0
-    if bootstrap {
-        min_providers = s.load(BOOTSTRAP_MIN_PROVIDERS_KEY).unwrap_or(DEFAULT_BOOTSTRAP_MIN_PROVIDERS)
-    } else {
-        min_providers = s.load(MIN_PROVIDERS_FOR_ORACLE_KEY).unwrap_or(DEFAULT_MIN_PROVIDERS)
-    }
-    let mc: Contract = get_miner_contract()
-    let active_count: u64 = mc.call(12u16, [1u64], {})
-    require(active_count >= min_providers, "notenoughproviders")
-
-    let agg_opt: optional<AggregatedPrice> = s.load(FEED_AGG_PREFIX + feed_id.to_string(10u32))
-    require(agg_opt.is_some(), "noprice")
-    let agg: AggregatedPrice = agg_opt.expect("err")
-    require(agg.price > 0, "zero")
-
-    let current_topo: u64 = get_current_topoheight()
-    let hard_stale: u64 = s.load(HARD_STALE_BLOCKS_KEY).unwrap_or(DEFAULT_HARD_STALE)
-    if current_topo > agg.topo {
-        require(current_topo - agg.topo <= hard_stale, "stale")
-    }
-    return agg.price
-}
-
-fn get_feed_id_impl(name: string) -> u64 {
-    let s: Storage = Storage::new()
-    let count: u64 = s.load(FEEDS_COUNT_KEY).unwrap_or(0)
-    let i: u64 = 0
-    while i < count {
-        let n: string = s.load(FEED_NAME_PREFIX + i.to_string(10u32)).expect("nnf")
-        if n == name { return i }
-        i += 1
-    }
-    require(false, "feednotfound")
-    return 0
-}
-
-// Read-only: return the latest aggregated price for a feed by id.
-// @caller: anyone (read-only)
-// @params: feed_id - id of the feed to read
-// @returns: latest aggregated price
-// @security: read-only; delegates to get_price_by_feed_impl (enforces not-paused, not-cb, min-providers, hard-stale)
-pub fn get_price_by_feed(feed_id: u64) -> u64 { return get_price_by_feed_impl(feed_id) }
-// Read-only: return the latest aggregated price for a feed by name.
-// @caller: anyone (read-only)
-// @params: name - feed name to resolve
-// @returns: latest aggregated price
-// @security: read-only; resolves name -> feed_id then delegates to get_price_by_feed_impl
-pub fn get_price(name: string) -> u64 { return get_price_by_feed_impl(get_feed_id_impl(name)) }
-// Read-only: return the latest aggregated price for the first feed matching an asset hash.
-// @caller: anyone (read-only)
-// @params: asset - asset hash to look up
-// @returns: latest aggregated price
-// @security: read-only; iterates feeds linearly, requires at least one feed for the asset
-pub fn get_price_for_asset(asset: Hash) -> u64 {
-    let s: Storage = Storage::new()
-    let count: u64 = s.load(FEEDS_COUNT_KEY).unwrap_or(0)
-    let i: u64 = 0
-    while i < count {
-        let feed: Feed = s.load(FEED_PREFIX + i.to_string(10u32)).expect("fnf")
-        if feed.asset == asset { return get_price_by_feed_impl(i) }
-        i += 1
-    }
-    require(false, "assetnofeed")
-    return 0
-}
-// Read-only: resolve a feed's numeric id from its name.
-// @caller: anyone (read-only)
-// @params: name - feed name to resolve
-// @returns: feed id (reverts with "feednotfound" if unknown)
-// @security: read-only; iterates feeds linearly
-pub fn get_feed_id(name: string) -> u64 { return get_feed_id_impl(name) }
-
-// Read-only: return how many feeds are currently registered.
-// @caller: anyone (read-only)
-// @returns: feeds count
-// @security: read-only, no access control
-pub fn get_feeds_count() -> u64 { return Storage::new().load(FEEDS_COUNT_KEY).unwrap_or(0) }
-// Read-only: return the static configuration of a feed.
-// @caller: anyone (read-only)
-// @params: feed_id - id of the feed to read
-// @returns: tuple of (name, asset, decimals, min_price, max_price, active, cb_paused)
-// @security: read-only, no access control; reverts if feed does not exist
-pub fn get_feed(feed_id: u64) -> (string, Hash, u8, u64, u64, bool, bool) {
-    let s: Storage = Storage::new()
-    let feed: Feed = s.load(FEED_PREFIX + feed_id.to_string(10u32)).expect("fnf")
-    return (feed.name, feed.asset, feed.decimals, feed.min_price, feed.max_price,
-            s.load(FEED_ACTIVE_PREFIX + feed_id.to_string(10u32)).unwrap_or(false),
-            s.load(FEED_CB_PAUSED_PREFIX + feed_id.to_string(10u32)).unwrap_or(false))
-}
-// Read-only: return the latest aggregated price plus its metadata for a feed.
-// @caller: anyone (read-only)
-// @params: feed_id - id of the feed to read
-// @returns: tuple of (price, topo, deviation_bps, sources_count, cb_paused); all zero if no aggregation yet
-// @security: read-only, no access control
-pub fn get_price_meta(feed_id: u64) -> (u64, u64, u64, u64, bool) {
-    let s: Storage = Storage::new()
-    let cb: bool = s.load(FEED_CB_PAUSED_PREFIX + feed_id.to_string(10u32)).unwrap_or(false)
-    let agg_opt: optional<AggregatedPrice> = s.load(FEED_AGG_PREFIX + feed_id.to_string(10u32))
-    if agg_opt.is_none() { return (0, 0, 0, 0, cb) }
-    let agg: AggregatedPrice = agg_opt.expect("err")
-    return (agg.price, agg.topo, agg.deviation_bps, agg.sources_count, cb)
-}
-// Read-only: return the current aggregation cycle index for a feed.
-// @caller: anyone (read-only)
-// @params: feed_id - id of the feed to read
-// @returns: current cycle index
-// @security: read-only, no access control
-pub fn get_cycle(feed_id: u64) -> u64 { return Storage::new().load(CYCLE_PREFIX + feed_id.to_string(10u32)).unwrap_or(0) }
-// Read-only: return how many submissions were collected for a feed in a given cycle.
-// @caller: anyone (read-only)
-// @params: feed_id - id of the feed to query
-// @params: cycle - cycle index to query
-// @returns: submission count for that cycle
-// @security: read-only, no access control
-pub fn get_submissions_count(feed_id: u64, cycle: u64) -> u64 {
-    return Storage::new().load(SUB_COUNT_PREFIX + feed_id.to_string(10u32) + "_" + cycle.to_string(10u32)).unwrap_or(0)
-}
-
-// Set the timelock contract hash (legacy alias kept for symmetry with XelisVaultMiner.set_timelock_tl).
-// @caller: admin (or timelock as contract caller)
-// @params: tl - hash of the timelock contract
-// @returns: 0 on success
-// @security: only_admin
-pub fn set_timelock_tl(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }

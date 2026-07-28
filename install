@@ -2,9 +2,9 @@
 # ============================================================================
 #  XELIS Vault — All-in-One Installer
 # ============================================================================
-#  Install : curl -fsSL https://xelisvault.github.io/install | bash
-#  Update  : curl -fsSL https://xelisvault.github.io/install | bash
-#  Uninstall : curl -fsSL https://xelisvault.github.io/install | bash -s -- --uninstall
+#  Install : curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash
+#  Update  : curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash
+#  Uninstall : curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash -s -- --uninstall
 # ============================================================================
 set -euo pipefail
 
@@ -525,7 +525,7 @@ if [[ $SKIP_WALLET -eq 0 ]]; then
                     --daemon-address http://127.0.0.1:18081 --network testnet \
                     --rpc-bind-address 127.0.0.1:18082 --rpc-username wallet \
                     --rpc-password "$WALLET_PASSWORD" --disable-ascii-art \
-                    --disable-interactive-mode --logs-path "$LOGS_DIR" --log-level info &
+                    --disable-interactive-mode --logs-path "${LOGS_DIR}/" --log-level info &
                 WALLET_PID=$!
                 sleep 4
                 ADDR_OUTPUT=$(curl -s --user "wallet:${WALLET_PASSWORD}" \
@@ -560,7 +560,7 @@ if [[ $SKIP_WALLET -eq 0 ]]; then
                     --daemon-address http://127.0.0.1:18081 --network testnet \
                     --rpc-bind-address 127.0.0.1:18082 --rpc-username wallet \
                     --rpc-password "$WALLET_PASSWORD" --disable-ascii-art \
-                    --disable-interactive-mode --logs-path "$LOGS_DIR" --log-level info &
+                    --disable-interactive-mode --logs-path "${LOGS_DIR}/" --log-level info &
                 WALLET_PID=$!
                 sleep 4
 
@@ -792,7 +792,7 @@ case "$1" in
             --rpc-password "$WALLET_PASS" \
             --disable-ascii-art \
             --disable-interactive-mode \
-            --logs-path "__LOGS_DIR__" \
+            --logs-path "__LOGS_DIR__/" \
             --log-level info \
             "$@"
         ;;
@@ -801,7 +801,7 @@ case "$1" in
         exec xelis_daemon \
             --network testnet \
             --dir-path "__INSTALL_DIR__/data" \
-            --logs-path "__LOGS_DIR__" \
+            --logs-path "__LOGS_DIR__/" \
             --rpc-bind-address 127.0.0.1:18081 \
             --p2p-bind-address 0.0.0.0:2125 \
             --disable-ascii-art \
@@ -816,13 +816,24 @@ case "$1" in
 esac
 LAUNCHER
 
-# Remplacer les placeholders
-sed -i "s|__INSTALL_DIR__|${INSTALL_DIR}|g" "${BIN_DIR}/xvault"
-sed -i "s|__VENV_DIR__|${VENV_DIR}|g" "${BIN_DIR}/xvault"
-sed -i "s|__SRC_DIR__|${INSTALL_DIR}/src|g" "${BIN_DIR}/xvault"
-sed -i "s|__CONFIG_DIR__|${CONFIG_DIR}|g" "${BIN_DIR}/xvault"
-sed -i "s|__WALLET_DIR__|${WALLET_DIR}|g" "${BIN_DIR}/xvault"
-sed -i "s|__LOGS_DIR__|${LOGS_DIR}|g" "${BIN_DIR}/xvault"
+# Replace placeholders (macOS/Linux compatible)
+python3 -c "
+import sys
+pairs = [
+    ('__INSTALL_DIR__', '${INSTALL_DIR}'),
+    ('__VENV_DIR__', '${VENV_DIR}'),
+    ('__SRC_DIR__', '${INSTALL_DIR}/src'),
+    ('__CONFIG_DIR__', '${CONFIG_DIR}'),
+    ('__WALLET_DIR__', '${WALLET_DIR}'),
+    ('__LOGS_DIR__', '${LOGS_DIR}'),
+]
+with open('${BIN_DIR}/xvault') as f:
+    data = f.read()
+for old, new in pairs:
+    data = data.replace(old, new)
+with open('${BIN_DIR}/xvault', 'w') as f:
+    f.write(data)
+"
 
 chmod +x "${BIN_DIR}/xvault"
 success "Launcher installed: ${BIN_DIR}/xvault"
@@ -866,7 +877,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=${XELIS_DIR}/xelis_daemon --network testnet --dir-path ${INSTALL_DIR}/data --logs-path ${LOGS_DIR} --rpc-bind-address 127.0.0.1:18081 --p2p-bind-address 0.0.0.0:2125 --disable-ascii-art --enable-contracts-logging
+ExecStart=${XELIS_DIR}/xelis_daemon --network testnet --dir-path ${INSTALL_DIR}/data --logs-path ${LOGS_DIR}/ --rpc-bind-address 127.0.0.1:18081 --p2p-bind-address 0.0.0.0:2125 --disable-ascii-art --enable-contracts-logging
 Restart=on-failure
 RestartSec=10
 
@@ -925,7 +936,7 @@ EOF
         <string>--dir-path</string>
         <string>${INSTALL_DIR}/data</string>
         <string>--logs-path</string>
-        <string>${LOGS_DIR}</string>
+        <string>${LOGS_DIR}/</string>
         <string>--rpc-bind-address</string>
         <string>127.0.0.1:18081</string>
         <string>--p2p-bind-address</string>
@@ -1066,7 +1077,7 @@ if [[ $DAEMON_RUNNING -eq 0 ]]; then
     if [[ -f "${XELIS_DIR}/xelis_daemon" ]]; then
         printf "     Run: xvault --daemon\n"
         printf "     Or:  ${XELIS_DIR}/xelis_daemon --network testnet \\\\\n"
-        printf "               --dir-path ${INSTALL_DIR}/data --logs-path ${LOGS_DIR} \\\\\n"
+        printf "               --dir-path ${INSTALL_DIR}/data --logs-path ${LOGS_DIR}/ \\\\\n"
         printf "               --rpc-bind-address 127.0.0.1:18081 &\n"
     else
         printf "     Download xelis_daemon first from:\n"

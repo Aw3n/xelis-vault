@@ -1,153 +1,30 @@
 # XELIS Vault — Privacy-First DeFi on XELIS BlockDAG
 
-> **v5.0** — Core contracts deployed and verified on testnet | MIT License
+**XELIS Vault** is a decentralized finance protocol built on [XELIS](https://xelis.io), a privacy-focused Layer-1 blockchain featuring homomorphically-encrypted balances and native confidential assets.
 
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-
----
-
-## Overview
-
-XELIS Vault is a decentralized finance protocol on the **XELIS BlockDAG** — a privacy-focused Layer-1 with homomorphic-encrypted balances and native confidential assets.
-
-The protocol provides:
-
-| Product | Contracts | What it does |
-|---------|-----------|--------------|
-| **xUSD Stablecoin** | `xUSD`, `PSM`, `VaultEngine` | Borrow xUSD against XEL collateral; redeem via PSM at oracle price |
-| **AMM + PSM** | `VaultSwapV2` | Constant-product AMM with integrated PSM for xUSD/XEL swaps |
-| **Price Oracle** | `PriceOracle` | On-chain XEL/USD price feed with propose-execute timelock |
-| **VLT Token** | `VLT` | Governance token — fixed supply 10M, pre-minted to GovernanceVault |
+The protocol suite includes a **CDP stablecoin engine** (xUSD), an **automated market maker** with integrated stability module (VaultSwap + PSM), a **governance framework** (VLT → Governor → Timelock), and a **miner rewards system** that distributes VLT to operators who maintain the oracle and other protocol services.
 
 ---
 
-## Deployed Contracts (Testnet)
+## Contract Addresses (Testnet)
 
-All contracts have been deployed, configured, and tested with full mint→redeem cycles.
+| Contract | Address | Description |
+|----------|---------|-------------|
+| **PriceOracle v2.1** | `764ad585c2f484e54ea9dd06a7fb8b81397ba2487d37298f27edce3747d836dd` | XEL/USD price feed with propose-execute timelock and `distribute_reward` integration |
+| **VaultEngine** | `667b165c8c9cd6cc3464378799e38b172e0f2e912f4b5c6202d37a8da3939bcc` | CDP engine — deposit XEL, borrow xUSD |
+| **xUSD** | `909576c1fcd889ec443b63a4ce014bf756fcb8afd74c8c0ee902cac03384e3fc` | xUSD stablecoin token |
+| **xUSD Asset** | `d8bd79a2aa33ad4a6fa0ac2b2440515124445ecce0468e070a8a09bb5ea9442f` | Native XELIS asset |
+| **PSM v5.1** | `9f2667447b9a850ba4b260c19cd2c3786bc4a3c5559a08332a9e13bfa47191ae` | Stability module — mint/redeem xUSD at oracle price |
+| **VaultSwapV2** | `1b6699398e2acecbdd1fd372952696cfc37b99eb1dcac45a7216661f96c60422` | AMM with TWAP-based fees + integrated PSM |
+| **XelisVaultMiner v2.1** | `21ed1297c7ed4001a4a7c9a4bb89b10da0b0f3ad0312545a5af4a761200af207` | Miner registration, heartbeat, and `distribute_reward` for VLT emissions |
+| **VLTToken v5.1** | `7275c55d711789b1b746cd4695b04c0e393a0db74ecf72360c5544b73368cfab` | Governance token — 10M fixed supply, minter whitelist pattern |
+| **VLT Asset** | `2de72ed3ea2d8ff30e6df57ba3a4d993dedfa8636d207d43d09e33615bfde2c6` | Native XELIS asset |
+| **Timelock v5** | `bf6c0004993d50d0edc31eb38cebad38aa95e522040c9ea1d48cdea2eb2df597` | Governance timelock |
+| **GovernanceVault v5** | `830ddfd85eb8ccd44678719cd32633806eba44aa4b455b3785ba04fb3a0b4aa9` | Staking + voting power |
+| **Governor v5** | `f8a5880d02616085b26fa4d2a5888bf3328d8ab679af1ed0c90d693bff09a119` | Proposal + voting |
+| **GuardianMultisig v5** | `4c5783d36173e309fa47c746c37f865accf08c1a4dfee92ba84cc08392326e4a` | Emergency multisig |
 
-| Contract | Address | Status | Verified |
-|----------|---------|--------|----------|
-| **PriceOracle** | `083f50b2eab5958ddacbb3c8e4e8943987d3bd337d7a56ae0763f6020734f8d6` | ✅ Live | propose_price(entry 2), execute_price(entry 3), get_price(entry 4) |
-| **xUSD** | `909576c1fcd889ec443b63a4ce014bf756fcb8afd74c8c0ee902cac03384e3fc` | ✅ Full cycle | mint → burn tested |
-| **xUSD Asset** | `d8bd79a2aa33ad4a6fa0ac2b2440515124445ecce0468e070a8a09bb5ea9442f` | ✅ Created | Custom asset on XELIS |
-| **VaultEngine** | `667b165c8c9cd6cc3464378799e38b172e0f2e912f4b5c6202d37a8da3939bcc` | ✅ Full cycle | deposit → borrow → repay → withdraw tested |
-| **PSM (Stability Module)** | `9f2667447b9a850ba4b260c19cd2c3786bc4a3c5559a08332a9e13bfa47191ae` | ✅ Full cycle | mint xUSD → redeem XEL at oracle price |
-| **VaultSwapV2** | `1b6699398e2acecbdd1fd372952696cfc37b99eb1dcac45a7216661f96c60422` | ✅ Full cycle | create pool → psm_mint → psm_redeem tested |
-| **VLT (v4 legacy)** | `f1f40d151849f93dea6d78fddc8aa189a3b39f0606926bc1aa933d85e878ee86` | ⏸ Legacy | Asset: `6a529801...` — incompatible with XelisVaultMiner |
-| **VLTToken v5** | `7be7519ee8b540b40268a9c02d03bff89f1269bd3f46acff44d75c88dd6d9d56` | ✅ New VLT | Minter pattern, asset: `09b367e4...` |
-| **XelisVaultMiner v2** | `fd370918fe99b8dd04804e3731b1b1aa6d73595a9a336b59d67063c2b52758d4` | ✅ Configured | VLT, asset, treasury set |
-| **Timelock v5** | `bf6c0004993d50d0edc31eb38cebad38aa95e522040c9ea1d48cdea2eb2df597` | ✅ Deployed | Governance delay lock |
-| **GovernanceVault v5** | `830ddfd85eb8ccd44678719cd32633806eba44aa4b455b3785ba04fb3a0b4aa9` | ✅ Configured | VLT contract + asset set |
-| **Governor v5** | `f8a5880d02616085b26fa4d2a5888bf3328d8ab679af1ed0c90d693bff09a119` | ✅ Configured | GovVault + Timelock set |
-| **GuardianMultisig v5** | `4c5783d36173e309fa47c746c37f865accf08c1a4dfee92ba84cc08392326e4a` | ✅ Configured | Timelock set |
-
----
-
-## How It Works
-
-### The xUSD Stablecoin
-
-```
-                  ┌──────────────┐     oracle price      ┌──────────────┐
-                  │  VaultEngine  │◄──────────────────────│ PriceOracle  │
-                  │  (CDP engine) │                       │ (XEL/USD)    │
-                  └──────┬───────┘                       └──────────────┘
-                         │
-             deposit XEL │ borrow xUSD
-             ↓           │ ↓
-                  ┌──────┴───────┐     mint/burn xUSD     ┌──────────────┐
-                  │    xUSD      │◄──────────────────────►│     PSM      │
-                  │   (token)    │                         │ (stability)  │
-                  └──────────────┘                         └──────┬───────┘
-                                                                  │
-                                                          mint xUSD │ redeem XEL
-                                                          at oracle │ at oracle
-                                                                  ↓
-                                                            ┌──────────────┐
-                                                            │    User      │
-                                                            │  (you)       │
-                                                            └──────────────┘
-```
-
-1. **Deposit XEL** into VaultEngine → creates a vault
-2. **Borrow xUSD** against your XEL collateral (max ~66% LTV)
-3. **Swap xUSD for XEL** via PSM at oracle price (0.5% mint fee, 0.1% redeem fee)
-4. **Trade on VaultSwapV2** — constant-product AMM with TWAP-based dynamic fees
-5. **Repay** your loan to unlock your XEL collateral
-
-### The Price Oracle
-
-```
-  PriceOracle (083f50b2...)
-  ├── entry 2: propose_price(price)     ← submit a new XEL/USD price
-  ├── entry 3: execute_price()          ← activate after 3-block timelock
-  └── entry 4: get_price(asset)         ← read current price (cross-contract)
-
-  The daemon (xelis_vault_miner.py) runs this cycle automatically:
-    1. Fetch XEL/USD from CoinGecko + MEXC
-    2. propose_price(atomic_price)     → entry 2
-    3. Wait 3 blocks
-    4. execute_price()                 → entry 3
-```
-
-### Entry IDs Reference
-
-Because `entry_id` in the XELIS VM = direct chunk index (not sequential entry
-number), here are the actual callable entry IDs for each contract:
-
-**PriceOracle**
-| ID | Entry | Parameters |
-|----|-------|------------|
-| 0 | fn constructor | — |
-| 1 | fn only_admin | — |
-| **2** | **propose_price** | **(price: u64)** |
-| **3** | **execute_price** | **()** |
-| **4** | **get_price** | **(asset: Hash) → u64** |
-
-**xUSD** (909576c1...)
-| ID | Entry | Parameters |
-|----|-------|------------|
-| **3** | **mint_tokens(to, amount)** | (Address, u64) — cross-contract |
-| **4** | **mint_split(to, amount, treasury, fee)** | (Address, u64, Address, u64) |
-| **5** | **burn_tokens(amount)** | (u64) — cross-contract |
-| 9 | set_vault_contract | (Hash) |
-| 13 | set_psm | (Hash) |
-| 19 | set_burner | (Hash) |
-
-**VaultEngine** (667b165c...)
-| ID | Entry | Parameters |
-|----|-------|------------|
-| 10 | deposit | (collateral: Hash, amount: u64) |
-| 11 | borrow | (vault_id: u64, amount: u64) |
-| 12 | repay | (vault_id: u64, amount: u64) |
-| 13 | withdraw | (vault_id: u64, amount: u64) |
-| 16 | get_queue | () |
-| 17 | set_oracle_contract | (Hash) |
-| 18 | set_xusd_contract | (Hash) |
-| 19 | set_xusd_asset | (Hash) |
-| 20 | set_treasury | (Address) |
-| 27 | get_vault | (id: u64) |
-| 28 | get_health | (id: u64) |
-| 36 | is_paused | () |
-
-**PSM** (9f266744...)
-| ID | Entry | Parameters |
-|----|-------|------------|
-| **8** | **mint** | **(xel_amount: u64, min_xusd_out: u64)** |
-| **9** | **redeem** | **(xusd_amount: u64, min_xel_out: u64)** |
-| 21 | set_xusd_contract | (Hash) |
-| 22 | set_xusd_asset | (Hash) |
-| 23 | set_oracle | (Hash) |
-| 24 | set_treasury | (Address) |
-
-**VaultSwapV2** (1b669939...)
-| ID | Entry | Parameters |
-|----|-------|------------|
-| 16 | create_pool | (asset_a: Hash, asset_b: Hash, is_psm: bool) |
-| 17 | add_liquidity | (asset_a: Hash, asset_b: Hash, amount_a: u64, amount_b: u64) |
-| 18 | swap | (asset_in: Hash, asset_out: Hash, amount_in: u64, min_out: u64) |
-| **19** | **psm_mint** | **(xel_amount: u64, min_xusd_out: u64)** |
-| **20** | **psm_redeem** | **(xusd_amount: u64, min_xel_out: u64)** |
+All contracts are deployed, configured, and tested with end-to-end cycles on testnet.
 
 ---
 
@@ -157,26 +34,9 @@ number), here are the actual callable entry IDs for each contract:
 
 - Python 3.10+
 - `requests` library (`pip install requests`)
-- XELIS daemon + wallet running
-
-### Connect to Testnet
-
-```bash
-# Run a local daemon (recommended)
-./xelis_daemon --network testnet --rpc-bind-address 127.0.0.1:18081
-
-# Or use public testnet node
-# RPC:   https://testnet-node.xelis.io/json_rpc
-# Explorer: https://testnet-explorer.xelis.io/
-
-# Run the wallet (if running price oracle)
-./xelis_wallet --daemon-address http://127.0.0.1:18081 \
-  --network testnet --rpc-bind-address 127.0.0.1:18082
-```
+- Access to a XELIS daemon and wallet (testnet or mainnet)
 
 ### Run the All-in-One Daemon
-
-The `xelis_vault_miner.py` script handles everything:
 
 ```bash
 python3 scripts/xelis_vault_miner.py \
@@ -184,94 +44,141 @@ python3 scripts/xelis_vault_miner.py \
   --wallet-url http://127.0.0.1:18082
 ```
 
-This will:
-1. Fetch XEL/USD price from CoinGecko + MEXC
-2. Propose the price to the PriceOracle (entry 2)
-3. Execute after the 3-block timelock (entry 3)
-4. Repeat every 100 blocks
+The daemon handles:
 
-Options:
-- `--dry-run` — log actions without submitting transactions
-- `--verbose` — DEBUG-level logging
-- `--enable-miner` — also handle XelisVaultMiner registration + heartbeats
+- **Price Oracle**: Fetches XEL/USD from CoinGecko + MEXC, proposes via `propose_price` (entry 2), executes after 3-block timelock via `execute_price` (entry 3), which triggers `distribute_reward` on the miner contract to mint VLT rewards
+- **Miner Registration**: Registers your address as a miner on XelisVaultMiner with a 100 VLT stake
+- **Heartbeat**: Periodically calls `submit_heartbeat` (entry 16) to maintain active status
+- **Reputation Monitoring**: Tracks your miner reputation and warns if it falls below Good tier
 
-### Interact with Contracts via Curl
+### CLI Options
 
-```bash
-# Read current XEL/USD price from oracle
-curl -X POST http://127.0.0.1:18081/json_rpc \
-  -H "Content-Type: application/json" \
-  -d '{"method":"call_contract_read","params":{"contract":"083f50b2eab5958ddacbb3c8e4e8943987d3bd337d7a56ae0763f6020734f8d6","entry_id":4,"args":["0000000000000000000000000000000000000000000000000000000000000000"]},"id":1}'
+| Flag | Description |
+|------|-------------|
+| `--rpc <url>` | Daemon JSON-RPC URL (default: `http://127.0.0.1:18081`) |
+| `--wallet-url <url>` | Wallet JSON-RPC URL (default: `http://127.0.0.1:18082`) |
+| `--wallet-user <user>` | Wallet RPC username (default: `wallet`) |
+| `--wallet-pass <pass>` | Wallet RPC password (default: `testpass`) |
+| `--endpoint <url>` | Public endpoint URL (required for miner registration) |
+| `--miner` | Enable miner mode (registration + heartbeats) |
+| `--no-oracle` | Disable price oracle updates |
+| `--dry-run` | Log actions without submitting transactions |
+| `-y` | Skip interactive prompts |
+| `-i` | Interactive shell mode |
 
-# Check vault health
-curl -X POST http://127.0.0.1:18081/json_rpc \
-  -H "Content-Type: application/json" \
-  -d '{"method":"call_contract_read","params":{"contract":"667b165c8c9cd6cc3464378799e38b172e0f2e912f4b5c6202d37a8da3939bcc","entry_id":28,"args":[1]},"id":1}'
-```
-
-### Wallet RPC: Invoke Contract Example
+### Example: Register as a Miner
 
 ```bash
-# Propose price on the oracle
-curl -u wallet:testpass http://127.0.0.1:18082/json_rpc \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"build_transaction","params":{"invoke_contract":{"contract":"083f50b2eab5958ddacbb3c8e4e8943987d3bd337d7a56ae0763f6020734f8d6","entry_id":2,"parameters":[{"type":"primitive","value":{"type":"u64","value":"31176300"}}],"deposits":{},"max_gas":500000,"permission":"all"},"fee":{"fixed":10000000},"broadcast":true},"id":1}'
+python3 scripts/xelis_vault_miner.py \
+  --rpc http://127.0.0.1:18081 \
+  --wallet-url http://127.0.0.1:18082 \
+  --endpoint https://my-miner.example.com:8080 \
+  --miner
 ```
 
-**Important parameter formats:**
-- **u64**: `{"type": "primitive", "value": {"type": "u64", "value": "123"}}`
-- **Hash**: `{"type": "primitive", "value": {"type": "opaque", "value": {"type": "Hash", "value": "hex..."}}}`
-- **Address**: `{"type": "primitive", "value": {"type": "opaque", "value": {"type": "Address", "value": "xet:..."}}}`
-- **permission**: must be `"all"` for any contract that makes cross-contract calls
+You will be prompted for your miner address.
 
 ---
 
-## Repository Structure
+## Reward Flow
+
+```
+  PriceOracle v2.1
+  ├─ propose_price(price)          # entry 2
+  ├─ execute_price()               # entry 3 (after 3-block timelock)
+  └──► XelisVaultMiner v2.1
+       └─ distribute_reward()      # pub fn at chunk 18
+           ├─ Validates miner is registered + active
+           ├─ Calculates dynamic reward (reputation × base rate)
+           ├─ Checks budget cap (distributed ≤ total_budget)
+           └──► VLTToken v5.1
+                └─ mint_to()       # pub fn at chunk 4
+                    └─ VLT minted to miner address
+```
+
+When the price oracle executes a new price, it calls `Contract::call(18, ...)` on the miner contract. The miner validates the caller (must be an authorized service), checks the miner's registration and reputation, calculates a dynamic reward, and mints VLT tokens directly to the miner's wallet.
+
+**Tested on testnet**: First successful distribution minted 71,347,030 VLT (0.71 VLT) to the miner wallet.
+
+---
+
+## Contract Entry IDs
+
+Entry IDs in the XELIS VM correspond to direct chunk indices in the compiled bytecode. `fn` and `hook` chunks occupy positions and shift subsequent entry IDs.
+
+### PriceOracle v2.1 (`764ad585...`)
+
+| ID | Type | Entry | Parameters |
+|----|------|-------|------------|
+| 2 | entry | `propose_price` | `(price: u64)` |
+| 3 | entry | `execute_price` | `()` |
+| 4 | pub fn | `get_price` | `(asset: Hash) → u64` |
+| 5 | entry | `get_price_entry` | `(asset: Hash) → u64` |
+| 6 | entry | `cancel_pending` | `()` |
+| 7 | entry | `set_miner_contract` | `(mc: Hash)` |
+| 8 | entry | `set_timelock_blocks` | `(blocks: u64)` |
+
+### XelisVaultMiner v2.1 (`21ed1297...`)
+
+| ID | Type | Entry | Parameters |
+|----|------|-------|------------|
+| 10 | entry | `register_miner` | `(endpoint: string, pubkey: Hash, services: u8)` |
+| 11 | entry | `enable_service` | `(service_id: u8)` |
+| 16 | entry | `submit_heartbeat` | `()` |
+| 18 | pub fn | `distribute_reward` | `(miner: Address, svc: u8, valid: bool)` — cross-contract target |
+| 26 | entry | `register_service` | `(svc_id: u8, contract: Hash)` |
+| 35 | entry | `set_vlt_contract` | `(vc: Hash)` |
+| 36 | entry | `set_vlt_asset` | `(va: Hash)` |
+| 37 | entry | `set_treasury` | `(t: Address)` |
+
+### VLTToken v5.1 (`7275c55d...`)
+
+| ID | Type | Entry | Parameters |
+|----|------|-------|------------|
+| 4 | pub fn | `mint_to` | `(to: Address, amount: u64)` — cross-contract target |
+| 5 | entry | `burn_own` | `(amount: u64)` |
+| 7 | entry | `set_minter` | `(contract: Hash, enabled: bool)` |
+| 9 | entry | `create_asset` | `()` — requires 1 XEL deposit |
+
+---
+
+## Architecture
 
 ```
 xelis-vault/
-├── contracts/           # Silex smart contract source code
-│   ├── amm/             # PSM.slx, VaultSwapV2.slx
-│   ├── oracle/          # PriceOracle.slx
-│   ├── usd/             # xUSD.slx
-│   ├── vault/           # VaultEngineV3.slx
-│   ├── token/           # VLTToken.slx
-│   ├── governance/      # GovernanceVault, Governor, Timelock, ...
-│   ├── lending/         # LendingMarket, PeerLoan, ...
-│   ├── insurance/       # InsurancePool, PrivateInsurance
-│   └── ...              # 33 contracts total
+├── contracts/              # Silex smart contract source (.slx)
+│   ├── amm/               # PSM.slx, VaultSwapV2.slx
+│   ├── oracle/            # PriceOracle.slx
+│   ├── miner/             # XelisVaultMiner.slx
+│   ├── token/             # VLTToken.slx
+│   ├── vault/             # VaultEngine.slx
+│   ├── governance/        # GovernanceVault, Governor, Timelock, GuardianMultisig
+│   └── ...                # 33 contracts total
 ├── scripts/
-│   └── xelis_vault_miner.py   # All-in-one daemon (price oracle + miner)
-├── docs/                # Whitepaper, guides, audit reports
-├── install.py           # Environment setup
-└── README.md            # This file
+│   ├── xelis_vault_miner.py   # All-in-one daemon
+│   └── price_bot.py           # Standalone price oracle bot
+├── .env                   # Contract addresses
+└── README.md
 ```
 
 ---
 
-## Security Notes
+## Security
 
-- **`transfer_contract` before `burn_tokens`**: When a contract receives xUSD
-  as a deposit and wants to burn it, it must first forward the tokens to the
-  xUSD contract via `transfer_contract(xusd_hash, amount, xusd_asset)` before
-  calling `burn_tokens`. The `burn_tokens` function checks the xUSD contract's
-  own balance, not the caller's deposit. Without forwarding, it fails with
-  "lowbal". Both PSM and VaultSwapV2 include this fix.
-
-- **`entry_id` = chunk index**: The entry_id parameter is the direct chunk
-  index in the compiled bytecode. `fn` and `hook` functions occupy chunk
-  positions and shift entry_id values. Always refer to the entry ID tables
-  above.
-
-- **Cross-contract calls**: Use `pub fn` (not `entry`) for functions that
-  will be called from other contracts via `Contract::call()`. The VM requires
-  Access::All permissions.
-
-- **Stable balance**: Custom assets (xUSD) need 24 blocks (~2 min) of
-  confirmation before they can be used as deposits in a new transaction.
+- **Cross-contract calls require `pub fn`**: `Contract::call()` validates `Access::All`. Calling `entry` functions fails with "Chunk is not public". All cross-contract targets (`distribute_reward`, `mint_to`, `get_price`) must be declared `pub fn`.
+- **`get_caller()` returns the original wallet source address** even during nested cross-contract calls. Use `get_contract_caller()` to identify the immediate calling contract.
+- **`transfer_contract` before `burn_tokens`**: When a contract receives xUSD as a deposit and needs to burn it, the deposited tokens must first be forwarded to the xUSD contract via `transfer_contract(xusd_hash, amount, xusd_asset)` before calling `burn_tokens`. The xUSD contract checks its own balance, not the caller's deposit.
+- **Hash parameters require `opaque` type**: Use `{"type": "opaque", "value": {"type": "Hash", "value": "hex..."}}` for any Hash that will be stored in Storage and later loaded. Using `string` type stores the value as a string, causing a type mismatch on retrieval.
+- **`entry_id` = chunk index**: All `fn` and `hook` declarations occupy chunk positions and shift subsequent entry IDs. Always count from the beginning of the file.
 
 ---
 
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
+
+## Links
+
+- XELIS Blockchain: [https://xelis.io](https://xelis.io)
+- Testnet Explorer: [https://testnet-explorer.xelis.io/](https://testnet-explorer.xelis.io/)
+- XELIS GitHub: [https://github.com/xelis-project/xelis-blockchain](https://github.com/xelis-project/xelis-blockchain)

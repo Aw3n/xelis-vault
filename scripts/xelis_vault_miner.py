@@ -18,15 +18,11 @@ except ImportError:
     print("ERROR: 'requests' not installed. Run:  pip install requests")
     sys.exit(1)
 
-# ── testnet defaults (2026-07-27) ──────────────────────────────────────
-PRICE_ORACLE_HASH = "083f50b2eab5958ddacbb3c8e4e8943987d3bd337d7a56ae0763f6020734f8d6"
-XUSD_HASH         = "909576c1fcd889ec443b63a4ce014bf756fcb8afd74c8c0ee902cac03384e3fc"
-XUSD_ASSET        = "d8bd79a2aa33ad4a6fa0ac2b2440515124445ecce0468e070a8a09bb5ea9442f"
-VAULT_ENGINE_HASH = "667b165c8c9cd6cc3464378799e38b172e0f2e912f4b5c6202d37a8da3939bcc"
-PSM_HASH          = "9f2667447b9a850ba4b260c19cd2c3786bc4a3c5559a08332a9e13bfa47191ae"
-VLT_HASH          = "7be7519ee8b540b40268a9c02d03bff89f1269bd3f46acff44d75c88dd6d9d56"
-VLT_ASSET         = "09b367e4f17d1114ba7410790ebb63d20b696a7edcd05026f23ae1b7926dfc3c"
-MINER_HASH        = "fd370918fe99b8dd04804e3731b1b1aa6d73595a9a336b59d67063c2b52758d4"
+# ── testnet defaults (2026-07-28) ──────────────────────────────────────
+PRICE_ORACLE_HASH = "764ad585c2f484e54ea9dd06a7fb8b81397ba2487d37298f27edce3747d836dd"
+MINER_HASH        = "21ed1297c7ed4001a4a7c9a4bb89b10da0b0f3ad0312545a5af4a761200af207"
+VLT_HASH          = "7275c55d711789b1b746cd4695b04c0e393a0db74ecf72360c5544b73368cfab"
+VLT_ASSET         = "2de72ed3ea2d8ff30e6df57ba3a4d993dedfa8636d207d43d09e33615bfde2c6"
 
 # entry IDs (chunk index = entry_id)
 ENTRY_PROPOSE_PRICE    = 2
@@ -258,10 +254,32 @@ class PriceDaemon:
     def _read_price(self) -> Optional[int]:
         try:
             r = self.d.read_contract_data(PRICE_ORACLE_HASH, {
-                "type": "primitive", "value": {"type": "opaque", "value": {"type": "Hash", "value": "0"*64}}
+                "type": "primitive", "value": {"type": "string", "value": "p"}
             })
-            return int(r.get("data", 0)) if r.get("data") else None
+            if r.get("data"):
+                return int(r["data"]["value"]["value"])
+            return None
         except: return None
+
+    def _read_pending(self) -> int:
+        try:
+            r = self.d.read_contract_data(PRICE_ORACLE_HASH, {
+                "type": "primitive", "value": {"type": "string", "value": "pp"}
+            })
+            if r.get("data"):
+                return int(r["data"]["value"]["value"])
+            return 0
+        except: return 0
+
+    def _read_pending_topo(self) -> int:
+        try:
+            r = self.d.read_contract_data(PRICE_ORACLE_HASH, {
+                "type": "primitive", "value": {"type": "string", "value": "pt"}
+            })
+            if r.get("data"):
+                return int(r["data"]["value"]["value"])
+            return 0
+        except: return 0
 
     def _propose(self, p: int, nonce: int) -> bool:
         if self.dry: return True
@@ -278,8 +296,21 @@ class PriceDaemon:
             cur = self._read_price()
             log.info(f"  On-chain price: ${cur/1e8:.6f}" if cur else "  No on-chain price yet")
             return nonce
+
+        # Check if there is a pending proposal to execute
+        pending_pp = self._read_pending()
+        pending_pt = self._read_pending_topo()
+        if pending_pp and pending_pt:
+            if topo >= pending_pt + self.cfg.oracle_timelock:
+                log.info("  Executing pending proposal ...")
+                if self._execute(nonce):
+                    nonce += 1
+                    self.last_topo = topo
+            return nonce
+
         if topo - self.last_topo < self.cfg.price_update_interval:
             return nonce
+
         log.info(f"── oracle update (topo {topo}) ──")
         price = fetch_price()
         if price is None: return nonce
@@ -293,16 +324,10 @@ class PriceDaemon:
                 log.info("  ─ skipped (<1%)")
                 self.last_topo = topo
                 return nonce
-        log.info("  1/2 proposing ...")
-        if not self._propose(atomic, nonce): return nonce
-        nonce += 1
-        self.pending_topo = topo
-        if topo - self.pending_topo >= self.cfg.oracle_timelock:
-            log.info("  2/2 executing ...")
-            if self._execute(nonce):
-                nonce += 1
-                self.last_topo = topo
-                self.pending_topo = 0
+        log.info("  Proposing price ...")
+        if self._propose(atomic, nonce):
+            nonce += 1
+            self.last_topo = topo
         return nonce
 
 
@@ -319,7 +344,7 @@ class MinerDaemon:
     def _is_registered(self) -> bool:
         try:
             r = self.d.read_contract_data(MINER_HASH, {
-                "type": "primitive", "value": {"type": "string", "value": f"active:{self.cfg.miner_address}:{self.cfg.services_mask}"}
+                "type": "primitive", "value": {"type": "string", "value": f"miner_{self.cfg.miner_address}"}
             })
             return bool(r.get("data"))
         except: return False
@@ -333,7 +358,7 @@ class MinerDaemon:
         ]
         deposits = {VLT_ASSET: {"amount": MIN_STAKE_VLT}}
         tx = self.w.invoke(MINER_HASH, ENTRY_REGISTER_MINER, params, deposits=deposits,
-                          max_gas=1_000_000, nonce=nonce)
+                          max_gas=5_000_000, nonce=nonce)
         if tx: log.info(f"  registered → {tx[:16]}..."); return nonce + 1
         return nonce
 
@@ -346,9 +371,11 @@ class MinerDaemon:
     def reputation(self) -> int:
         try:
             r = self.d.read_contract_data(MINER_HASH, {
-                "type": "primitive", "value": {"type": "string", "value": f"reputation:{self.cfg.miner_address}"}
+                "type": "primitive", "value": {"type": "string", "value": f"rep_{self.cfg.miner_address}"}
             })
-            return int(r.get("data", 0))
+            if r.get("data"):
+                return int(r["data"]["value"]["value"])
+            return 0
         except: return 0
 
     def run(self, topo: int, nonce: int) -> int:
@@ -434,7 +461,7 @@ def cmd_interactive(cfg: Config, d: DaemonClient, w: WalletClient) -> None:
 
 def cmd_daemon(cfg: Config, d: DaemonClient, w: WalletClient, dry: bool = False) -> None:
     log.info("╔══════════════════════════════════════════╗")
-    log.info("║     XELIS Vault v5 — Daemon              ║")
+    log.info("║     XELIS Vault v5.1 — Daemon            ║")
     log.info("╚══════════════════════════════════════════╝")
     log.info(f"  RPC:          {cfg.rpc_url}")
     log.info(f"  Wallet:       {cfg.wallet_url}")

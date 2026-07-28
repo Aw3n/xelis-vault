@@ -531,7 +531,7 @@ entry slash_miner(miner_addr: Address, severity: u8, reporter: Address) -> u64 {
 // @params: is_valid - whether the submission was valid (invalid = no mint, just counter bump)
 // @returns: reward amount minted (0 if inactive / invalid / no budget)
 // @security: only_authorized_service, no-op for unknown or inactive miner, refuses to mint if reward would exceed remaining budget, calls VLTToken entry 0 (mint_to)
-entry distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) -> u64 {
+pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) -> u64 {
     only_authorized_service()
     let s: Storage = Storage::new()
     let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
@@ -1048,3 +1048,5 @@ pub fn is_authorized_service(contract_hash: Hash) -> bool {
 // @returns: 0 on success
 // @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }
+
+

@@ -80,7 +80,7 @@ hook constructor() -> u64 {
 // @returns: 0 on success
 // @security: require_minter (admin or whitelisted contract); enforces MAX_SUPPLY cap
 // ID 0: mint_to (callable by authorized minter, e.g., XelisVaultMiner)
-entry mint_to(to: Address, amount: u64) -> u64 {
+pub fn mint_to(to: Address, amount: u64) -> u64 {
     require_minter()
     require(amount > 0, "amtgt0")
     let s: Storage = Storage::new()
@@ -371,3 +371,5 @@ pub fn burn_from(amount: u64) -> u64 {
 // @returns: 0 on success
 // @security: only_admin — note: pub fn in Silex is read-only; prefer entry set_timelock (ID 7) for state mutation
 pub fn set_timelock_tl(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }
+
+entry mint_to_entry(to: Address, amount: u64) -> u64 { return mint_to(to, amount) }

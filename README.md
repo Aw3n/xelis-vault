@@ -16,7 +16,7 @@ CDP stablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mix
 ### Start mining in one line
 
 ```bash
-curl -fsSL https://xelisvault.github.io/install | bash
+curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash
 ```
 
 Then:

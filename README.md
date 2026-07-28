@@ -38,7 +38,7 @@ xvault --miner
 ### 1. Install
 
 ```bash
-curl -fsSL https://xelisvault.github.io/install | bash
+curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash
 ```
 
 That's it. The installer:

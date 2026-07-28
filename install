@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ============================================================================
-#  XELIS Vault — One-Line Installer
+#  XELIS Vault — Installateur Tout-en-Un
 # ============================================================================
-#  Install:   curl -fsSL https://xelisvault.github.io/install | bash
-#  Update:    curl -fsSL https://xelisvault.github.io/install | bash
-#  Uninstall: curl -fsSL https://xelisvault.github.io/install | bash -s -- --uninstall
+#  Installer : curl -fsSL https://xelisvault.github.io/install | bash
+#  Màj       : curl -fsSL https://xelisvault.github.io/install | bash
+#  Supprimer : curl -fsSL https://xelisvault.github.io/install | bash -s -- --uninstall
 # ============================================================================
 set -euo pipefail
 
-# ── Colors & helpers ────────────────────────────────────────────────────────
+# ── Couleurs & helpers ────────────────────────────────────────────────────────
 if [[ -t 1 ]] && command -v tput &>/dev/null; then
     BOLD=$(tput bold); DIM=$(tput dim); RESET=$(tput sgr0)
     RED=$(tput setaf 1); GREEN=$(tput setaf 2); YELLOW=$(tput setaf 3)
@@ -26,7 +26,7 @@ BANNER+="██    ██ ██      █████   ██ █████  
 BANNER+="██    ██ ██      ██  ██  ██ ██      ██         ██    ██ ██    ██ ██  ██ ██\n"
 BANNER+=" ██████  ███████ ██   ██ ██ ███████  ██████    ██    ██  ██████  ██   ████\n"
 BANNER+="${RESET}\n"
-BANNER+="${DIM}              Privacy-First DeFi on XELIS BlockDAG${RESET}\n"
+BANNER+="${DIM}              Privacy-First DeFi sur XELIS BlockDAG${RESET}\n"
 
 info()    { printf "${BLUE}i${RESET}  %s\n" "$*"; }
 success() { printf "${GREEN}v${RESET}  %s\n" "$*"; }
@@ -35,7 +35,7 @@ error()   { printf "${RED}x${RESET}  %s\n" "$*" >&2; }
 step()    { printf "\n${MAGENTA}${BOLD}> %s${RESET}\n" "$*"; }
 prompt()  { printf "${CYAN}?${RESET}  %s " "$*"; }
 
-# ── Config ──────────────────────────────────────────────────────────────────
+# ── Configuration ──────────────────────────────────────────────────────────────
 REPO="XelisVault/xelis-vault"
 REPO_URL="https://github.com/${REPO}.git"
 INSTALL_DIR="${HOME}/.xelis-vault"
@@ -43,215 +43,381 @@ BIN_DIR="${HOME}/.local/bin"
 VENV_DIR="${INSTALL_DIR}/venv"
 CONFIG_DIR="${INSTALL_DIR}/config"
 LOGS_DIR="${INSTALL_DIR}/logs"
-VERSION="5.1"
+XELIS_DIR="${INSTALL_DIR}/xelis-bin"
+WALLET_DIR="${INSTALL_DIR}/wallet"
+VERSION="5.2"
 
 FORCE=0
 UNINSTALL=0
 INTERACTIVE=1
 SKIP_DEPS=0
+SKIP_XELIS=0
+SKIP_WALLET=0
+SKIP_SERVICE=0
 
-# ── Parse args ──────────────────────────────────────────────────────────────
+# ── Adresses des contrats (testnet) ────────────────────────────────────────────
+CONTRACT_VAULTSWAP="1b6699398e2acecbdd1fd372952696cfc37b99eb1dcac45a7216661f96c60422"
+CONTRACT_MINER="21ed1297c7ed4001a4a7c9a4bb89b10da0b0f3ad0312545a5af4a761200af207"
+CONTRACT_VLT_TOKEN="7275c55d711789b1b746cd4695b04c0e393a0db74ecf72360c5544b73368cfab"
+CONTRACT_VLT_ASSET="2de72ed3ea2d8ff30e6df57ba3a4d993dedfa8636d207d43d09e33615bfde2c6"
+CONTRACT_ORACLE="764ad585c2f484e54ea9dd06a7fb8b81397ba2487d37298f27edce3747d836dd"
+CONTRACT_PSM="9f2667447b9a850ba4b260c19cd2c3786bc4a3c5559a08332a9e13bfa47191ae"
+CONTRACT_GOV_VAULT="830ddfd85eb8ccd44678719cd32633806eba44aa4b455b3785ba04fb3a0b4aa9"
+CONTRACT_REGISTRY="32abb6db396e1c341868a97fcbc8cfd4a9219af6311d1a3c2e12fe7474ddc06e"
+CONTRACT_STAKED_ORACLE="57a343969a7144546218b8f9d436f086b32e9d4175f9a5af55c5707c3d1e350a"
+CONTRACT_ORACLE_GOV="1f5ffe2ab5086202e104cde2517a76738a13391a9e0fd4e3090a65cb7679dbcd"
+CONTRACT_XUSD="909576c1fcd889ec443b63a4ce014bf756fcb8afd74c8c0ee902cac03384e3fc"
+CONTRACT_XUSD_ASSET="d8bd79a2aa33ad4a6fa0ac2b2440515124445ecce0468e070a8a09bb5ea9442f"
+CONTRACT_VAULT_ENGINE="667b165c8c9cd6cc3464378799e38b172e0f2e912f4b5c6202d37a8da3939bcc"
+CONTRACT_GOVERNOR="f8a5880d02616085b26fa4d2a5888bf3328d8ab679af1ed0c90d693bff09a119"
+CONTRACT_GUARDIAN="4c5783d36173e309fa47c746c37f865accf08c1a4dfee92ba84cc08392326e4a"
+CONTRACT_TIMELOCK="bf6c0004993d50d0edc31eb38cebad38aa95e522040c9ea1d48cdea2eb2df597"
+
+# ── Analyse des arguments ──────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --uninstall)   UNINSTALL=1; shift ;;
         --force|-f)    FORCE=1; shift ;;
         --yes|-y)      INTERACTIVE=0; shift ;;
         --skip-deps)   SKIP_DEPS=1; shift ;;
+        --skip-xelis)  SKIP_XELIS=1; shift ;;
+        --skip-wallet) SKIP_WALLET=1; shift ;;
+        --skip-service)SKIP_SERVICE=1; shift ;;
         --version)     echo "xelis-vault ${VERSION}"; exit 0 ;;
         --help|-h)
             cat <<EOF
-${BOLD}XELIS Vault Installer${RESET} v${VERSION}
+${BOLD}XELIS Vault Installateur${RESET} v${VERSION}
 
-${BOLD}Usage:${RESET}
+${BOLD}Utilisation :${RESET}
   curl -fsSL https://xelisvault.github.io/install | bash
 
-${BOLD}Options:${RESET}
-  --uninstall   Remove XELIS Vault from this machine
-  --force, -f   Reinstall even if already installed
-  --yes, -y     Skip interactive prompts (CI-friendly)
-  --skip-deps   Skip system dependency installation
-  --version     Print version and exit
-  --help, -h    Show this help
+${BOLD}Options :${RESET}
+  --uninstall        Supprimer XELIS Vault de cette machine
+  --force, -f        Réinstaller même si déjà présent
+  --yes, -y          Mode non-interactif (CI)
+  --skip-deps        Sauter la vérification des dépendances système
+  --skip-xelis       Ne pas télécharger les binaires XELIS manquants
+  --skip-wallet      Sauter la configuration du portefeuille
+  --skip-service     Ne pas créer de service auto-démarrage
+  --version          Afficher la version
+  --help, -h         Afficher cette aide
 
-${BOLD}Examples:${RESET}
-  # Standard install (interactive)
+${BOLD}Exemples :${RESET}
+  # Installation standard (interactive)
   curl -fsSL https://xelisvault.github.io/install | bash
 
-  # Silent install for servers / CI
+  # Installation silencieuse
   curl -fsSL https://xelisvault.github.io/install | bash -s -- -y
 
-  # Uninstall
+  # Désinstallation
   curl -fsSL https://xelisvault.github.io/install | bash -s -- --uninstall
 
-${BOLD}What it does:${RESET}
-  1. Checks Python 3.10+ and git
-  2. Clones the repo to ~/.xelis-vault/src
-  3. Creates a venv at ~/.xelis-vault/venv
-  4. Installs Python dependencies (requests, python-dotenv)
-  5. Generates ~/.xelis-vault/config/config.json (with testnet defaults)
-  6. Creates an 'xvault' launcher in ~/.local/bin
-  7. Prints next steps to start mining
-
-${BOLD}Privacy:${RESET}
-  No telemetry. No phone-home. No wallet data leaves your machine.
-
-${BOLD}Docs:${RESET}  https://github.com/${REPO}
-${BOLD}Discord:${RESET} https://discord.gg/UHpYAWbG
+${BOLD}Documentation :${RESET} https://github.com/${REPO}
+${BOLD}Discord :${RESET} https://discord.gg/UHpYAWbG
 EOF
             exit 0
             ;;
-        *) error "Unknown option: $1"; exit 1 ;;
+        *) error "Option inconnue : $1"; exit 1 ;;
     esac
 done
 
-# ── Uninstall ───────────────────────────────────────────────────────────────
+# ── Désinstallation ───────────────────────────────────────────────────────────
 if [[ $UNINSTALL -eq 1 ]]; then
     printf "\n${BANNER}\n"
-    step "Uninstalling XELIS Vault"
+    step "Désinstallation de XELIS Vault"
+
     if [[ -d "$INSTALL_DIR" ]]; then
-        info "Removing ${INSTALL_DIR}"
+        info "Suppression de ${INSTALL_DIR}..."
         rm -rf "$INSTALL_DIR"
-        success "Installation directory removed"
+        success "Répertoire d'installation supprimé"
     else
-        warn "XELIS Vault is not installed at ${INSTALL_DIR}"
+        warn "XELIS Vault n'est pas installé dans ${INSTALL_DIR}"
     fi
+
     if [[ -L "${BIN_DIR}/xvault" ]] || [[ -f "${BIN_DIR}/xvault" ]]; then
         rm -f "${BIN_DIR}/xvault"
-        success "Launcher removed from ${BIN_DIR}"
+        success "Lanceur supprimé de ${BIN_DIR}"
     fi
-    printf "\n${GREEN}${BOLD}XELIS Vault uninstalled.${RESET}\n\n"
+
+    for f in xelis_daemon xelis_wallet xelis_miner; do
+        if [[ -L "${BIN_DIR}/${f}" ]]; then
+            rm -f "${BIN_DIR}/${f}"
+            success "Lien ${f} supprimé de ${BIN_DIR}"
+        fi
+    done
+
+    printf "\n${GREEN}${BOLD}XELIS Vault désinstallé.${RESET}\n\n"
     exit 0
 fi
 
-# ── Banner ──────────────────────────────────────────────────────────────────
+# ── Bannière ───────────────────────────────────────────────────────────────────
 printf "\n${BANNER}\n"
-printf "${DIM}  v${VERSION} - Installer${RESET}\n\n"
+printf "${DIM}  v${VERSION} — Installateur${RESET}\n\n"
 
-# ── Pre-flight checks ───────────────────────────────────────────────────────
-step "Pre-flight checks"
+# ── Vérifications préalables ──────────────────────────────────────────────────
+step "Vérification des prérequis"
 
-# Check OS
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 case "$OS" in
     Linux*)  PLATFORM="linux";;
     Darwin*) PLATFORM="macos";;
-    *)       error "Unsupported OS: $OS (only Linux and macOS)"; exit 1;;
+    *)       error "Système non supporté : $OS (Linux et macOS uniquement)"; exit 1;;
 esac
 case "$ARCH" in
-    x86_64|amd64) ARCH="x64";;
-    arm64|aarch64) ARCH="arm64";;
-    *)             error "Unsupported architecture: $ARCH"; exit 1;;
+    x86_64|amd64)   ARCH_TAG="x64";;
+    arm64|aarch64)  ARCH_TAG="arm64";;
+    *)              error "Architecture non supportée : $ARCH"; exit 1;;
 esac
-success "Platform: ${PLATFORM}-${ARCH}"
+success "Plateforme : ${PLATFORM}-${ARCH_TAG}"
 
-# Check Python
-if ! command -v python3 &>/dev/null; then
-    error "Python 3 is required but not found."
-    error "Install it from https://www.python.org/downloads/ or your package manager:"
-    error "  Ubuntu/Debian: sudo apt install python3 python3-venv python3-pip"
-    error "  macOS:         brew install python"
-    exit 1
-fi
-PY_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-PY_MAJOR=$(echo "$PY_VERSION" | cut -d. -f1)
-PY_MINOR=$(echo "$PY_VERSION" | cut -d. -f2)
-if [[ $PY_MAJOR -lt 3 ]] || ([[ $PY_MAJOR -eq 3 ]] && [[ $PY_MINOR -lt 10 ]]); then
-    error "Python 3.10+ required (found ${PY_VERSION})"
-    exit 1
-fi
-success "Python ${PY_VERSION}"
-
-# Check git
-if ! command -v git &>/dev/null; then
-    error "git is required but not found."
-    error "Install it via your package manager:"
-    error "  Ubuntu/Debian: sudo apt install git"
-    error "  macOS:         brew install git"
-    exit 1
-fi
-success "git $(git --version | awk '{print $3}')"
-
-# Check requests already available (optional)
-if python3 -c "import requests" 2>/dev/null; then
-    success "Python 'requests' module available"
-fi
-
-# ── Existing installation ───────────────────────────────────────────────────
-if [[ -d "$INSTALL_DIR/src/.git" ]] && [[ $FORCE -eq 0 ]]; then
-    warn "XELIS Vault is already installed at ${INSTALL_DIR}"
-    if [[ $INTERACTIVE -eq 1 ]]; then
-        prompt "Update existing installation? [Y/n]"
-        read -r ANSWER
-        ANSWER="${ANSWER:-Y}"
-    else
-        ANSWER="Y"
+if [[ $SKIP_DEPS -eq 0 ]]; then
+    # Python
+    if ! command -v python3 &>/dev/null; then
+        error "Python 3 est requis mais introuvable."
+        error "Installez-le : sudo apt install python3 python3-venv python3-pip (Linux)"
+        error "  ou : brew install python (macOS)"
+        exit 1
     fi
-    if [[ "$ANSWER" =~ ^[Yy]$ ]]; then
-        step "Updating existing installation"
-        cd "$INSTALL_DIR/src"
-        info "Pulling latest changes..."
-        git pull --ff-only
-        success "Repository updated"
+    PY_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    PY_MAJOR=$(echo "$PY_VERSION" | cut -d. -f1)
+    PY_MINOR=$(echo "$PY_VERSION" | cut -d. -f2)
+    if [[ $PY_MAJOR -lt 3 ]] || ([[ $PY_MAJOR -eq 3 ]] && [[ $PY_MINOR -lt 10 ]]); then
+        error "Python 3.10+ requis (trouvé ${PY_VERSION})"
+        exit 1
+    fi
+    success "Python ${PY_VERSION}"
+
+    # Git
+    if ! command -v git &>/dev/null; then
+        error "git est requis mais introuvable."
+        error "Installez-le : sudo apt install git (Linux) ou brew install git (macOS)"
+        exit 1
+    fi
+    success "git $(git --version | awk '{print $3}')"
+
+    # Curl
+    if ! command -v curl &>/dev/null; then
+        error "curl est requis mais introuvable."
+        error "Installez-le : sudo apt install curl (Linux) ou brew install curl (macOS)"
+        exit 1
+    fi
+    success "curl"
+
+    # xxd
+    if ! command -v xxd &>/dev/null; then
+        warn "xxd (vim-common) est recommandé pour le débogage hexadécimal"
+        warn "  Installez-le : sudo apt install xxd (Linux) ou brew install xxd (macOS)"
     else
-        info "Skipping. Use --force to reinstall."
-        exit 0
+        success "xxd"
+    fi
+fi
+
+# ── Vérification des binaires XELIS ──────────────────────────────────────────
+step "Vérification des binaires XELIS"
+
+XELIS_BINS=("xelis_daemon" "xelis_wallet" "xelis_miner")
+XELIS_MISSING=()
+XELIS_FOUND=()
+
+for bin in "${XELIS_BINS[@]}"; do
+    found=0
+    if command -v "$bin" &>/dev/null; then
+        found=1
+    else
+        for d in "$XELIS_DIR" "${HOME}/xelis" "/usr/local/bin" "/usr/bin" "${HOME}/.local/bin"; do
+            if [[ -x "$d/$bin" ]]; then
+                found=1
+                break
+            fi
+        done
+    fi
+    if [[ $found -eq 1 ]]; then
+        version_str=""
+        if command -v "$bin" &>/dev/null; then
+            version_str=$("$bin" --version 2>/dev/null | head -1 || true)
+        else
+            for d in "$XELIS_DIR" "${HOME}/xelis" "/usr/local/bin" "/usr/bin" "${HOME}/.local/bin"; do
+                if [[ -x "$d/$bin" ]]; then
+                    version_str=$("$d/$bin" --version 2>/dev/null | head -1 || true)
+                    break
+                fi
+            done
+        fi
+        success "${bin} trouvé — ${version_str:-version inconnue}"
+        XELIS_FOUND+=("$bin")
+    else
+        warn "${bin} introuvable"
+        XELIS_MISSING+=("$bin")
+    fi
+done
+
+if [[ ${#XELIS_MISSING[@]} -gt 0 ]] && [[ $SKIP_XELIS -eq 0 ]]; then
+    step "Téléchargement des binaires XELIS manquants"
+    echo ""
+    info "Les binaires suivants sont manquants : ${XELIS_MISSING[*]}"
+    echo ""
+    if [[ $INTERACTIVE -eq 1 ]]; then
+        prompt "Voulez-vous les télécharger automatiquement depuis GitHub ? [O/n]"
+        read -r DL_ANSWER
+        DL_ANSWER="${DL_ANSWER:-O}"
+    else
+        DL_ANSWER="O"
+    fi
+
+    if [[ "$DL_ANSWER" =~ ^[OoYy]$ ]]; then
+        mkdir -p "$XELIS_DIR"
+
+        XELIS_REPO="xelis-project/xelis-blockchain"
+        info "Récupération de la dernière version depuis ${XELIS_REPO}..."
+        LATEST_URL=$(curl -fsSL "https://api.github.com/repos/${XELIS_REPO}/releases/latest" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['tag_name'])" 2>/dev/null || true)
+
+        if [[ -z "$LATEST_URL" ]]; then
+            warn "Impossible de récupérer la dernière version — tentative avec 'latest'"
+            TAG="latest"
+        else
+            TAG="$LATEST_URL"
+            info "Dernière version détectée : ${TAG}"
+        fi
+
+        DL_BASE="https://github.com/${XELIS_REPO}/releases/download/${TAG}"
+        TARBALL="xelis-blockchain-${PLATFORM}-${ARCH_TAG}.tar.gz"
+        DL_URL="${DL_BASE}/${TARBALL}"
+
+        info "Téléchargement de ${DL_URL}..."
+        TMP_DIR=$(mktemp -d)
+        if curl -fsSL "$DL_URL" -o "${TMP_DIR}/xelis.tar.gz"; then
+            info "Extraction..."
+            tar -xzf "${TMP_DIR}/xelis.tar.gz" -C "$TMP_DIR"
+
+            for bin in "${XELIS_MISSING[@]}"; do
+                found_file=$(find "$TMP_DIR" -name "$bin" -type f 2>/dev/null | head -1)
+                if [[ -n "$found_file" ]]; then
+                    cp "$found_file" "${XELIS_DIR}/${bin}"
+                    chmod +x "${XELIS_DIR}/${bin}"
+                    success "${bin} téléchargé et placé dans ${XELIS_DIR}"
+                fi
+            done
+
+            mkdir -p "$BIN_DIR"
+            for bin in "${XELIS_MISSING[@]}"; do
+                if [[ -f "${XELIS_DIR}/${bin}" ]]; then
+                    ln -sf "${XELIS_DIR}/${bin}" "${BIN_DIR}/${bin}"
+                    success "Lien symbolique créé : ${BIN_DIR}/${bin}"
+                fi
+            done
+
+            rm -rf "$TMP_DIR"
+
+            if [[ ":${PATH}:" != *":${BIN_DIR}:"* ]]; then
+                warn "${BIN_DIR} n'est pas dans votre PATH"
+                if [[ $INTERACTIVE -eq 1 ]]; then
+                    prompt "Ajouter ${BIN_DIR} à votre PATH maintenant ? [O/n]"
+                    read -r PATH_ANSWER
+                    PATH_ANSWER="${PATH_ANSWER:-O}"
+                    if [[ "$PATH_ANSWER" =~ ^[OoYy]$ ]]; then
+                        SHELL_NAME=$(basename "$SHELL")
+                        case "$SHELL_NAME" in
+                            bash) echo "export PATH=\"${BIN_DIR}:\$PATH\"" >> ~/.bashrc
+                                  success "Ajouté à ~/.bashrc — exécutez : source ~/.bashrc" ;;
+                            zsh)  echo "export PATH=\"${BIN_DIR}:\$PATH\"" >> ~/.zshrc
+                                  success "Ajouté à ~/.zshrc — exécutez : source ~/.zshrc" ;;
+                            fish) echo "fish_add_path ${BIN_DIR}" >> ~/.config/fish/config.fish
+                                  success "Ajouté au config fish" ;;
+                            *)    warn "Shell non reconnu ($SHELL_NAME) — ajoutez manuellement :"
+                                  warn "  export PATH=\"${BIN_DIR}:\$PATH\" dans votre profil" ;;
+                        esac
+                    fi
+                fi
+            fi
+        else
+            error "Échec du téléchargement depuis ${DL_URL}"
+            warn "Vous pouvez télécharger manuellement depuis :"
+            warn "  https://github.com/${XELIS_REPO}/releases"
+            warn "  Placez les binaires dans ${XELIS_DIR}"
+        fi
+    else
+        warn "Téléchargement ignoré. Vous devrez installer les binaires manuellement."
+    fi
+elif [[ $SKIP_XELIS -eq 1 ]]; then
+    info "Vérification des binaires XELIS ignorée (--skip-xelis)"
+fi
+
+# ── Vérification PATH ─────────────────────────────────────────────────────────
+export PATH="${BIN_DIR}:${XELIS_DIR}:${PATH}"
+
+# ── Installation existante / mise à jour ─────────────────────────────────────
+if [[ -d "$INSTALL_DIR/src/.git" ]] && [[ $FORCE -eq 0 ]]; then
+    step "Mise à jour de l'installation existante"
+    if [[ $INTERACTIVE -eq 1 ]]; then
+        prompt "Mettre à jour l'installation existante ? [O/n]"
+        read -r UP_ANSWER
+        UP_ANSWER="${UP_ANSWER:-O}"
+    else
+        UP_ANSWER="O"
+    fi
+
+    if [[ "$UP_ANSWER" =~ ^[OoYy]$ ]]; then
+        cd "$INSTALL_DIR/src"
+        info "Téléchargement des dernières modifications..."
+        git pull --ff-only || warn "Impossible de mettre à jour (conflit ?)"
+        success "Dépôt mis à jour"
+    else
+        info "Mise à jour ignorée. Utilisez --force pour réinstaller."
     fi
 else
-    # ── Fresh install ──────────────────────────────────────────────────────
-    step "Installing XELIS Vault"
-
+    step "Installation de XELIS Vault"
     mkdir -p "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 
-    # Clone repo
-    info "Cloning ${REPO}..."
     if [[ -d "src" ]]; then
         rm -rf src
     fi
-    git clone --depth 1 "$REPO_URL" src 2>&1 | sed 's/^/    /'
-    success "Repository cloned to ${INSTALL_DIR}/src"
-
-    # Create directories
-    mkdir -p "$CONFIG_DIR" "$LOGS_DIR" "${INSTALL_DIR}/wallet"
-    success "Directories created"
+    info "Clonage de ${REPO}..."
+    git clone --depth 1 "$REPO_URL" src 2>&1 | sed 's/^/    /' || {
+        error "Échec du clonage. Vérifiez votre connexion internet."
+        exit 1
+    }
+    success "Dépôt cloné dans ${INSTALL_DIR}/src"
 fi
 
 cd "$INSTALL_DIR/src"
 
-# ── Virtualenv ──────────────────────────────────────────────────────────────
-step "Setting up Python environment"
+# ── Répertoires ───────────────────────────────────────────────────────────────
+mkdir -p "$CONFIG_DIR" "$LOGS_DIR" "$WALLET_DIR"
+
+# ── Environnement virtuel Python ──────────────────────────────────────────────
+step "Configuration de l'environnement Python"
 
 if [[ ! -d "$VENV_DIR" ]]; then
-    info "Creating virtualenv at ${VENV_DIR}"
+    info "Création du venv dans ${VENV_DIR}..."
     python3 -m venv "$VENV_DIR"
-    success "Virtualenv created"
+    success "Venv créé"
 else
-    info "Virtualenv already exists"
+    info "Le venv existe déjà"
 fi
 
-# Install deps
-info "Installing Python dependencies..."
-# shellcheck disable=SC1091
+info "Installation des dépendances Python..."
 source "$VENV_DIR/bin/activate"
-pip install --quiet --upgrade pip
-pip install --quiet requests python-dotenv
-success "Dependencies installed"
+pip install --quiet --upgrade pip 2>/dev/null || true
+pip install --quiet requests python-dotenv 2>/dev/null || true
+success "Dépendances installées"
 deactivate 2>/dev/null || true
 
-# ── Config file ─────────────────────────────────────────────────────────────
-step "Generating configuration"
+# ── Fichier de configuration ──────────────────────────────────────────────────
+step "Génération du fichier de configuration"
 
 CONFIG_FILE="${CONFIG_DIR}/config.json"
 if [[ ! -f "$CONFIG_FILE" ]] || [[ $FORCE -eq 1 ]]; then
-    cat > "$CONFIG_FILE" <<'JSON'
+    cat > "$CONFIG_FILE" <<JSON
 {
-  "version": "5.1",
+  "version": "${VERSION}",
   "network": "testnet",
   "rpc_url": "http://127.0.0.1:18081",
   "wallet_url": "http://127.0.0.1:18082",
   "wallet_user": "wallet",
-  "wallet_pass": "testpass",
+  "wallet_pass": "",
   "miner_endpoint": "",
   "miner_address": "",
   "enable_oracle": true,
@@ -260,37 +426,415 @@ if [[ ! -f "$CONFIG_FILE" ]] || [[ $FORCE -eq 1 ]]; then
   "price_update_interval": 100,
   "log_level": "INFO",
   "contracts": {
-    "price_oracle": "764ad585c2f484e54ea9dd06a7fb8b81397ba2487d37298f27edce3747d836dd",
-    "miner": "21ed1297c7ed4001a4a7c9a4bb89b10da0b0f3ad0312545a5af4a761200af207",
-    "vlt_token": "7275c55d711789b1b746cd4695b04c0e393a0db74ecf72360c5544b73368cfab",
-    "vlt_asset": "2de72ed3ea2d8ff30e6df57ba3a4d993dedfa8636d207d43d09e33615bfde2c6"
+    "vault_swap": "${CONTRACT_VAULTSWAP}",
+    "miner": "${CONTRACT_MINER}",
+    "vlt_token": "${CONTRACT_VLT_TOKEN}",
+    "vlt_asset": "${CONTRACT_VLT_ASSET}",
+    "price_oracle": "${CONTRACT_ORACLE}",
+    "psm": "${CONTRACT_PSM}",
+    "governance_vault": "${CONTRACT_GOV_VAULT}",
+    "registry": "${CONTRACT_REGISTRY}",
+    "staked_oracle": "${CONTRACT_STAKED_ORACLE}",
+    "oracle_governance": "${CONTRACT_ORACLE_GOV}",
+    "xusd": "${CONTRACT_XUSD}",
+    "xusd_asset": "${CONTRACT_XUSD_ASSET}",
+    "vault_engine": "${CONTRACT_VAULT_ENGINE}",
+    "governor": "${CONTRACT_GOVERNOR}",
+    "guardian": "${CONTRACT_GUARDIAN}",
+    "timelock": "${CONTRACT_TIMELOCK}"
   }
 }
 JSON
-    success "Config written to ${CONFIG_FILE}"
+    success "Configuration écrite dans ${CONFIG_FILE}"
 else
-    info "Config already exists at ${CONFIG_FILE} (use --force to overwrite)"
+    info "La configuration existe déjà (utilisez --force pour écraser)"
 fi
 
-# ── Launcher ────────────────────────────────────────────────────────────────
-step "Installing launcher"
+# ── Configuration du portefeuille XELIS ───────────────────────────────────────
+MINER_ADDRESS=""
+WALLET_PASSWORD="testpass"
+
+if [[ $SKIP_WALLET -eq 0 ]]; then
+    step "Configuration du portefeuille XELIS"
+
+    WALLET_EXE=""
+    for try in xelis_wallet "${XELIS_DIR}/xelis_wallet" "${BIN_DIR}/xelis_wallet"; do
+        if command -v "$try" &>/dev/null; then
+            WALLET_EXE="$try"
+            break
+        fi
+        [[ -x "$try" ]] && { WALLET_EXE="$try"; break; }
+    done
+
+    WALLET_DB_PATH="${WALLET_DIR}/vault_wallet.db"
+
+    if [[ -f "$WALLET_DB_PATH" ]] && [[ $FORCE -eq 0 ]]; then
+        info "Un portefeuille existe déjà dans ${WALLET_DB_PATH}"
+        if [[ -n "$WALLET_EXE" ]]; then
+            "$WALLET_EXE" --wallet-path "$WALLET_DB_PATH" --password "$WALLET_PASSWORD" \
+                --network testnet --daemon-address http://127.0.0.1:18081 \
+                --disable-interactive-mode --rpc-bind-address 127.0.0.1:18085 \
+                --rpc-username wallet --rpc-password "$WALLET_PASSWORD" &
+            WALLET_PID=$!
+            sleep 3
+            ADDR_OUTPUT=$(curl -s --user "wallet:${WALLET_PASSWORD}" \
+                -X POST http://127.0.0.1:18085/json_rpc \
+                -H "Content-Type: application/json" \
+                -d '{"method":"get_address","params":{},"id":1}' 2>/dev/null || true)
+            MINER_ADDRESS=$(echo "$ADDR_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('result',''))" 2>/dev/null || true)
+            kill "$WALLET_PID" 2>/dev/null || true
+            if [[ -n "$MINER_ADDRESS" ]]; then
+                success "Adresse du portefeuille existant : ${MINER_ADDRESS}"
+            fi
+        fi
+    else
+        if [[ -z "$WALLET_EXE" ]]; then
+            warn "xelis_wallet n'est pas disponible"
+            warn "Vous devrez créer un portefeuille manuellement après l'installation."
+            echo ""
+            if [[ $INTERACTIVE -eq 1 ]]; then
+                warn "Entrez votre adresse XELIS existante (ou laissez vide pour continuer) :"
+                prompt "Adresse XELIS (xet:...) :"
+                read -r MINER_ADDRESS
+            fi
+        else
+            echo ""
+            if [[ $INTERACTIVE -eq 1 ]]; then
+                prompt "Voulez-vous créer un NOUVEAU portefeuille (n) ou en IMPORTER un existant (i) ? [N/i] : "
+                read -r WALLET_CHOICE
+                WALLET_CHOICE="${WALLET_CHOICE:-N}"
+            else
+                WALLET_CHOICE="N"
+            fi
+
+            if [[ "$WALLET_CHOICE" =~ ^[Ii]$ ]]; then
+                # Import d'un portefeuille existant
+                echo ""
+                prompt "Entrez votre phrase de récupération (24 mots) : "
+                read -r WALLET_SEED
+                prompt "Mot de passe du portefeuille : "
+                read -rs WALLET_PASSWORD
+                echo ""
+                if [[ -z "$WALLET_PASSWORD" ]]; then
+                    WALLET_PASSWORD="testpass"
+                fi
+
+                info "Importation du portefeuille..."
+                "$WALLET_EXE" --seed "$WALLET_SEED" --password "$WALLET_PASSWORD" \
+                    --wallet-path "$WALLET_DB_PATH" \
+                    --daemon-address http://127.0.0.1:18081 --network testnet \
+                    --rpc-bind-address 127.0.0.1:18082 --rpc-username wallet \
+                    --rpc-password "$WALLET_PASSWORD" --disable-ascii-art \
+                    --disable-interactive-mode --logs-path "$LOGS_DIR" --log-level info &
+                WALLET_PID=$!
+                sleep 4
+                ADDR_OUTPUT=$(curl -s --user "wallet:${WALLET_PASSWORD}" \
+                    -X POST http://127.0.0.1:18082/json_rpc \
+                    -H "Content-Type: application/json" \
+                    -d '{"method":"get_address","params":{},"id":1}' 2>/dev/null || true)
+                MINER_ADDRESS=$(echo "$ADDR_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('result',''))" 2>/dev/null || true)
+                kill "$WALLET_PID" 2>/dev/null || true
+                sleep 1
+
+                if [[ -n "$MINER_ADDRESS" ]]; then
+                    success "Portefeuille importé avec succès !"
+                    success "Adresse : ${MINER_ADDRESS}"
+                else
+                    warn "Impossible de récupérer l'adresse. Vérifiez votre phrase de récupération."
+                    # Sauvegarder le seed pour usage manuel
+                    echo "$WALLET_SEED" > "${WALLET_DIR}/seed.txt"
+                    chmod 600 "${WALLET_DIR}/seed.txt"
+                    warn "La phrase de récupération a été sauvegardée dans ${WALLET_DIR}/seed.txt"
+                fi
+            else
+                # Création d'un nouveau portefeuille
+                echo ""
+                info "Génération d'un nouveau portefeuille..."
+                info "Démarrage de xelis_wallet pour créer un nouveau portefeuille..."
+
+                WALLET_PASSWORD="testpass"
+
+                # On lance le wallet sans seed pour qu'il en génère un
+                "$WALLET_EXE" --password "$WALLET_PASSWORD" \
+                    --wallet-path "$WALLET_DB_PATH" \
+                    --daemon-address http://127.0.0.1:18081 --network testnet \
+                    --rpc-bind-address 127.0.0.1:18082 --rpc-username wallet \
+                    --rpc-password "$WALLET_PASSWORD" --disable-ascii-art \
+                    --disable-interactive-mode --logs-path "$LOGS_DIR" --log-level info &
+                WALLET_PID=$!
+                sleep 4
+
+                # Récupération de l'adresse
+                ADDR_OUTPUT=$(curl -s --user "wallet:${WALLET_PASSWORD}" \
+                    -X POST http://127.0.0.1:18082/json_rpc \
+                    -H "Content-Type: application/json" \
+                    -d '{"method":"get_address","params":{},"id":1}' 2>/dev/null || true)
+                MINER_ADDRESS=$(echo "$ADDR_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('result',''))" 2>/dev/null || true)
+
+                kill "$WALLET_PID" 2>/dev/null || true
+                sleep 1
+
+                if [[ -n "$MINER_ADDRESS" ]]; then
+                    success "Nouveau portefeuille créé !"
+                    success "Adresse : ${MINER_ADDRESS}"
+                    echo ""
+                    warn "╔══════════════════════════════════════════════════════════════╗"
+                    warn "║     ATTENTION : Sauvegardez votre phrase de récupération !  ║"
+                    warn "║     Le portefeuille a été créé avec le mot de passe :       ║"
+                    warn "║     ${WALLET_PASSWORD}                                       ║"
+                    warn "║     La phrase de récupération se trouve dans les logs        ║"
+                    warn "║     ci-dessus ou dans ${LOGS_DIR}/              ║"
+                    warn "╚══════════════════════════════════════════════════════════════╝"
+                    echo ""
+
+                    prompt "Avez-vous noté votre phrase de récupération ? (o/N) : "
+                    read -r SEED_SAVED
+                    if [[ ! "$SEED_SAVED" =~ ^[Oo]$ ]]; then
+                        warn "⚠️  Veuillez sauvegarder votre phrase immédiatement !"
+                        warn "   Lancez le portefeuille avec : xelis_wallet --wallet-path ${WALLET_DB_PATH}"
+                    fi
+                else
+                    warn "Impossible de récupérer l'adresse du nouveau portefeuille."
+                    warn "Consultez les logs dans ${LOGS_DIR}"
+                fi
+            fi
+        fi
+    fi
+
+    # Sauvegarde de l'adresse dans la config
+    if [[ -n "$MINER_ADDRESS" ]]; then
+        cat > "${CONFIG_DIR}/wallet_address.txt" <<EOF
+# Adresse du portefeuille XELIS Vault
+# Généré par install.sh le $(date)
+MINER_ADDRESS=${MINER_ADDRESS}
+WALLET_PASSWORD=${WALLET_PASSWORD}
+WALLET_DB=${WALLET_DB_PATH}
+EOF
+        chmod 600 "${CONFIG_DIR}/wallet_address.txt"
+        success "Adresse sauvegardée dans ${CONFIG_DIR}/wallet_address.txt"
+    fi
+else
+    info "Configuration du portefeuille ignorée (--skip-wallet)"
+fi
+
+# ── Configuration du minage ───────────────────────────────────────────────────
+step "Configuration du minage"
+
+echo ""
+echo "${CYAN}╔══════════════════════════════════════════════════════════════════╗${RESET}"
+echo "${CYAN}║              EXPLICATION DU SYSTÈME DE MINAGE                  ║${RESET}"
+echo "${CYAN}╠══════════════════════════════════════════════════════════════════╣${RESET}"
+echo "${CYAN}║${RESET}                                                                  ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  Pour miner sur XELIS Vault, vous avez besoin de :              ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  → 100 VLT (XELIS Vault Token) à staker comme garantie           ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  → Un endpoint public où votre mineur sera joignable             ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  → Un daemon XELIS synchronisé                                   ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}                                                                  ${CYAN}║${RESET}"
+echo "${CYAN}╠══════════════════════════════════════════════════════════════════╣${RESET}"
+echo "${CYAN}║${RESET}  COMMENT OBTENIR 100 VLT :                                     ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}                                                                  ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  a) Acheter sur un échange (si disponible)                       ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  b) Swapper XEL → VLT sur VaultSwapV2                            ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}     Contrat : ${CONTRACT_VAULTSWAP::40}...  ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  c) Gagner via le staking dans GovernanceVault                   ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}     Contrat : ${CONTRACT_GOV_VAULT::40}...  ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  d) À terme : rewards de protocol mining                         ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}                                                                  ${CYAN}║${RESET}"
+echo "${CYAN}╠══════════════════════════════════════════════════════════════════╣${RESET}"
+echo "${CYAN}║${RESET}  FORMULE DE RÉCOMPENSE :                                       ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  Récompense = Base × multiplicateur_réputation × facteur_budget ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  → Base : montant fixe par distribution                         ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  → multiplicateur_réputation : dépend de votre score            ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  → facteur_budget : dépend du budget restant du protocole       ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}                                                                  ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  SYSTEME DE RÉPUTATION / HEARTBEATS :                           ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  → Envoyer un heartbeat tous les 100 blocs                       ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  → 5 paliers : New, Bronze, Silver, Gold, Elite                 ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  → Slashing en cas d'inactivité ou de comportement abusif       ${CYAN}║${RESET}"
+echo "${CYAN}║${RESET}  → Les mineurs actifs reçoivent plus de récompenses             ${CYAN}║${RESET}"
+echo "${CYAN}╚══════════════════════════════════════════════════════════════════╝${RESET}"
+echo ""
+
+if [[ $INTERACTIVE -eq 1 ]]; then
+    prompt "Entrez l'URL de votre endpoint public (ex: https://mineur.example.com:8080) : "
+    read -r MINER_ENDPOINT
+    MINER_ENDPOINT="${MINER_ENDPOINT:-}"
+
+    if [[ -z "$MINER_ENDPOINT" ]]; then
+        warn "Aucun endpoint fourni. Vous devrez le configurer plus tard."
+        warn "(Fichier : ${CONFIG_FILE}, clé : miner_endpoint)"
+    else
+        success "Endpoint configuré : ${MINER_ENDPOINT}"
+    fi
+else
+    MINER_ENDPOINT=""
+fi
+
+# ── Mise à jour de la config avec les valeurs du minage ────────────────────────
+if [[ -n "$MINER_ENDPOINT" ]] || [[ -n "$MINER_ADDRESS" ]]; then
+    # On met à jour le JSON via Python pour éviter les problèmes d'encodage
+    python3 -c "
+import json
+path = '${CONFIG_FILE}'
+with open(path) as f:
+    cfg = json.load(f)
+if '${MINER_ENDPOINT}':
+    cfg['miner_endpoint'] = '${MINER_ENDPOINT}'
+if '${MINER_ADDRESS}':
+    cfg['miner_address'] = '${MINER_ADDRESS}'
+    cfg['wallet_pass'] = '${WALLET_PASSWORD}'
+with open(path, 'w') as f:
+    json.dump(cfg, f, indent=2)
+" 2>/dev/null || true
+    success "Configuration mise à jour avec les informations de minage"
+fi
+
+# ── Fichier .env ──────────────────────────────────────────────────────────────
+ENV_FILE="${CONFIG_DIR}/.env"
+if [[ ! -f "$ENV_FILE" ]] || [[ $FORCE -eq 1 ]]; then
+    cat > "$ENV_FILE" <<EOF
+# XELIS Vault v${VERSION} — Configuration d'environnement
+# Généré par install.sh le $(date)
+
+WALLET_PATH=${WALLET_DIR}
+XELIS_RPC=http://127.0.0.1:18081
+WALLET_RPC=http://127.0.0.1:18082
+WALLET_USER=wallet
+WALLET_PASS=${WALLET_PASSWORD}
+MINER_ADDRESS=${MINER_ADDRESS:-}
+ENDPOINT_URL=${MINER_ENDPOINT:-}
+SERVICES_MASK=1
+LOG_LEVEL=INFO
+CONTRACT_VAULTSWAP=${CONTRACT_VAULTSWAP}
+CONTRACT_MINER=${CONTRACT_MINER}
+CONTRACT_VLT_TOKEN=${CONTRACT_VLT_TOKEN}
+CONTRACT_VLT_ASSET=${CONTRACT_VLT_ASSET}
+CONTRACT_ORACLE=${CONTRACT_ORACLE}
+CONTRACT_PSM=${CONTRACT_PSM}
+CONTRACT_GOV_VAULT=${CONTRACT_GOV_VAULT}
+CONTRACT_REGISTRY=${CONTRACT_REGISTRY}
+CONTRACT_STAKED_ORACLE=${CONTRACT_STAKED_ORACLE}
+CONTRACT_ORACLE_GOV=${CONTRACT_ORACLE_GOV}
+CONTRACT_XUSD=${CONTRACT_XUSD}
+CONTRACT_XUSD_ASSET=${CONTRACT_XUSD_ASSET}
+CONTRACT_VAULT_ENGINE=${CONTRACT_VAULT_ENGINE}
+CONTRACT_GOVERNOR=${CONTRACT_GOVERNOR}
+CONTRACT_GUARDIAN=${CONTRACT_GUARDIAN}
+CONTRACT_TIMELOCK=${CONTRACT_TIMELOCK}
+EOF
+    chmod 600 "$ENV_FILE"
+    success "Fichier .env créé dans ${ENV_FILE}"
+else
+    info "Le fichier .env existe déjà (utilisez --force pour écraser)"
+fi
+
+# ── Installation du lanceur ────────────────────────────────────────────────────
+step "Installation du lanceur xvault"
 
 mkdir -p "$BIN_DIR"
-cat > "${BIN_DIR}/xvault" <<EOF
+cat > "${BIN_DIR}/xvault" <<'LAUNCHER'
 #!/usr/bin/env bash
-# XELIS Vault launcher - auto-generated by install.sh
-VAULT_DIR="${INSTALL_DIR}"
-VENV="\${VAULT_DIR}/venv/bin/python"
-SCRIPT="\${VAULT_DIR}/src/scripts/xelis_vault_miner.py"
-exec "\${VENV}" "\${SCRIPT}" "\$@"
-EOF
-chmod +x "${BIN_DIR}/xvault"
-success "Launcher installed: ${BIN_DIR}/xvault"
+# XELIS Vault — Lanceur généré par install.sh
+VAULT_DIR="__INSTALL_DIR__"
+VENV="__VENV_DIR__/bin/python"
+SCRIPT="__SRC_DIR__/scripts/xelis_vault_miner.py"
+CONFIG="__CONFIG_DIR__/config.json"
 
-# PATH warning
+usage() {
+    echo "XELIS Vault — Lanceur du mineur / oracle"
+    echo ""
+    echo "Usage : xvault [options]"
+    echo ""
+    echo "Options :"
+    echo "  --miner           Démarrer le daemon mineur"
+    echo "  --oracle          Démarrer le bot de prix oracle"
+    echo "  --wallet          Démarrer le portefeuille (daemon)"
+    echo "  --daemon          Démarrer le daemon XELIS"
+    echo "  --config <fichier> Utiliser un fichier de config personnalisé"
+    echo "  --help, -h        Afficher cette aide"
+    echo ""
+    echo "Exemples :"
+    echo "  xvault --miner"
+    echo "  xvault --oracle"
+    echo "  xvault --wallet"
+    echo "  xvault --daemon"
+}
+
+if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
+    usage
+    exit 0
+fi
+
+case "$1" in
+    --miner)
+        shift
+        exec "$VENV" "$SCRIPT" --config "$CONFIG" "$@"
+        ;;
+    --oracle)
+        shift
+        exec "$VENV" "__SRC_DIR__/price_bot.py" "$@"
+        ;;
+    --wallet)
+        WALLET_DB="__WALLET_DIR__/vault_wallet.db"
+        if [[ -f "__CONFIG_DIR__/wallet_address.txt" ]]; then
+            source "__CONFIG_DIR__/wallet_address.txt"
+        fi
+        WALLET_PASS="${WALLET_PASSWORD:-testpass}"
+        shift
+        exec xelis_wallet \
+            --seed "" \
+            --password "$WALLET_PASS" \
+            --wallet-path "$WALLET_DB" \
+            --daemon-address http://127.0.0.1:18081 \
+            --network testnet \
+            --rpc-bind-address 127.0.0.1:18082 \
+            --rpc-username wallet \
+            --rpc-password "$WALLET_PASS" \
+            --disable-ascii-art \
+            --disable-interactive-mode \
+            --logs-path "__LOGS_DIR__" \
+            --log-level info \
+            "$@"
+        ;;
+    --daemon)
+        shift
+        exec xelis_daemon \
+            --network testnet \
+            --dir-path "__INSTALL_DIR__/data" \
+            --logs-path "__LOGS_DIR__" \
+            --rpc-bind-address 127.0.0.1:18081 \
+            --p2p-bind-address 0.0.0.0:2125 \
+            --disable-ascii-art \
+            --enable-contracts-logging \
+            "$@"
+        ;;
+    *)
+        echo "Option inconnue : $1"
+        usage
+        exit 1
+        ;;
+esac
+LAUNCHER
+
+# Remplacer les placeholders
+sed -i "s|__INSTALL_DIR__|${INSTALL_DIR}|g" "${BIN_DIR}/xvault"
+sed -i "s|__VENV_DIR__|${VENV_DIR}|g" "${BIN_DIR}/xvault"
+sed -i "s|__SRC_DIR__|${INSTALL_DIR}/src|g" "${BIN_DIR}/xvault"
+sed -i "s|__CONFIG_DIR__|${CONFIG_DIR}|g" "${BIN_DIR}/xvault"
+sed -i "s|__WALLET_DIR__|${WALLET_DIR}|g" "${BIN_DIR}/xvault"
+sed -i "s|__LOGS_DIR__|${LOGS_DIR}|g" "${BIN_DIR}/xvault"
+
+chmod +x "${BIN_DIR}/xvault"
+success "Lanceur installé : ${BIN_DIR}/xvault"
+success "  xvault --help   → Aide"
+success "  xvault --miner  → Démarrer le mineur"
+success "  xvault --wallet → Démarrer le portefeuille"
+success "  xvault --daemon → Démarrer le daemon"
+
+# Ajout au PATH
 if [[ ":${PATH}:" != *":${BIN_DIR}:"* ]]; then
-    warn "${BIN_DIR} is not in your PATH"
-    info "Add it to your shell profile:"
+    warn "${BIN_DIR} n'est pas dans votre PATH"
+    info "Ajoutez-le à votre profil shell :"
     SHELL_NAME=$(basename "$SHELL")
     case "$SHELL_NAME" in
         bash) info "  echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.bashrc" ;;
@@ -300,36 +844,271 @@ if [[ ":${PATH}:" != *":${BIN_DIR}:"* ]]; then
     esac
 fi
 
-# ── Done ────────────────────────────────────────────────────────────────────
+# ── Service auto-démarrage ─────────────────────────────────────────────────────
+if [[ $SKIP_SERVICE -eq 0 ]] && [[ $INTERACTIVE -eq 1 ]]; then
+    step "Configuration du service auto-démarrage"
+    echo ""
+    prompt "Voulez-vous configurer le démarrage automatique du daemon et du wallet ? [o/N] : "
+    read -r SERVICE_ANSWER
+    SERVICE_ANSWER="${SERVICE_ANSWER:-N}"
+
+    if [[ "$SERVICE_ANSWER" =~ ^[OoYy]$ ]]; then
+        if [[ "$PLATFORM" == "linux" ]]; then
+            # systemd user service
+            SYSTEMD_DIR="${HOME}/.config/systemd/user"
+            mkdir -p "$SYSTEMD_DIR"
+
+            # Service daemon
+            cat > "${SYSTEMD_DIR}/xelis-daemon.service" <<EOF
+[Unit]
+Description=XELIS Daemon (testnet)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=${XELIS_DIR}/xelis_daemon --network testnet --dir-path ${INSTALL_DIR}/data --logs-path ${LOGS_DIR} --rpc-bind-address 127.0.0.1:18081 --p2p-bind-address 0.0.0.0:2125 --disable-ascii-art --enable-contracts-logging
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+EOF
+            chmod 644 "${SYSTEMD_DIR}/xelis-daemon.service"
+            success "Service systemd créé : ${SYSTEMD_DIR}/xelis-daemon.service"
+
+            # Service wallet
+            cat > "${SYSTEMD_DIR}/xelis-wallet.service" <<EOF
+[Unit]
+Description=XELIS Wallet (testnet, vault)
+After=xelis-daemon.service
+BindsTo=xelis-daemon.service
+
+[Service]
+Type=simple
+ExecStart=${BIN_DIR}/xvault --wallet
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+EOF
+            chmod 644 "${SYSTEMD_DIR}/xelis-wallet.service"
+            success "Service systemd créé : ${SYSTEMD_DIR}/xelis-wallet.service"
+
+            info "Pour activer et démarrer les services :"
+            info "  systemctl --user daemon-reload"
+            info "  systemctl --user enable --now xelis-daemon.service"
+            info "  systemctl --user enable --now xelis-wallet.service"
+            info ""
+            info "Pour voir les logs :"
+            info "  journalctl --user -u xelis-daemon.service -f"
+            info "  journalctl --user -u xelis-wallet.service -f"
+
+        elif [[ "$PLATFORM" == "macos" ]]; then
+            # launchd plist
+            LAUNCHD_DIR="${HOME}/Library/LaunchAgents"
+            mkdir -p "$LAUNCHD_DIR"
+
+            # Daemon plist
+            cat > "${LAUNCHD_DIR}/com.xelis.daemon.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.xelis.daemon</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${XELIS_DIR}/xelis_daemon</string>
+        <string>--network</string>
+        <string>testnet</string>
+        <string>--dir-path</string>
+        <string>${INSTALL_DIR}/data</string>
+        <string>--logs-path</string>
+        <string>${LOGS_DIR}</string>
+        <string>--rpc-bind-address</string>
+        <string>127.0.0.1:18081</string>
+        <string>--p2p-bind-address</string>
+        <string>0.0.0.0:2125</string>
+        <string>--disable-ascii-art</string>
+        <string>--enable-contracts-logging</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>${LOGS_DIR}/daemon.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>${LOGS_DIR}/daemon.stderr.log</string>
+</dict>
+</plist>
+PLIST
+            chmod 644 "${LAUNCHD_DIR}/com.xelis.daemon.plist"
+            success "Launchd plist créée : ${LAUNCHD_DIR}/com.xelis.daemon.plist"
+
+            # Wallet plist
+            cat > "${LAUNCHD_DIR}/com.xelis.wallet.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.xelis.wallet</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${BIN_DIR}/xvault</string>
+        <string>--wallet</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>${LOGS_DIR}/wallet.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>${LOGS_DIR}/wallet.stderr.log</string>
+</dict>
+</plist>
+PLIST
+            chmod 644 "${LAUNCHD_DIR}/com.xelis.wallet.plist"
+            success "Launchd plist créée : ${LAUNCHD_DIR}/com.xelis.wallet.plist"
+
+            info "Pour activer et démarrer les services :"
+            info "  launchctl load ${LAUNCHD_DIR}/com.xelis.daemon.plist"
+            info "  launchctl load ${LAUNCHD_DIR}/com.xelis.wallet.plist"
+            info ""
+            info "Pour voir les logs :"
+            info "  tail -f ${LOGS_DIR}/daemon.stdout.log"
+            info "  tail -f ${LOGS_DIR}/wallet.stdout.log"
+        fi
+    else
+        info "Service auto-démarrage ignoré"
+    fi
+fi
+
+# ── Résumé final ──────────────────────────────────────────────────────────────
 printf "\n"
-printf "${GREEN}${BOLD}================================================================${RESET}\n"
+printf "${GREEN}${BOLD}══════════════════════════════════════════════════════════════════${RESET}\n"
 printf "${GREEN}${BOLD}                                                                ${RESET}\n"
-printf "${GREEN}${BOLD}   XELIS Vault installed successfully!                          ${RESET}\n"
+printf "${GREEN}${BOLD}   XELIS Vault installé avec succès !                            ${RESET}\n"
 printf "${GREEN}${BOLD}                                                                ${RESET}\n"
-printf "${GREEN}${BOLD}================================================================${RESET}\n"
+printf "${GREEN}${BOLD}══════════════════════════════════════════════════════════════════${RESET}\n"
 printf "\n"
 
-printf "${BOLD}Next steps:${RESET}\n\n"
+printf "${BOLD}RÉSUMÉ DE L'INSTALLATION${RESET}\n\n"
 
-printf "  ${CYAN}1.${RESET} ${BOLD}Start mining${RESET} (one-liner):\n"
-printf "     ${DIM}\$${RESET} xvault --miner\n\n"
+# Adresse du wallet
+if [[ -n "$MINER_ADDRESS" ]]; then
+    printf "  ${CYAN}Adresse du portefeuille :${RESET}\n"
+    printf "    ${BOLD}${MINER_ADDRESS}${RESET}\n\n"
+else
+    printf "  ${YELLOW}Adresse du portefeuille :${RESET} Non configurée\n\n"
+fi
 
-printf "  ${CYAN}2.${RESET} ${BOLD}Start with custom endpoint${RESET}:\n"
-printf "     ${DIM}\$${RESET} xvault --rpc http://127.0.0.1:18081 \\\\\n"
-printf "            --wallet-url http://127.0.0.1:18082 \\\\\n"
-printf "            --endpoint https://my-miner.example.com:8080 \\\\\n"
-printf "            --miner\n\n"
+# Statut daemon XELIS
+DAEMON_RUNNING=0
+if command -v xelis_daemon &>/dev/null || [[ -f "${XELIS_DIR}/xelis_daemon" ]]; then
+    DAEMON_PATH=$(command -v xelis_daemon || echo "${XELIS_DIR}/xelis_daemon")
+    if pgrep -f xelis_daemon &>/dev/null; then
+        printf "  ${GREEN}Daemon XELIS :${RESET} En cours d'exécution ✓\n"
+        DAEMON_RUNNING=1
+    else
+        printf "  ${YELLOW}Daemon XELIS :${RESET} Installé mais pas en cours d'exécution\n"
+    fi
+else
+    printf "  ${RED}Daemon XELIS :${RESET} Non installé\n"
+fi
 
-printf "  ${CYAN}3.${RESET} ${BOLD}Interactive mode${RESET} (guided setup):\n"
-printf "     ${DIM}\$${RESET} xvault -i\n\n"
+# Version
+printf "  ${CYAN}Version installée :${RESET} ${VERSION}\n"
+printf "  ${CYAN}Répertoire :${RESET} ${INSTALL_DIR}\n"
+printf "  ${CYAN}Configuration :${RESET} ${CONFIG_FILE}\n"
+printf "  ${CYAN}Logs :${RESET} ${LOGS_DIR}\n\n"
 
-printf "  ${CYAN}4.${RESET} ${BOLD}View help${RESET}:\n"
-printf "     ${DIM}\$${RESET} xvault --help\n\n"
+printf "${BOLD}ÉTAPES SUIVANTES${RESET}\n\n"
 
-printf "${DIM}Config:${RESET}  ${CONFIG_FILE}\n"
-printf "${DIM}Logs:${RESET}    ${LOGS_DIR}/miner.log\n"
-printf "${DIM}Source:${RESET}  ${INSTALL_DIR}/src\n"
-printf "${DIM}Docs:${RESET}    https://github.com/${REPO}\n"
-printf "${DIM}Discord:${RESET} https://discord.gg/UHpYAWbG\n"
+# Guide VLT
+printf "  ${CYAN}1.${RESET} ${BOLD}Obtenir 100 VLT pour staker${RESET}\n"
+printf "     Le minage nécessite 100 VLT stakés comme garantie.\n"
+printf "     Voici comment obtenir des VLT :\n"
 printf "\n"
-printf "${MAGENTA}Happy mining!${RESET}\n\n"
+printf "     ${BOLD}a) Acheter sur un exchange${RESET} (si listé)\n"
+printf "        Vérifiez la disponibilité sur les exchanges centralisés.\n"
+printf "\n"
+printf "     ${BOLD}b) Swapper XEL → VLT sur VaultSwapV2${RESET}\n"
+printf "        Adresse du contrat : ${DIM}${CONTRACT_VAULTSWAP}${RESET}\n"
+printf "        Déposez du XEL et swappez pour du VLT via l'interface.\n"
+printf "        Commandes wallet :\n"
+printf "          1. Déposez du XEL sur VaultSwapV2\n"
+printf "          2. Appelez swap(XEL, VLT, montant, min_out)\n"
+printf "\n"
+printf "     ${BOLD}c) Staker dans GovernanceVault${RESET}\n"
+printf "        Si vous avez déjà des VLT, stakez-les dans\n"
+printf "        GovernanceVault (${DIM}${CONTRACT_GOV_VAULT::32}...${RESET})\n"
+printf "        pour gagner des récompenses de staking.\n"
+printf "\n"
+printf "     ${BOLD}d) Protocol Mining (futur)${RESET}\n"
+printf "        Les récompenses de minage de protocole seront\n"
+printf "        disponibles dans une prochaine version.\n"
+
+printf "\n"
+printf "  ${CYAN}2.${RESET} ${BOLD}Configurer le minage${RESET}\n"
+printf "     Une fois vos 100 VLT obtenus, enregistrez-vous comme mineur :\n"
+printf "       xvault --miner\n"
+printf "     Ou manuellement :\n"
+printf "       python3 ${INSTALL_DIR}/src/scripts/xelis_vault_miner.py \\\\\n"
+printf "         --config ${CONFIG_FILE}\n"
+
+printf "\n"
+printf "  ${CYAN}3.${RESET} ${BOLD}Démarrer le daemon XELIS${RESET}\n"
+if [[ $DAEMON_RUNNING -eq 0 ]]; then
+    if [[ -f "${XELIS_DIR}/xelis_daemon" ]]; then
+        printf "     Lancez : xvault --daemon\n"
+        printf "     Ou :    ${XELIS_DIR}/xelis_daemon --network testnet \\\\\n"
+        printf "               --dir-path ${INSTALL_DIR}/data --logs-path ${LOGS_DIR} \\\\\n"
+        printf "               --rpc-bind-address 127.0.0.1:18081 &\n"
+    else
+        printf "     Téléchargez d'abord xelis_daemon depuis :\n"
+        printf "     https://github.com/xelis-project/xelis-blockchain/releases\n"
+    fi
+fi
+
+printf "\n"
+printf "  ${CYAN}4.${RESET} ${BOLD}Démarrer le portefeuille${RESET}\n"
+printf "     xvault --wallet\n"
+if [[ -n "$MINER_ADDRESS" ]]; then
+    printf "     Adresse : ${MINER_ADDRESS}\n"
+fi
+
+printf "\n"
+printf "  ${CYAN}5.${RESET} ${BOLD}Heartbeats${RESET}\n"
+printf "     Le mineur envoie automatiquement un heartbeat toutes les 100\n"
+printf "     blocs. Votre réputation détermine votre part des récompenses.\n"
+printf "     Palier de réputation : New < Bronze < Silver < Gold < Elite\n"
+
+printf "\n"
+printf "  ${CYAN}6.${RESET} ${BOLD}Contrats déployés (testnet)${RESET}\n"
+printf "     VaultSwapV2      ${DIM}${CONTRACT_VAULTSWAP}${RESET}\n"
+printf "     XelisVaultMiner  ${DIM}${CONTRACT_MINER}${RESET}\n"
+printf "     VLTToken         ${DIM}${CONTRACT_VLT_TOKEN}${RESET}\n"
+printf "     VLT Asset        ${DIM}${CONTRACT_VLT_ASSET}${RESET}\n"
+printf "     PriceOracle      ${DIM}${CONTRACT_ORACLE}${RESET}\n"
+printf "     PSM              ${DIM}${CONTRACT_PSM}${RESET}\n"
+printf "     GovernanceVault  ${DIM}${CONTRACT_GOV_VAULT}${RESET}\n"
+printf "     StakedOracle     ${DIM}${CONTRACT_STAKED_ORACLE}${RESET}\n"
+printf "     OracleGovernance ${DIM}${CONTRACT_ORACLE_GOV}${RESET}\n"
+printf "     ContractRegistry ${DIM}${CONTRACT_REGISTRY}${RESET}\n"
+
+printf "\n"
+printf "${DIM}──────────────────────────────────────────────────────────────────${RESET}\n"
+printf "${DIM}  Configuration : ${CONFIG_FILE}${RESET}\n"
+printf "${DIM}  Logs :          ${LOGS_DIR}${RESET}\n"
+printf "${DIM}  Documentation : https://github.com/${REPO}${RESET}\n"
+printf "${DIM}  Discord :       https://discord.gg/UHpYAWbG${RESET}\n"
+printf "${DIM}──────────────────────────────────────────────────────────────────${RESET}\n"
+printf "\n"
+printf "${GREEN}${BOLD}Bon minage !${RESET}\n"
+printf "${DIM}  N'oubliez pas : ce installateur n'a collecté AUCUNE télémétrie.${RESET}\n"
+printf "${DIM}  Aucune donnée ne quitte votre machine.${RESET}\n"
+printf "\n"

@@ -1,6 +1,0 @@
-hook constructor() -> u64 { return 0 }
-
-entry store_hash(h: Hash) -> u64 {
-    Storage::new().store("h", h)
-    return 0
-}

@@ -82,3 +82,20 @@ site/
 *.tmp
 *.bak
 *.cache
+
+# XELIS chain data (devnet/testnet nodes)
+data/
+
+# Debug / test contracts (local experiments)
+contracts/debug_*.slx
+contracts/test_*.slx
+contracts/psm_*.slx
+contracts/vault/VaultEngine_bv*.slx
+contracts/vault/VaultEngine_v5.slx
+contracts/vault/VaultEngine_v6.slx
+
+# Deployment scripts (local, one-time use)
+core_deploy.py
+
+# Agent notes (local only — contains seeds)
+AGENTS.md

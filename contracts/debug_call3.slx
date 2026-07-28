@@ -1,9 +1,0 @@
-hook constructor() -> u64 { return 0 }
-
-entry test() -> u64 {
-    let dep: optional<u64> = get_deposit_for_asset(Hash::zero())
-    let dep_val: u64 = dep.unwrap_or(0u64)
-    let oc: Contract = Contract::new(Hash::from_hex("147ab6aa686a5268396b39bc7d78de7e9e913dd6df7d0ae145a7eef28f163f2a")).expect("ocnf")
-    let price: u64 = oc.call(3u16, [Hash::zero()], {})
-    return dep_val + price
-}

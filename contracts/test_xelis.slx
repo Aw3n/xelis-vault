@@ -1,0 +1,12 @@
+hook constructor() -> u64 {
+    Storage::new().store("a", 1u64);
+    return 0
+}
+
+entry test_xelis(oracle: Hash) -> u64 {
+    let oc: Contract = Contract::new(oracle).expect("ocnf");
+    let xelis: Hash = Hash::zero();
+    let price: u64 = oc.call(3u16, [xelis], {});
+    Storage::new().store("p", price);
+    return 0
+}

@@ -1,0 +1,10 @@
+hook constructor() -> u64 {
+    Storage::new().store("a", 1u64);
+    return 0
+}
+
+entry test_burn(xusd: Hash, amount: u64) -> u64 {
+    let xc: Contract = Contract::new(xusd).expect("xcnf");
+    let _: u64 = xc.call(8u16, [amount], {});
+    return 0
+}

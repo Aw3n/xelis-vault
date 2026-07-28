@@ -81,7 +81,7 @@ First reward on testnet: **0.71 VLT** minted per valid submission at Excellent t
 ### Uninstall
 
 ```bash
-curl -fsSL https://xelisvault.github.io/install | bash -s -- --uninstall
+curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash -s -- --uninstall
 ```
 
 ---

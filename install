@@ -741,21 +741,27 @@ SCRIPT="__SRC_DIR__/scripts/xelis_vault_miner.py"
 CONFIG="__CONFIG_DIR__/config.json"
 
 usage() {
-    echo "XELIS Vault — Miner/Oracle Launcher"
+    echo "XELIS Vault — Launcher"
     echo ""
-    echo "Usage: xvault [options]"
+    echo "Usage: xvault <mode> [options]"
     echo ""
-    echo "Options:"
-    echo "  --miner           Start the miner daemon"
-    echo "  --oracle          Start the oracle price bot"
-    echo "  --wallet          Start the wallet (daemon)"
-    echo "  --daemon          Start the XELIS daemon"
-    echo "  --config <file>   Use a custom config file"
-    echo "  --help, -h        Show this help"
+    echo "Modes:"
+    echo "  --miner        Miner + oracle (registration, heartbeat, price)"
+    echo "  --oracle       Oracle only (fetch XEL price, propose/execute)"
+    echo "  --wallet       Start the XELIS wallet RPC server"
+    echo "  --daemon       Start the XELIS daemon"
+    echo "  --help, -h     Show this help"
+    echo ""
+    echo "Options (miner/oracle):"
+    echo "  --rpc <url>         Daemon RPC URL (default: http://127.0.0.1:18081)"
+    echo "  --wallet-url <url>  Wallet RPC URL (default: http://127.0.0.1:18082)"
+    echo "  --endpoint <url>    Public endpoint URL (required for miner registration)"
+    echo "  --dry-run           Log actions without submitting"
+    echo "  -y                  Skip prompts"
     echo ""
     echo "Examples:"
     echo "  xvault --miner"
-    echo "  xvault --oracle"
+    echo "  xvault --oracle -y"
     echo "  xvault --wallet"
     echo "  xvault --daemon"
 }
@@ -772,17 +778,13 @@ case "$1" in
         ;;
     --oracle)
         shift
-        exec "$VENV" "__SRC_DIR__/price_bot.py" "$@"
+        exec "$VENV" "$SCRIPT" --config "$CONFIG" "$@"
         ;;
     --wallet)
         WALLET_DB="__WALLET_DIR__/vault_wallet.db"
-        if [[ -f "__CONFIG_DIR__/wallet_address.txt" ]]; then
-            source "__CONFIG_DIR__/wallet_address.txt"
-        fi
         WALLET_PASS="${WALLET_PASSWORD:-testpass}"
         shift
         exec xelis_wallet \
-            --seed "" \
             --password "$WALLET_PASS" \
             --wallet-path "$WALLET_DB" \
             --daemon-address http://127.0.0.1:18081 \

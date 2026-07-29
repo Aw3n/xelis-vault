@@ -27,7 +27,9 @@ xvault --miner
 
 ---
 
-[Getting Started](#getting-started) · [Contracts](#contracts) · [Docs](#documentation) · [Community](#community)
+[Getting Started](#getting-started) · [Contracts](#contracts) · [Docs](#documentation) · [Guide FR](docs/GUIDE_FR.md) · [Community](#community)
+
+> 🇫🇷 **Version française :** [`docs/GUIDE_FR.md`](docs/GUIDE_FR.md) — Installation, minage, oracle et dépannage en français.
 
 </div>
 
@@ -53,10 +55,10 @@ That's it. The installer:
 ### 2. Run
 
 ```bash
-# Interactive guided setup
-xvault -i
+# Interactive guided setup (first run)
+xvault --miner -y
 
-# Or start directly as a miner
+# Or start as a miner with prompts
 xvault --miner
 
 # With custom RPC / wallet / endpoint
@@ -152,7 +154,6 @@ Full economics: [`docs/REWARD_SYSTEM.md`](docs/REWARD_SYSTEM.md)
 | `--no-oracle` | Disable price oracle updates |
 | `--dry-run` | Log actions without submitting transactions |
 | `-y` | Skip interactive prompts |
-| `-i` | Interactive shell mode |
 
 ---
 
@@ -161,6 +162,7 @@ Full economics: [`docs/REWARD_SYSTEM.md`](docs/REWARD_SYSTEM.md)
 | Document | Description |
 |----------|-------------|
 | [Whitepaper](docs/WHITEPAPER.md) | Full technical whitepaper (8,600+ words) |
+| [Guide FR](docs/GUIDE_FR.md) | Guide complet en français (installation, minage, oracle) |
 | [Miner Guide](docs/MINER_GUIDE.md) | How to become a miner and earn VLT |
 | [Provider Guide](docs/PROVIDER_GUIDE.md) | Price data provider setup |
 | [User Guide](docs/USER_GUIDE.md) | End-user guide (lending, swap, governance) |
@@ -197,8 +199,8 @@ xelis-vault/
 ├── deploy/                 # Deployment scripts
 ├── tests/                  # Integration tests
 ├── docs/                   # Documentation
-├── install.sh              # One-line installer
-└── install.py              # Python installer (alternative)
+├── install                 # One-line installer (bash)
+└── install.py              # Legacy Python installer
 ```
 
 ---

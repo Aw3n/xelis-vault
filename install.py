@@ -8,11 +8,18 @@ Bootstraps the XELIS Vault miner / provider / keeper stack on a fresh
 machine. 100% offline — no telemetry, no phone-home, no wallet info ever
 leaves the local machine.
 
-USAGE:
-    python3 install.py                # install
-    python3 install.py --uninstall    # remove
+⚠️  DEPRECATED — Use the bash installer instead:
+    curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash
 
-What it does:
+This Python version is kept for reference but may be out of date.
+The bash installer handles everything automatically (binary download,
+wallet setup, launcher, auto-start services).
+
+USAGE:
+    python3 install.py                # install (deprecated)
+    python3 install.py --uninstall    # remove (deprecated)
+
+What it did (now done by bash installer):
     1. Verifies Python >= 3.10
     2. Creates a virtualenv at ~/.xelis-vault/venv
     3. Installs Python deps: requests, xelis-sdk (placeholder),

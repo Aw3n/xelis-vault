@@ -178,22 +178,35 @@ class WalletClient:
         return int(self.call("get_nonce"))
 
     def invoke(self, contract: str, entry_id: int, params: list,
-               deposits: dict | None = None, max_gas: int = 500_000,
-               nonce: int | None = None) -> Optional[str]:
+               deposits: dict | None = None, max_gas: int = 500_000) -> Optional[str]:
         invoke = {
             "contract": contract, "entry_id": entry_id,
             "parameters": params, "deposits": deposits or {},
             "max_gas": max_gas, "permission": "all",
         }
         tx_params: dict = {"invoke_contract": invoke, "fee": {"fixed": 10_000_000}, "broadcast": True}
-        if nonce is not None:
-            tx_params["nonce"] = nonce
-        try:
-            result = self.call("build_transaction", tx_params)
-            return result.get("hash") or None
-        except Exception as e:
-            log.error(f"  TX failed (entry {entry_id}): {e}")
-            return None
+        for attempt in range(2):
+            try:
+                result = self.call("build_transaction", tx_params)
+                return result.get("hash") or None
+            except Exception as e:
+                msg = str(e)
+                if attempt == 0 and "nonce" in msg.lower():
+                    import re
+                    m = re.search(r'(?:expected|range:\s*\[)(\d+)', msg)
+                    if m:
+                        tx_params["nonce"] = int(m.group(1))
+                        log.warning(f"  retrying with nonce {tx_params['nonce']} ...")
+                        continue
+                    m = re.search(r'nonce\s+(\d+)\s+already\s+used', msg, re.I)
+                    if m:
+                        tx_params["nonce"] = int(m.group(1)) + 1
+                        log.warning(f"  retrying with nonce {tx_params['nonce']} ...")
+                        continue
+                    log.warning(f"  nonce error, retrying once ...")
+                    continue
+                log.error(f"  TX failed (entry {entry_id}): {e}")
+                return None
 
 
 # ── price fetching ─────────────────────────────────────────────────────
@@ -284,21 +297,21 @@ class PriceDaemon:
             return 0
         except: return 0
 
-    def _propose(self, p: int, nonce: int) -> bool:
+    def _propose(self, p: int) -> bool:
         if self.dry: return True
         return bool(self.w.invoke(PRICE_ORACLE_HASH, ENTRY_PROPOSE_PRICE,
-                     [{"type":"primitive","value":{"type":"u64","value":str(p)}}], nonce=nonce))
+                     [{"type":"primitive","value":{"type":"u64","value":str(p)}}]))
 
-    def _execute(self, nonce: int) -> bool:
+    def _execute(self) -> bool:
         if self.dry: return True
-        return bool(self.w.invoke(PRICE_ORACLE_HASH, ENTRY_EXECUTE_PRICE, [], nonce=nonce))
+        return bool(self.w.invoke(PRICE_ORACLE_HASH, ENTRY_EXECUTE_PRICE, []))
 
-    def run(self, topo: int, nonce: int) -> int:
+    def run(self, topo: int) -> None:
         if self.last_topo == 0:
             self.last_topo = topo
             cur = self._read_price()
             log.info(f"  On-chain price: ${cur/1e8:.6f}" if cur else "  No on-chain price yet")
-            return nonce
+            return
 
         # Check if there is a pending proposal to execute
         pending_pp = self._read_pending()
@@ -306,17 +319,16 @@ class PriceDaemon:
         if pending_pp and pending_pt:
             if topo >= pending_pt + self.cfg.oracle_timelock:
                 log.info("  Executing pending proposal ...")
-                if self._execute(nonce):
-                    nonce += 1
+                if self._execute():
                     self.last_topo = topo
-            return nonce
+            return
 
         if topo - self.last_topo < self.cfg.price_update_interval:
-            return nonce
+            return
 
         log.info(f"── oracle update (topo {topo}) ──")
         price = fetch_price()
-        if price is None: return nonce
+        if price is None: return
 
         atomic = usd_to_atomic(price)
         cur = self._read_price()
@@ -326,12 +338,10 @@ class PriceDaemon:
             if chg < 1.0:
                 log.info("  ─ skipped (<1%)")
                 self.last_topo = topo
-                return nonce
+                return
         log.info("  Proposing price ...")
-        if self._propose(atomic, nonce):
-            nonce += 1
+        if self._propose(atomic):
             self.last_topo = topo
-        return nonce
 
 
 # ── miner daemon ───────────────────────────────────────────────────────
@@ -352,8 +362,8 @@ class MinerDaemon:
             return bool(r.get("data"))
         except: return False
 
-    def register(self, nonce: int) -> int:
-        if self.dry: return nonce + 1
+    def register(self) -> bool:
+        if self.dry: return True
         params = [
             {"type":"primitive","value":{"type":"string","value":self.cfg.endpoint_url}},
             {"type":"primitive","value":{"type":"opaque","value":{"type":"Hash","value":"0"*64}}},
@@ -361,15 +371,15 @@ class MinerDaemon:
         ]
         deposits = {VLT_ASSET: {"amount": MIN_STAKE_VLT}}
         tx = self.w.invoke(MINER_HASH, ENTRY_REGISTER_MINER, params, deposits=deposits,
-                          max_gas=5_000_000, nonce=nonce)
-        if tx: log.info(f"  registered → {tx[:16]}..."); return nonce + 1
-        return nonce
+                          max_gas=5_000_000)
+        if tx: log.info(f"  registered → {tx[:16]}..."); return True
+        return False
 
-    def heartbeat(self, nonce: int) -> int:
-        if self.dry: return nonce + 1
-        tx = self.w.invoke(MINER_HASH, ENTRY_SUBMIT_HEARTBEAT, [], nonce=nonce)
-        if tx: log.info(f"  heartbeat → {tx[:16]}..."); return nonce + 1
-        return nonce
+    def heartbeat(self) -> bool:
+        if self.dry: return True
+        tx = self.w.invoke(MINER_HASH, ENTRY_SUBMIT_HEARTBEAT, [])
+        if tx: log.info(f"  heartbeat → {tx[:16]}..."); return True
+        return False
 
     def reputation(self) -> int:
         try:
@@ -381,20 +391,20 @@ class MinerDaemon:
             return 0
         except: return 0
 
-    def run(self, topo: int, nonce: int) -> int:
-        if not self.cfg.enable_miner: return nonce
+    def run(self, topo: int) -> None:
+        if not self.cfg.enable_miner: return
         if not self._is_registered():
             if not self.cfg.miner_address or not self.cfg.endpoint_url:
-                return nonce
+                return
             log.info("  registering ...")
-            return self.register(nonce)
+            self.register()
+            return
         if topo - self.last_hb >= self.cfg.heartbeat_interval:
-            nonce = self.heartbeat(nonce)
+            self.heartbeat()
             self.last_hb = topo
         rep = self.reputation()
         if rep and rep < REP_GOOD:
             log.warning(f"  reputation {rep} — below Good")
-        return nonce
 
 
 # ── interactive actions ────────────────────────────────────────────────
@@ -407,10 +417,11 @@ def cmd_register(cfg: Config, d: DaemonClient, w: WalletClient) -> None:
     if not cfg.endpoint_url:
         cfg.endpoint_url = input("  Your public endpoint URL: ").strip()
         cfg.save(CONFIG_PATH)
-    n = w.nonce()
     miner = MinerDaemon(cfg, d, w, dry=False)
-    n = miner.register(n)
-    print(f"  Done (nonce={n})")
+    if miner.register():
+        print("  Registered successfully!")
+    else:
+        print("  Registration failed.")
 
 
 def cmd_balance(cfg: Config, w: WalletClient) -> None:
@@ -476,7 +487,6 @@ def cmd_daemon(cfg: Config, d: DaemonClient, w: WalletClient, dry: bool = False)
     oracle = PriceDaemon(cfg, d, w, dry)
     miner = MinerDaemon(cfg, d, w, dry)
 
-    nonce = w.nonce()
     last_topo = 0
     while oracle.running:
         try:
@@ -485,9 +495,9 @@ def cmd_daemon(cfg: Config, d: DaemonClient, w: WalletClient, dry: bool = False)
                 time.sleep(5); continue
             last_topo = topo
             if cfg.enable_oracle:
-                nonce = oracle.run(topo, nonce)
+                oracle.run(topo)
             if cfg.enable_miner:
-                nonce = miner.run(topo, nonce)
+                miner.run(topo)
             time.sleep(5)
         except KeyboardInterrupt:
             break

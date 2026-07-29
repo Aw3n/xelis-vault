@@ -47,6 +47,16 @@ XELIS_DIR="${INSTALL_DIR}/xelis-bin"
 WALLET_DIR="${INSTALL_DIR}/wallet"
 VERSION="5.2"
 
+IS_WINDOWS=0
+BIN_EXT=""
+OS="$(uname -s)"
+case "$OS" in
+    Linux*)  PLATFORM="linux";;
+    Darwin*) PLATFORM="macos";;
+    MINGW*|MSYS*|CYGWIN*) PLATFORM="windows"; IS_WINDOWS=1; BIN_EXT=".exe";;
+    *)       error "Unsupported system: $OS"; exit 1;;
+esac
+
 FORCE=0
 UNINSTALL=0
 INTERACTIVE=1
@@ -138,13 +148,28 @@ if [[ $UNINSTALL -eq 1 ]]; then
         rm -f "${BIN_DIR}/xvault"
         success "Launcher removed from ${BIN_DIR}"
     fi
+    if [[ -f "${BIN_DIR}/xvault.bat" ]]; then
+        rm -f "${BIN_DIR}/xvault.bat"
+        success "Windows launcher removed from ${BIN_DIR}"
+    fi
 
-    for f in xelis_daemon xelis_wallet xelis_miner; do
+    for f in xelis_daemon${BIN_EXT} xelis_wallet${BIN_EXT} xelis_miner${BIN_EXT}; do
         if [[ -L "${BIN_DIR}/${f}" ]]; then
             rm -f "${BIN_DIR}/${f}"
             success "Symlink ${f} removed from ${BIN_DIR}"
         fi
     done
+    
+    if [[ $IS_WINDOWS -eq 1 ]]; then
+        # Remove Windows scheduled tasks
+        POWERSHELL_EXE=$(command -v powershell.exe || echo "")
+        if [[ -n "$POWERSHELL_EXE" ]]; then
+            "$POWERSHELL_EXE" -Command "
+                Unregister-ScheduledTask -TaskName 'XELIS Daemon' -Confirm:\$false 2>\$null
+                Unregister-ScheduledTask -TaskName 'XELIS Wallet' -Confirm:\$false 2>\$null
+            " 2>/dev/null && info "Windows scheduled tasks removed"
+        fi
+    fi
 
     printf "\n${GREEN}${BOLD}XELIS Vault uninstalled.${RESET}\n\n"
     exit 0
@@ -157,13 +182,7 @@ printf "${DIM}  v${VERSION} — Installer${RESET}\n\n"
 # ── Prerequisites check ──────────────────────────────────────────────────────
 step "Checking prerequisites"
 
-OS="$(uname -s)"
 ARCH="$(uname -m)"
-case "$OS" in
-    Linux*)  PLATFORM="linux";;
-    Darwin*) PLATFORM="macos";;
-    *)       error "Unsupported system: $OS (Linux and macOS only)"; exit 1;;
-esac
 case "$ARCH" in
     x86_64|amd64)   ARCH_TAG="x64";;
     arm64|aarch64)  ARCH_TAG="arm64";;
@@ -171,12 +190,22 @@ case "$ARCH" in
 esac
 success "Plateforme : ${PLATFORM}-${ARCH_TAG}"
 
+if [[ $IS_WINDOWS -eq 1 ]]; then
+    info "Windows detected (Git Bash / MSYS2 / Cygwin)"
+    info "Some features (auto-start) use Windows Task Scheduler instead of systemd"
+fi
+
 if [[ $SKIP_DEPS -eq 0 ]]; then
     # Python
     if ! command -v python3 &>/dev/null; then
-        error "Python 3 is required but not found."
-        error "Install it: sudo apt install python3 python3-venv python3-pip (Linux)"
-        error "  or: brew install python (macOS)"
+        if [[ $IS_WINDOWS -eq 1 ]]; then
+            error "Python 3 is required. Download from: https://www.python.org/downloads/"
+            error "  Check 'Add Python to PATH' during installation, then re-run from Git Bash"
+        else
+            error "Python 3 is required but not found."
+            error "Install it: sudo apt install python3 python3-venv python3-pip (Linux)"
+            error "  or: brew install python (macOS)"
+        fi
         exit 1
     fi
     PY_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
@@ -190,16 +219,25 @@ if [[ $SKIP_DEPS -eq 0 ]]; then
 
     # Git
     if ! command -v git &>/dev/null; then
-        error "git is required but not found."
-        error "Install it: sudo apt install git (Linux) or brew install git (macOS)"
+        if [[ $IS_WINDOWS -eq 1 ]]; then
+            error "git is required. Download from: https://git-scm.com/download/win"
+            error "  Select 'Git Bash' and 'Git from the command line' during install"
+        else
+            error "git is required but not found."
+            error "Install it: sudo apt install git (Linux) or brew install git (macOS)"
+        fi
         exit 1
     fi
     success "git $(git --version | awk '{print $3}')"
 
     # Curl
     if ! command -v curl &>/dev/null; then
-        error "curl is required but not found."
-        error "Install it: sudo apt install curl (Linux) or brew install curl (macOS)"
+        if [[ $IS_WINDOWS -eq 1 ]]; then
+            error "curl is required. Git for Windows includes it — re-run from Git Bash."
+        else
+            error "curl is required but not found."
+            error "Install it: sudo apt install curl (Linux) or brew install curl (macOS)"
+        fi
         exit 1
     fi
     success "curl"
@@ -216,7 +254,7 @@ fi
 # ── XELIS binaries check ─────────────────────────────────────────────────────
 step "Checking XELIS binaries"
 
-XELIS_BINS=("xelis_daemon" "xelis_wallet" "xelis_miner")
+XELIS_BINS=("xelis_daemon${BIN_EXT}" "xelis_wallet${BIN_EXT}" "xelis_miner${BIN_EXT}")
 XELIS_MISSING=()
 XELIS_FOUND=()
 
@@ -458,7 +496,7 @@ if [[ $SKIP_WALLET -eq 0 ]]; then
     step "Setting up XELIS wallet"
 
     WALLET_EXE=""
-    for try in xelis_wallet "${XELIS_DIR}/xelis_wallet" "${BIN_DIR}/xelis_wallet"; do
+    for try in xelis_wallet${BIN_EXT} "${XELIS_DIR}/xelis_wallet${BIN_EXT}" "${BIN_DIR}/xelis_wallet${BIN_EXT}"; do
         if command -v "$try" &>/dev/null; then
             WALLET_EXE="$try"
             break
@@ -839,6 +877,43 @@ with open('${BIN_DIR}/xvault', 'w') as f:
 
 chmod +x "${BIN_DIR}/xvault"
 success "Launcher installed: ${BIN_DIR}/xvault"
+
+# Windows .bat launcher
+if [[ $IS_WINDOWS -eq 1 ]]; then
+    cat > "${BIN_DIR}/xvault.bat" <<BAT
+@echo off
+REM XELIS Vault — Windows Launcher
+set VENV_PYTHON=${VENV_DIR}\\Scripts\\python.exe
+set SCRIPT=${INSTALL_DIR}\\src\\scripts\\xelis_vault_miner.py
+set CONFIG=${CONFIG_DIR}\\config.json
+
+if "%1"=="--miner" goto miner
+if "%1"=="--oracle" goto oracle
+if "%1"=="--wallet" goto wallet
+if "%1"=="--daemon" goto daemon
+echo Usage: xvault --miner^|--oracle^|--wallet^|--daemon
+goto end
+
+:miner
+"%VENV_PYTHON%" "%SCRIPT%" --config "%CONFIG%" --miner %2 %3 %4 %5
+goto end
+
+:oracle
+"%VENV_PYTHON%" "%SCRIPT%" --config "%CONFIG%" %2 %3 %4 %5
+goto end
+
+:wallet
+${XELIS_DIR}\\xelis_wallet.exe --password testpass --wallet-path "${WALLET_DIR}\\vault_wallet.db" --daemon-address http://127.0.0.1:18081 --network testnet --rpc-bind-address 127.0.0.1:18082 --rpc-username wallet --rpc-password testpass --disable-ascii-art --disable-interactive-mode --logs-path "${LOGS_DIR}\\" --log-level info %2 %3 %4 %5
+goto end
+
+:daemon
+${XELIS_DIR}\\xelis_daemon.exe --network testnet --dir-path "${INSTALL_DIR}\\data" --logs-path "${LOGS_DIR}\\" --rpc-bind-address 127.0.0.1:18081 --p2p-bind-address 0.0.0.0:2125 --disable-ascii-art --enable-contracts-logging %2 %3 %4 %5
+goto end
+
+:end
+BAT
+    success "Windows launcher installed: ${BIN_DIR}/xvault.bat"
+fi
 success "  xvault --help   → Help"
 success "  xvault --miner  → Start miner"
 success "  xvault --wallet → Start wallet"
@@ -994,6 +1069,25 @@ PLIST
             info "To view the logs:"
             info "  tail -f ${LOGS_DIR}/daemon.stdout.log"
             info "  tail -f ${LOGS_DIR}/wallet.stdout.log"
+
+        elif [[ "$PLATFORM" == "windows" ]]; then
+            # Windows Task Scheduler via schtasks.exe
+            info "Creating Windows scheduled tasks..."
+            POWERSHELL_EXE=$(command -v powershell.exe || echo "")
+            if [[ -n "$POWERSHELL_EXE" ]]; then
+                "$POWERSHELL_EXE" -Command "
+                    \$action_daemon = New-ScheduledTaskAction -Execute '${XELIS_DIR}\\xelis_daemon.exe' -Argument '--network testnet --dir-path ${INSTALL_DIR}\\data --logs-path ${LOGS_DIR}\\ --rpc-bind-address 127.0.0.1:18081 --p2p-bind-address 0.0.0.0:2125 --disable-ascii-art --enable-contracts-logging'
+                    \$trigger = New-ScheduledTaskTrigger -AtStartup
+                    Register-ScheduledTask -TaskName 'XELIS Daemon' -Action \$action_daemon -Trigger \$trigger -RunLevel Highest -Force
+                    
+                    \$action_wallet = New-ScheduledTaskAction -Execute '${BIN_DIR}\\xvault.bat' -Argument '--wallet'
+                    Register-ScheduledTask -TaskName 'XELIS Wallet' -Action \$action_wallet -Trigger \$trigger -RunLevel Highest -Force
+                " 2>/dev/null && success "Windows scheduled tasks created (XELIS Daemon + Wallet)" || warn "Could not create scheduled tasks (run as Admin?)"
+            else
+                warn "PowerShell not found. Create scheduled tasks manually:"
+                warn "  schtasks /create /tn \"XELIS Daemon\" /tr \"${XELIS_DIR}\\xelis_daemon.exe --network testnet --dir-path ${INSTALL_DIR}\\data --logs-path ${LOGS_DIR}\\ --rpc-bind-address 127.0.0.1:18081\" /sc onstart /ru SYSTEM"
+                warn "  schtasks /create /tn \"XELIS Wallet\" /tr \"${BIN_DIR}\\xvault.bat --wallet\" /sc onstart /ru SYSTEM"
+            fi
         fi
     else
         info "Auto-start service skipped"

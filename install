@@ -812,7 +812,7 @@ fi
 case "$1" in
     --miner)
         shift
-        exec "$VENV" "$SCRIPT" --config "$CONFIG" "$@"
+        exec "$VENV" "$SCRIPT" --miner --config "$CONFIG" "$@"
         ;;
     --oracle)
         shift

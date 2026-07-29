@@ -136,8 +136,10 @@ class DaemonClient:
 
     def call(self, method: str, params: dict | None = None) -> Any:
         self._id += 1
-        r = requests.post(self.url, json={"method": method, "params": params or {},
-                                          "jsonrpc": "2.0", "id": self._id}, timeout=30)
+        body = {"method": method, "jsonrpc": "2.0", "id": self._id}
+        if params is not None:
+            body["params"] = params
+        r = requests.post(self.url, json=body, timeout=30)
         r.raise_for_status()
         data = r.json()
         if data.get("error"):
@@ -162,9 +164,10 @@ class WalletClient:
 
     def call(self, method: str, params: dict | None = None) -> Any:
         self._id += 1
-        r = requests.post(self.url, json={"jsonrpc": "2.0", "method": method,
-                                          "params": params or {}, "id": self._id},
-                          auth=self.auth, timeout=60)
+        body = {"jsonrpc": "2.0", "method": method, "id": self._id}
+        if params is not None:
+            body["params"] = params
+        r = requests.post(self.url, json=body, auth=self.auth, timeout=60)
         r.raise_for_status()
         data = r.json()
         if data.get("error"):

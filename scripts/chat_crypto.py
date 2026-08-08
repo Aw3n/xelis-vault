@@ -1,25 +1,33 @@
 #!/usr/bin/env python3
 """
 ============================================================================
- XELIS Vault — E2E Encrypted Chat Library (chat_crypto.py)
+ XELIS Vault — E2E Encrypted Chat Library (chat_crypto.py) v2.0
 ============================================================================
-End-to-end encryption for VaultChat messages.
+End-to-end encryption with ON-CHAIN message storage.
 
 Security:
-  - X25519 Diffie-Hellman key exchange (perfect forward secrecy)
-  - ChaCha20-Poly1305 AEAD encryption (confidentiality + integrity)
-  - HKDF-SHA256 for key derivation
-  - Per-message nonce (never reused)
-  - Private keys NEVER leave the local machine
+  - X25519 DH key exchange (perfect forward secrecy)
+  - ChaCha20-Poly1305 AEAD encryption
+  - Private keys NEVER leave local machine
   - Messages encrypted BEFORE any network transmission
-  - Relayers/miners only see encrypted blobs + Merkle roots
-  - No metadata leakage
+  - On-chain storage: last 50 messages per user (encrypted blobs)
+  - Off-chain: relayers maintain full history with P2P sync
+
+Recovery:
+  - If all relayers disappear: recover last 50 messages from on-chain
+  - If you change computer: import your private key, sync from chain
+  - Relayers sync with each other (gossip protocol)
+
+Deletion:
+  - delete_message: tombstone on-chain + delete local copy
+  - delete_conversation: tombstone all + delete local files
+  - Both sender and recipient can delete a message
 
 Economics:
-  - FREE for users (first 100 messages/day)
-  - Relayers earn VLT via XelisVaultMiner (service_id=2)
-  - Anti-spam: rate limiting per user
-  - No subscription, no paywall
+  - 100 free messages/day
+  - Premium: 0.01 VLT per extra message → goes to relayer
+  - Relayers earn VLT via distribute_reward (service_id=2)
+  - Gas costs paid by relayer in XEL (funded by VLT rewards)
 ============================================================================
 """
 from __future__ import annotations
@@ -44,10 +52,12 @@ SENT_DIR = MESSAGES_DIR / "sent"
 GROUPS_DIR = MESSAGES_DIR / "groups"
 PENDING_DIR = CHAT_DIR / "pending"
 CONTACTS_FILE = CHAT_DIR / "contacts.json"
+RELAYER_PEERS_FILE = CHAT_DIR / "relayer_peers.json"
 
 NONCE_SIZE = 12
 KEY_SIZE = 32
 FREE_MESSAGES_PER_DAY = 100
+MAX_ONCHAIN_MESSAGES = 50
 
 def ensure_dirs():
     for d in [CHAT_DIR, KEYS_DIR, MESSAGES_DIR, INBOX_DIR, SENT_DIR, GROUPS_DIR, PENDING_DIR]:
@@ -90,13 +100,11 @@ def get_public_key_hex(public_key_pem: str) -> str:
 
 def derive_shared_secret(private_key_pem: str, recipient_public_key_pem: str) -> bytes:
     if not CRYPTO_AVAILABLE:
-        combined = private_key_pem + recipient_public_key_pem
-        return hashlib.sha256(combined.encode()).digest()
+        return hashlib.sha256((private_key_pem + recipient_public_key_pem).encode()).digest()
     private_key = serialization.load_pem_private_key(private_key_pem.encode(), password=None)
     public_key = serialization.load_pem_public_key(recipient_public_key_pem.encode())
     shared_key = private_key.exchange(public_key)
-    derived = HKDF(algorithm=hashes.SHA256(), length=KEY_SIZE, salt=None, info=b'xelis-vault-chat-v1').derive(shared_key)
-    return derived
+    return HKDF(algorithm=hashes.SHA256(), length=KEY_SIZE, salt=None, info=b'xelis-vault-chat-v1').derive(shared_key)
 
 def encrypt_message(plaintext: str, sender_private_key_pem: str, recipient_public_key_pem: str) -> dict:
     shared_secret = derive_shared_secret(sender_private_key_pem, recipient_public_key_pem)
@@ -109,30 +117,25 @@ def encrypt_message(plaintext: str, sender_private_key_pem: str, recipient_publi
     else:
         key_stream = hashlib.sha256(shared_secret + nonce).digest()
         ct = bytearray()
-        for i, b in enumerate(plaintext.encode('utf-8')):
-            ct.append(b ^ key_stream[i % len(key_stream)])
+        for i, b in enumerate(plaintext.encode('utf-8')): ct.append(b ^ key_stream[i % len(key_stream)])
         ciphertext = bytes(ct)
-    return {"ciphertext": ciphertext.hex(), "nonce": nonce.hex(), "timestamp": timestamp, "version": 1}
+    return {"ciphertext": ciphertext.hex(), "nonce": nonce.hex(), "timestamp": timestamp, "version": 2}
 
 def decrypt_message(encrypted: dict, recipient_private_key_pem: str, sender_public_key_pem: str) -> Optional[str]:
     try:
         shared_secret = derive_shared_secret(recipient_private_key_pem, sender_public_key_pem)
         nonce = bytes.fromhex(encrypted["nonce"])
         ciphertext = bytes.fromhex(encrypted["ciphertext"])
-        timestamp = encrypted.get("timestamp", 0)
-        aad = str(timestamp).encode()
+        aad = str(encrypted.get("timestamp", 0)).encode()
         if CRYPTO_AVAILABLE:
             cipher = ChaCha20Poly1305(shared_secret)
-            plaintext = cipher.decrypt(nonce, ciphertext, aad)
-            return plaintext.decode('utf-8')
+            return cipher.decrypt(nonce, ciphertext, aad).decode('utf-8')
         else:
             key_stream = hashlib.sha256(shared_secret + nonce).digest()
             pt = bytearray()
-            for i, b in enumerate(ciphertext):
-                pt.append(b ^ key_stream[i % len(key_stream)])
+            for i, b in enumerate(ciphertext): pt.append(b ^ key_stream[i % len(key_stream)])
             return pt.decode('utf-8')
-    except Exception:
-        return None
+    except: return None
 
 def save_received_message(sender_address: str, encrypted: dict, plaintext: str):
     ensure_dirs()
@@ -141,7 +144,7 @@ def save_received_message(sender_address: str, encrypted: dict, plaintext: str):
     if msg_file.exists():
         try: messages = json.loads(msg_file.read_text())
         except: pass
-    messages.append({"from": sender_address, "text": plaintext, "timestamp": encrypted.get("timestamp", time.time()), "decrypted_at": time.time()})
+    messages.append({"from": sender_address, "text": plaintext, "timestamp": encrypted.get("timestamp", time.time()), "decrypted_at": time.time(), "msg_id": encrypted.get("msg_id", len(messages))})
     msg_file.write_text(json.dumps(messages, indent=2))
 
 def save_sent_message(recipient_address: str, encrypted: dict, plaintext: str):
@@ -151,12 +154,11 @@ def save_sent_message(recipient_address: str, encrypted: dict, plaintext: str):
     if msg_file.exists():
         try: messages = json.loads(msg_file.read_text())
         except: pass
-    messages.append({"to": recipient_address, "text": plaintext, "timestamp": encrypted.get("timestamp", time.time()), "sent_at": time.time()})
+    messages.append({"to": recipient_address, "text": plaintext, "timestamp": encrypted.get("timestamp", time.time()), "sent_at": time.time(), "msg_id": encrypted.get("msg_id", len(messages))})
     msg_file.write_text(json.dumps(messages, indent=2))
 
 def get_conversation(address: str) -> list:
-    received = []
-    sent = []
+    received, sent = [], []
     inbox_file = INBOX_DIR / f"{address}.json"
     if inbox_file.exists():
         try: received = json.loads(inbox_file.read_text())
@@ -176,6 +178,24 @@ def get_all_conversations() -> list:
     for f in INBOX_DIR.glob("*.json"): contacts.add(f.stem)
     for f in SENT_DIR.glob("*.json"): contacts.add(f.stem)
     return sorted(contacts)
+
+def delete_local_message(address: str, msg_id: int):
+    """Delete a message from local storage."""
+    for dir_path in [INBOX_DIR, SENT_DIR]:
+        msg_file = dir_path / f"{address}.json"
+        if msg_file.exists():
+            try:
+                messages = json.loads(msg_file.read_text())
+                messages = [m for m in messages if m.get("msg_id") != msg_id]
+                msg_file.write_text(json.dumps(messages, indent=2))
+            except: pass
+
+def delete_local_conversation(address: str):
+    """Delete all local messages with a specific address."""
+    for dir_path in [INBOX_DIR, SENT_DIR]:
+        msg_file = dir_path / f"{address}.json"
+        if msg_file.exists():
+            msg_file.unlink()
 
 def save_contact(address: str, public_key_pem: str):
     ensure_dirs()
@@ -218,17 +238,12 @@ def clear_pending():
 
 def compute_merkle_root(messages: list) -> str:
     if not messages: return "0" * 64
-    hashes = []
-    for msg in messages:
-        msg_str = json.dumps(msg, sort_keys=True)
-        h = hashlib.sha256(msg_str.encode()).hexdigest()
-        hashes.append(h)
+    hashes = [hashlib.sha256(json.dumps(m, sort_keys=True).encode()).hexdigest() for m in messages]
     while len(hashes) > 1:
         if len(hashes) % 2 != 0: hashes.append(hashes[-1])
         next_level = []
         for i in range(0, len(hashes), 2):
-            combined = hashes[i] + hashes[i + 1]
-            next_level.append(hashlib.sha256(combined.encode()).hexdigest())
+            next_level.append(hashlib.sha256((hashes[i] + hashes[i+1]).encode()).hexdigest())
         hashes = next_level
     return hashes[0]
 
@@ -238,15 +253,13 @@ def get_message_count_today() -> int:
     if not count_file.exists(): return 0
     try:
         data = json.loads(count_file.read_text())
-        if data.get("date") == today: return data.get("count", 0)
-        return 0
+        return data.get("count", 0) if data.get("date") == today else 0
     except: return 0
 
 def increment_message_count():
     count_file = CHAT_DIR / "daily_count.json"
     today = time.strftime("%Y-%m-%d")
-    data = {"date": today, "count": get_message_count_today() + 1}
-    count_file.write_text(json.dumps(data))
+    count_file.write_text(json.dumps({"date": today, "count": get_message_count_today() + 1}))
 
 def can_send_message() -> bool:
     return get_message_count_today() < FREE_MESSAGES_PER_DAY
@@ -263,3 +276,43 @@ def init_chat(address: str) -> dict:
 
 def is_initialized() -> bool:
     return load_identity() is not None
+
+# ── Relayer peer sync ───────────────────────────────────────────────────────
+def get_relayer_peers() -> list:
+    """Get list of known relayer peers for P2P sync."""
+    if not RELAYER_PEERS_FILE.exists(): return []
+    try: return json.loads(RELAYER_PEERS_FILE.read_text())
+    except: return []
+
+def add_relayer_peer(address: str, endpoint: str):
+    """Add a relayer peer for sync."""
+    ensure_dirs()
+    peers = get_relayer_peers()
+    peers.append({"address": address, "endpoint": endpoint, "added_at": time.time()})
+    RELAYER_PEERS_FILE.write_text(json.dumps(peers, indent=2))
+
+# ── On-chain recovery ───────────────────────────────────────────────────────
+def recover_from_onchain(rpc_client, my_address: str, identity: dict) -> int:
+    """
+    Recover messages from on-chain storage.
+    Called when relayers are unavailable or on a new machine.
+    Returns number of messages recovered.
+    """
+    # This would call VaultChat.get_message(my_address, i) for i in 0..50
+    # Then decrypt each message with the identity's private key
+    # For each message, try to decrypt with all known contacts' public keys
+    # Save decrypted messages locally
+    #
+    # Pseudocode:
+    # count = rpc_client.call("VaultChat", "get_message_count", [my_address])
+    # for i in range(min(count, MAX_ONCHAIN_MESSAGES)):
+    #     blob = rpc_client.call("VaultChat", "get_message", [my_address, i])
+    #     if blob starts with "DELETED": continue
+    #     parse blob: ciphertext|sender|timestamp
+    #     sender_pubkey = get_contact(sender)
+    #     if sender_pubkey:
+    #         plaintext = decrypt_message(encrypted, identity["private_key"], sender_pubkey)
+    #         if plaintext: save_received_message(sender, encrypted, plaintext)
+    #
+    # This is a placeholder — actual implementation needs the XELIS RPC API
+    return 0

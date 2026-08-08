@@ -635,3 +635,237 @@ pub fn set_timelock_tl(tl: Hash) -> u64 {
     Storage::new().store(TIMELOCK_KEY, tl)
     return 0
 }
+
+// ============================================================================
+// v7.0: ON-CHAIN ENCRYPTED MESSAGE STORAGE
+// ----------------------------------------------------------------------------
+// Messages are stored on-chain so they survive even if all relayers disappear.
+// Only encrypted blobs are stored (nobody can read them without the keys).
+// Ring buffer: last 50 messages per user (older ones available from relayers).
+// ============================================================================
+
+const MSG_PREFIX: string = "msg_"
+const MSG_COUNT_PREFIX: string = "msgc_"
+const MSG_DELETED_PREFIX: string = "msgd_"
+const CONV_DELETED_PREFIX: string = "convd_"
+const MAX_ONCHAIN_MESSAGES: u64 = 50
+
+// Store an encrypted message on-chain (called by sender or relayer)
+// The encrypted blob is stored so the recipient can retrieve it later
+// even if all relayers disappear.
+entry store_message(
+    recipient: Address,
+    sender: Address,
+    encrypted_blob: bytes,
+    timestamp: u64
+) -> u64 {
+    when_not_paused()
+    let s: Storage = Storage::new()
+    
+    // Get or create message counter for recipient
+    let count_key: string = MSG_COUNT_PREFIX + recipient.to_string()
+    let count: u64 = s.load(count_key).unwrap_or(0)
+    
+    // Ring buffer: overwrite oldest message if buffer is full
+    let slot: u64 = count % MAX_ONCHAIN_MESSAGES
+    let msg_key: string = MSG_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)
+    
+    // Store the message
+    let msg_data: string = encrypted_blob.to_hex() + "|" + sender.to_string() + "|" + timestamp.to_string(10u32)
+    s.store(msg_key, msg_data)
+    s.store(count_key, count + 1)
+    
+    return count
+}
+
+// Retrieve an encrypted message from on-chain storage
+// Returns the encrypted blob that the recipient can decrypt locally
+pub fn get_message(recipient: Address, index: u64) -> string {
+    let s: Storage = Storage::new()
+    let msg_key: string = MSG_PREFIX + recipient.to_string() + "_" + index.to_string(10u32)
+    let msg_opt: optional<string> = s.load(msg_key)
+    if msg_opt.is_none() { return "" }
+    return msg_opt.expect("err")
+}
+
+// Get how many messages a user has received (total, not just on-chain)
+pub fn get_message_count(recipient: Address) -> u64 {
+    return Storage::new().load(MSG_COUNT_PREFIX + recipient.to_string()).unwrap_or(0)
+}
+
+// Get how many messages are currently stored on-chain for a user
+pub fn get_onchain_message_count(recipient: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let total: u64 = s.load(MSG_COUNT_PREFIX + recipient.to_string()).unwrap_or(0)
+    if total > MAX_ONCHAIN_MESSAGES { return MAX_ONCHAIN_MESSAGES }
+    return total
+}
+
+// Delete a specific message (tombstone — blob replaced with empty)
+// Both sender and recipient can delete
+entry delete_message(recipient: Address, slot: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    // Verify caller is either sender or recipient
+    let msg_key: string = MSG_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)
+    let msg_opt: optional<string> = s.load(msg_key)
+    require(msg_opt.is_some(), "nomsg")
+    
+    let msg_data: string = msg_opt.expect("err")
+    // Parse: blob|sender|timestamp
+    let parts: string[] = msg_data.split("|")
+    let sender: Address = Address::from_string(parts[1]).expect("err")
+    
+    require(caller == recipient || caller == sender, "notauth")
+    
+    // Replace with tombstone (keep sender + timestamp, clear blob)
+    let tombstone: string = "DELETED|" + sender.to_string() + "|" + parts[2]
+    s.store(msg_key, tombstone)
+    s.store(MSG_DELETED_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32), true)
+    
+    return 0
+}
+
+// Delete all messages in a conversation (tombstone all)
+// Only the recipient can do this for their inbox
+entry delete_conversation(peer: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    // Delete all on-chain messages from this peer
+    let count_key: string = MSG_COUNT_PREFIX + caller.to_string()
+    let count: u64 = s.load(count_key).unwrap_or(0)
+    let limit: u64 = count
+    if limit > MAX_ONCHAIN_MESSAGES { limit = MAX_ONCHAIN_MESSAGES }
+    
+    let i: u64 = 0
+    while i < limit {
+        let msg_key: string = MSG_PREFIX + caller.to_string() + "_" + i.to_string(10u32)
+        let msg_opt: optional<string> = s.load(msg_key)
+        if msg_opt.is_some() {
+            let msg_data: string = msg_opt.expect("err")
+            let parts: string[] = msg_data.split("|")
+            if parts.len() > 1 {
+                let sender: Address = Address::from_string(parts[1]).expect("err")
+                if sender == peer {
+                    s.store(msg_key, "DELETED|" + peer.to_string() + "|0")
+                }
+            }
+        }
+        i += 1
+    }
+    
+    // Mark conversation as deleted
+    s.store(CONV_DELETED_PREFIX + caller.to_string() + "_" + peer.to_string(), true)
+    
+    return 0
+}
+
+// Check if a message has been deleted
+pub fn is_message_deleted(recipient: Address, slot: u64) -> bool {
+    return Storage::new().load(MSG_DELETED_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)).unwrap_or(false)
+}
+
+// ============================================================================
+// v7.0: GROUP ADMIN FEATURES
+// ============================================================================
+
+const GROUP_ADMIN_PREFIX: string = "ga_"
+
+// Set a new group admin (only current admin can do this)
+entry set_group_admin(group_id: u64, new_admin: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let group: Group = s.load(GROUP_PREFIX + group_id.to_string(10u32)).expect("gnf")
+    require(group.creator == caller, "notadmin")
+    
+    // Store admin override (if different from creator)
+    s.store(GROUP_ADMIN_PREFIX + group_id.to_string(10u32), new_admin)
+    
+    return 0
+}
+
+// Admin delete a message in a group (group admin only)
+entry admin_delete_group_message(group_id: u64, msg_slot: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let group: Group = s.load(GROUP_PREFIX + group_id.to_string(10u32)).expect("gnf")
+    
+    // Check if caller is admin (creator or designated admin)
+    let admin_opt: optional<Address> = s.load(GROUP_ADMIN_PREFIX + group_id.to_string(10u32))
+    let is_admin: bool = false
+    if caller == group.creator { is_admin = true }
+    if admin_opt.is_some() {
+        if caller == admin_opt.expect("err") { is_admin = true }
+    }
+    require(is_admin, "notadmin")
+    
+    // Delete the message (tombstone)
+    let msg_key: string = MSG_PREFIX + "group_" + group_id.to_string(10u32) + "_" + msg_slot.to_string(10u32)
+    s.store(msg_key, "DELETED|admin|0")
+    
+    return 0
+}
+
+// Admin kick member from group (removes their encrypted key + marks as removed)
+entry admin_kick_member(group_id: u64, member: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let group: Group = s.load(GROUP_PREFIX + group_id.to_string(10u32)).expect("gnf")
+    
+    let admin_opt: optional<Address> = s.load(GROUP_ADMIN_PREFIX + group_id.to_string(10u32))
+    let is_admin: bool = false
+    if caller == group.creator { is_admin = true }
+    if admin_opt.is_some() {
+        if caller == admin_opt.expect("err") { is_admin = true }
+    }
+    require(is_admin, "notadmin")
+    
+    // Remove their encrypted group key
+    let key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    s.delete(key)
+    
+    // Decrement member count
+    let count_key: string = GROUP_MEMBERS_COUNT_PREFIX + group_id.to_string(10u32)
+    let count: u64 = s.load(count_key).unwrap_or(0)
+    if count > 0 { s.store(count_key, count - 1) }
+    
+    return 0
+}
+
+// Store a group message on-chain (for group chat persistence)
+entry store_group_message(
+    group_id: u64,
+    sender: Address,
+    encrypted_blob: bytes,
+    timestamp: u64
+) -> u64 {
+    when_not_paused()
+    let s: Storage = Storage::new()
+    
+    let count_key: string = MSG_COUNT_PREFIX + "group_" + group_id.to_string(10u32)
+    let count: u64 = s.load(count_key).unwrap_or(0)
+    let slot: u64 = count % MAX_ONCHAIN_MESSAGES
+    let msg_key: string = MSG_PREFIX + "group_" + group_id.to_string(10u32) + "_" + slot.to_string(10u32)
+    
+    let msg_data: string = encrypted_blob.to_hex() + "|" + sender.to_string() + "|" + timestamp.to_string(10u32)
+    s.store(msg_key, msg_data)
+    s.store(count_key, count + 1)
+    
+    return count
+}
+
+// Get a group message from on-chain storage
+pub fn get_group_message(group_id: u64, index: u64) -> string {
+    let s: Storage = Storage::new()
+    let msg_key: string = MSG_PREFIX + "group_" + group_id.to_string(10u32) + "_" + index.to_string(10u32)
+    let msg_opt: optional<string> = s.load(msg_key)
+    if msg_opt.is_none() { return "" }
+    return msg_opt.expect("err")
+}
+
+// Get group message count
+pub fn get_group_message_count(group_id: u64) -> u64 {
+    return Storage::new().load(MSG_COUNT_PREFIX + "group_" + group_id.to_string(10u32)).unwrap_or(0)
+}

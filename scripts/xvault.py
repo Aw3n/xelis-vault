@@ -1,29 +1,13 @@
 #!/usr/bin/env python3
 """
 ============================================================================
- XELIS Vault v6.0 — Community CLI (xvault)
+ XELIS Vault v7.0 — Community CLI (xvault)
 ============================================================================
-Interactive CLI for the XELIS Vault community.
-
-  - One-command setup: detects OS, downloads XELIS wallet, creates/imports
-  - Beautiful interactive menu to use ALL protocol features
-  - Real-time stats: vaults, swaps, pools, prices, governance
-  - Works on Linux and macOS
-
-Usage:
-  xvault                  # Interactive mode (full menu)
-  xvault --setup          # First-time wallet setup only
-  xvault --balance        # Quick balance check
-  xvault --swap           # Quick swap menu
-  xvault --vault          # Vault management
-  xvault --governance     # Governance proposals
-
-Privacy: No telemetry. All data stays on your machine.
+Interactive CLI with arrow-key navigation. No typing numbers.
+Works on Linux, macOS, and Windows.
 ============================================================================
 """
 from __future__ import annotations
-
-import argparse
 import json
 import os
 import platform
@@ -42,13 +26,15 @@ except ImportError:
     print("Please install requests: pip install requests")
     sys.exit(1)
 
-# ── Config ──────────────────────────────────────────────────────────────────
+# Import TUI library
+sys.path.insert(0, str(Path(__file__).parent))
+from tui import *
+
 VAULT_DIR = Path.home() / ".xelis-vault"
 CONFIG_PATH = VAULT_DIR / "config" / "config.json"
 WALLET_DIR = VAULT_DIR / "wallet"
 LOG_DIR = VAULT_DIR / "logs"
 
-# XELIS wallet download URLs (update with official URLs)
 XELIS_WALLET_URLS = {
     "linux-x64": "https://github.com/xelis-project/xelis-blockchain/releases/latest/download/xelis_wallet-linux-amd64",
     "linux-arm64": "https://github.com/xelis-project/xelis-blockchain/releases/latest/download/xelis_wallet-linux-arm64",
@@ -58,33 +44,7 @@ XELIS_WALLET_URLS = {
     "windows-arm64": "https://github.com/xelis-project/xelis-blockchain/releases/latest/download/xelis_wallet-windows-arm64.exe",
 }
 
-# ── ANSI Colors ─────────────────────────────────────────────────────────────
-class C:
-    RESET = "\033[0m"; BOLD = "\033[1m"; DIM = "\033[2m"
-    RED = "\033[31m"; GREEN = "\033[32m"; YELLOW = "\033[33m"
-    BLUE = "\033[34m"; MAGENTA = "\033[35m"; CYAN = "\033[36m"
-    WHITE = "\033[37m"; GRAY = "\033[90m"
-
-def clear(): os.system("cls" if os.name == "nt" else "clear")
-
-BANNER = f"""{C.CYAN}{C.BOLD}
- ██████  ██      ██   ██ ██ ███████  ██████ ████████ ██  ██████  ███    ██
-██    ██ ██      ██  ██  ██ ██      ██         ██    ██ ██    ██ ████   ██
-██    ██ ██      █████   ██ █████   ██         ██    ██ ██    ██ ██ ██  ██
-██    ██ ██      ██  ██  ██ ██      ██         ██    ██ ██    ██ ██  ██ ██
- ██████  ███████ ██   ██ ██ ███████  ██████    ██    ██  ██████  ██   ████
-{C.RESET}{C.DIM}              Community CLI v6.0 — Privacy-First DeFi{C.RESET}"""
-
-# ── Helpers ─────────────────────────────────────────────────────────────────
-def info(msg): print(f"{C.BLUE}ℹ{C.RESET}  {msg}")
-def ok(msg): print(f"{C.GREEN}✓{C.RESET}  {msg}")
-def warn(msg): print(f"{C.YELLOW}⚠{C.RESET}  {msg}")
-def err(msg): print(f"{C.RED}✗{C.RESET}  {msg}", file=sys.stderr)
-def prompt(msg, default=""): 
-    d = f" [{default}]" if default else ""
-    return input(f"{C.CYAN}?{C.RESET}  {msg}{d}: ").strip() or default
-
-def detect_platform() -> str:
+def detect_platform():
     os_name = platform.system()
     arch = platform.machine()
     if os_name == "Windows":
@@ -96,447 +56,438 @@ def detect_platform() -> str:
     elif os_name == "Darwin":
         if arch in ("x86_64", "amd64"): return "macos-x64"
         if arch in ("arm64", "aarch64"): return "macos-arm64"
-    err(f"Unsupported platform: {os_name}/{arch}")
-    sys.exit(1)
+    return None
 
-# ── Wallet Management ───────────────────────────────────────────────────────
-def ensure_wallet_binary() -> Path:
-    """Ensure xelis_wallet binary is available. Download if needed."""
-    # Check if already in PATH (Windows uses .exe)
-    wallet_name = "xelis_wallet.exe" if os.name == "nt" else "xelis_wallet"
-    if shutil.which(wallet_name):
-        return Path(shutil.which(wallet_name))
-
-    # Check local install
-    local_wallet = WALLET_DIR / ("xelis_wallet.exe" if os.name == "nt" else "xelis_wallet")
-    if local_wallet.exists():
-        return local_wallet
-
-    # Need to download
-    pf = detect_platform()
-    url = XELIS_WALLET_URLS.get(pf)
-    if not url:
-        err(f"No wallet download URL for platform {pf}")
-        sys.exit(1)
-
-    WALLET_DIR.mkdir(parents=True, exist_ok=True)
-    info(f"Downloading XELIS wallet for {pf}...")
-    try:
-        r = requests.get(url, stream=True, timeout=60)
-        r.raise_for_status()
-        with open(local_wallet, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
-        local_wallet.chmod(0o755)
-        ok("XELIS wallet downloaded")
-        return local_wallet
-    except Exception as e:
-        err(f"Failed to download wallet: {e}")
-        err("Install manually from: https://github.com/xelis-project/xelis-blockchain")
-        sys.exit(1)
-
-def wallet_setup():
-    """Interactive wallet setup: create or import."""
-    clear()
-    print(BANNER)
-    print(f"\n{C.CYAN}{C.BOLD}Wallet Setup{C.RESET}\n")
-
-    wallet_bin = ensure_wallet_binary()
-    ok(f"Wallet binary: {wallet_bin}")
-
-    print(f"\n{C.BOLD}Do you want to:{C.RESET}")
-    print(f"  {C.CYAN}1{C.RESET}. Create a new wallet")
-    print(f"  {C.CYAN}2{C.RESET}. Import an existing wallet (from seed)")
-    choice = prompt("Choose [1/2]", "1")
-
-    if choice == "1":
-        # Create new wallet
-        info("Creating new wallet...")
-        wallet_name = prompt("Wallet name", "xelis-vault")
-        password = prompt("Password (for wallet file)")
-
-        # Run xelis_wallet create
-        try:
-            result = subprocess.run(
-                [str(wallet_bin), "create-wallet", "--name", wallet_name,
-                 "--password", password, "--data-dir", str(WALLET_DIR)],
-                capture_output=True, text=True, timeout=30,
-                shell=(os.name == "nt")
-            )
-            if result.returncode == 0:
-                # Extract seed and address from output
-                output = result.stdout + result.stderr
-                print(f"\n{C.YELLOW}{C.BOLD}⚠️  SAVE YOUR SEED PHRASE — IT CANNOT BE RECOVERED{C.RESET}\n")
-                print(output)
-                print(f"\n{C.GREEN}✓ Wallet created!{C.RESET}")
-            else:
-                err(f"Wallet creation failed: {result.stderr}")
-        except Exception as e:
-            err(f"Error: {e}")
-
-    elif choice == "2":
-        # Import wallet
-        info("Importing wallet from seed...")
-        seed = prompt("Enter your seed phrase")
-        wallet_name = prompt("Wallet name", "xelis-vault")
-        password = prompt("Password (for wallet file)")
-
-        try:
-            result = subprocess.run(
-                [str(wallet_bin), "import-wallet", "--seed", seed,
-                 "--name", wallet_name, "--password", password,
-                 "--data-dir", str(WALLET_DIR)],
-                capture_output=True, text=True, timeout=30,
-                shell=(os.name == "nt")
-            )
-            if result.returncode == 0:
-                ok("Wallet imported!")
-            else:
-                err(f"Import failed: {result.stderr}")
-        except Exception as e:
-            err(f"Error: {e}")
-
-    # Save wallet path to config
-    save_wallet_config(wallet_name, password)
-
-def save_wallet_config(name: str, password: str):
-    """Save wallet configuration."""
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    cfg = {}
-    if CONFIG_PATH.exists():
-        try: cfg = json.loads(CONFIG_PATH.read_text())
-        except: pass
-    cfg["wallet_name"] = name
-    cfg["wallet_password"] = password
-    cfg["wallet_dir"] = str(WALLET_DIR)
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
-    ok(f"Config saved to {CONFIG_PATH}")
-
-def get_address() -> str:
-    """Get the user's XELIS address from config or wallet."""
-    if CONFIG_PATH.exists():
-        cfg = json.loads(CONFIG_PATH.read_text())
-        if cfg.get("miner_address"):
-            return cfg["miner_address"]
-    return ""
-
-# ── RPC Client ──────────────────────────────────────────────────────────────
-class XelisClient:
+class Config:
     def __init__(self):
-        self.cfg = self.load_config()
-        self.rpc_url = self.cfg.get("rpc_url", "http://127.0.0.1:18081")
-        self.wallet_url = self.cfg.get("wallet_url", "http://127.0.0.1:18082")
-        self.wallet_user = self.cfg.get("wallet_user", "wallet")
-        self.wallet_pass = self.cfg.get("wallet_pass", "testpass")
-        self.session = requests.Session()
-        self.session.auth = (self.wallet_user, self.wallet_pass)
-        self.contracts = self.cfg.get("contracts", {})
+        self.data = {
+            "rpc_url": "http://127.0.0.1:18081",
+            "wallet_url": "http://127.0.0.1:18082",
+            "wallet_user": "wallet",
+            "wallet_pass": "testpass",
+            "miner_address": "",
+            "contracts": {},
+        }
+        self.load()
 
-    def load_config(self) -> dict:
+    def load(self):
         if CONFIG_PATH.exists():
-            try: return json.loads(CONFIG_PATH.read_text())
-            except: pass
-        return {}
+            try:
+                stored = json.loads(CONFIG_PATH.read_text())
+                for k in self.data:
+                    if k in stored:
+                        self.data[k] = stored[k]
+            except:
+                pass
 
-    def save_config(self):
+    def save(self):
         CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        CONFIG_PATH.write_text(json.dumps(self.cfg, indent=2))
+        CONFIG_PATH.write_text(json.dumps(self.data, indent=2))
 
-    def rpc(self, method: str, params: list = None) -> Optional[Any]:
+    def get(self, key, default=""):
+        return self.data.get(key, default)
+
+    @property
+    def contracts(self):
+        return self.data.get("contracts", {})
+
+class XelisClient:
+    def __init__(self, config):
+        self.cfg = config
+        self.session = requests.Session()
+        self.session.auth = (config.get("wallet_user"), config.get("wallet_pass"))
+
+    def rpc(self, method, params=None):
         try:
-            r = self.session.post(self.rpc_url, json={
+            r = self.session.post(self.cfg.get("rpc_url"), json={
                 "jsonrpc": "2.0", "method": method, "params": params or [], "id": 1
             }, timeout=10)
             data = r.json()
             return data.get("result") if not data.get("error") else None
-        except: return None
+        except:
+            return None
 
-    def wallet_rpc(self, method: str, params: list = None) -> Optional[Any]:
+    def wallet_rpc(self, method, params=None):
         try:
-            r = self.session.post(self.wallet_url, json={
+            r = self.session.post(self.cfg.get("wallet_url"), json={
                 "jsonrpc": "2.0", "method": method, "params": params or [], "id": 1
             }, timeout=10)
             data = r.json()
             return data.get("result") if not data.get("error") else None
-        except: return None
+        except:
+            return None
 
-    def get_topoheight(self) -> int:
+    def get_topoheight(self):
         r = self.rpc("get_topoheight")
         return r if isinstance(r, int) else 0
 
-    def get_balance(self, asset: str = "") -> dict:
-        addr = self.cfg.get("miner_address", "")
-        if not addr: return {}
+    def get_balance(self, asset=""):
+        addr = self.cfg.get("miner_address")
+        if not addr:
+            return {}
         return self.wallet_rpc("get_balance", [addr, asset]) or {}
 
-    def get_price(self, feed_name: str = "XEL/USD") -> Optional[float]:
-        """Get price from StakedOracle."""
-        oracle = self.contracts.get("staked_oracle", "")
-        if not oracle: return None
-        # Would call read_contract_data on oracle contract
-        # Placeholder
+def ensure_wallet():
+    wallet_name = "xelis_wallet.exe" if os.name == "nt" else "xelis_wallet"
+    if shutil.which(wallet_name):
+        return Path(shutil.which(wallet_name))
+    local = WALLET_DIR / wallet_name
+    if local.exists():
+        return local
+    pf = detect_platform()
+    if not pf:
+        return None
+    url = XELIS_WALLET_URLS.get(pf)
+    if not url:
+        return None
+    WALLET_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        r = requests.get(url, stream=True, timeout=60)
+        r.raise_for_status()
+        with open(local, "wb") as f:
+            for chunk in r.iter_content(8192):
+                f.write(chunk)
+        if os.name != "nt":
+            local.chmod(0o755)
+        return local
+    except:
         return None
 
-# ── UI Menus ────────────────────────────────────────────────────────────────
-def menu_dashboard(client: XelisClient):
-    """Main dashboard — overview of everything."""
+def screen_dashboard(client):
     clear()
     print(BANNER)
     topo = client.get_topoheight()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    addr = client.cfg.get("miner_address", "(not set)")
-
-    print(f"\n{C.GRAY}{'─' * 70}{C.RESET}")
-    print(f"{C.DIM}  {now}  │  Topo: {topo}  │  Address: {addr[:20]}...{C.RESET}")
-    print(f"{C.GRAY}{'─' * 70}{C.RESET}\n")
-
-    # Balance
+    addr = client.cfg.get("miner_address") or "(not set)"
+    print(f"\n{C.GRAY}{'=' * 60}{C.RESET}")
+    print(f"{C.DIM}  {now}  |  Topo: {topo}  |  {addr[:20]}...{C.RESET}")
+    print(f"{C.GRAY}{'=' * 60}{C.RESET}\n")
+    print(f"  {C.BOLD}Your Balance:{C.RESET}")
     balances = client.get_balance()
     if balances:
-        print(f"{C.BOLD}Your Balance:{C.RESET}")
         for asset, amount in balances.items():
-            print(f"  {C.GREEN}{amount}{C.RESET} {asset}")
+            print(f"    {C.GREEN}{amount}{C.RESET} {asset}")
     else:
-        print(f"{C.DIM}  (wallet not connected or no balance){C.RESET}")
-
+        print(f"    {C.DIM}(wallet not connected){C.RESET}")
     print()
-    print(f"{C.BOLD}Protocol Stats:{C.RESET}")
-    print(f"  {C.CYAN}Active miners:{C.RESET}   —")
-    print(f"  {C.CYAN}Total staked:{C.RESET}    —")
-    print(f"  {C.CYAN}XEL/USD price:{C.RESET}   —")
-    print(f"  {C.CYAN}xUSD supply:{C.RESET}     —")
-    print(f"  {C.CYAN}Budget distributed:{C.RESET} —")
+    print(f"  {C.BOLD}Protocol Stats:{C.RESET}")
+    print(f"    {C.CYAN}Active miners:{C.RESET}     --")
+    print(f"    {C.CYAN}XEL/USD price:{C.RESET}     --")
+    print(f"    {C.CYAN}xUSD supply:{C.RESET}       --")
+    print(f"    {C.CYAN}VLT/XEL pool:{C.RESET}      --")
     print()
+    print(f"{C.DIM}  Press Enter to go back...{C.RESET}")
+    read_key()
 
-def menu_vault(client: XelisClient):
-    """Vault management — deposit, borrow, repay, withdraw, liquidate."""
-    clear()
-    print(BANNER)
-    print(f"\n{C.CYAN}{C.BOLD}Vault Management{C.RESET}\n")
-    print(f"  {C.CYAN}1{C.RESET}. Deposit XEL collateral")
-    print(f"  {C.CYAN}2{C.RESET}. Borrow xUSD")
-    print(f"  {C.CYAN}3{C.RESET}. Repay xUSD debt")
-    print(f"  {C.CYAN}4{C.RESET}. Withdraw XEL collateral")
-    print(f"  {C.CYAN}5{C.RESET}. View your vaults")
-    print(f"  {C.CYAN}6{C.RESET}. View all vaults (for liquidation)")
-    print(f"  {C.CYAN}0{C.RESET}. Back\n")
-    choice = input(f"{C.CYAN}?{C.RESET}  Choose: ").strip()
-    # Implementation would call contract entries
-    input(f"\n{C.DIM}Selected: {choice} (implementation pending deployment){C.RESET}")
-    input(f"{C.DIM}Press Enter to continue...{C.RESET}")
+def screen_vault(client):
+    while True:
+        choice = menu("Vault Management", [
+            ("Deposit XEL collateral", "deposit"),
+            ("Borrow xUSD", "borrow"),
+            ("Repay xUSD debt", "repay"),
+            ("Withdraw XEL collateral", "withdraw"),
+            ("View your vaults", "view"),
+            ("View all vaults (liquidation)", "all"),
+            ("Back", None),
+        ], "Deposit XEL, borrow xUSD, earn")
+        if choice is None or choice is None:
+            break
+        info_box("Coming Soon", [
+            "This feature will be available once",
+            "contracts are deployed on testnet.",
+            "",
+            "Expected: August 25, 2026",
+            "",
+            "Follow @xelisvault for updates",
+        ])
 
-def menu_swap(client: XelisClient):
-    """Swap — AMM + PSM."""
-    clear()
-    print(BANNER)
-    print(f"\n{C.CYAN}{C.BOLD}Swap{C.RESET}\n")
-    print(f"  {C.CYAN}1{C.RESET}. Swap XEL → xUSD (via PSM, 1:1 at oracle price)")
-    print(f"  {C.CYAN}2{C.RESET}. Swap xUSD → XEL (via PSM)")
-    print(f"  {C.CYAN}3{C.RESET}. Swap XEL → VLT (via AMM)")
-    print(f"  {C.CYAN}4{C.RESET}. Swap VLT → XEL (via AMM)")
-    print(f"  {C.CYAN}5{C.RESET}. Add liquidity to VLT/XEL pool")
-    print(f"  {C.CYAN}6{C.RESET}. View pools and prices")
-    print(f"  {C.CYAN}0{C.RESET}. Back\n")
-    choice = input(f"{C.CYAN}?{C.RESET}  Choose: ").strip()
-    input(f"\n{C.DIM}Selected: {choice} (implementation pending deployment){C.RESET}")
-    input(f"{C.DIM}Press Enter to continue...{C.RESET}")
+def screen_swap(client):
+    while True:
+        choice = menu("Swap", [
+            ("XEL -> xUSD (PSM, 1:1)", "psm_mint"),
+            ("xUSD -> XEL (PSM)", "psm_redeem"),
+            ("XEL -> VLT (AMM)", "swap_xel_vlt"),
+            ("VLT -> XEL (AMM)", "swap_vlt_xel"),
+            ("Add liquidity (VLT/XEL pool)", "add_liquidity"),
+            ("View pools & prices", "view_pools"),
+            ("Back", None),
+        ], "Trade XEL, xUSD, VLT")
+        if choice is None:
+            break
+        info_box("Coming Soon", [
+            "This feature will be available once",
+            "contracts are deployed on testnet.",
+            "",
+            "Expected: August 25, 2026",
+        ])
 
-def menu_governance(client: XelisClient):
-    """Governance — stake VLT, vote, propose."""
-    clear()
-    print(BANNER)
-    print(f"\n{C.CYAN}{C.BOLD}Governance{C.RESET}\n")
-    print(f"  {C.CYAN}1{C.RESET}. Stake VLT (earn voting power)")
-    print(f"  {C.CYAN}2{C.RESET}. Unstake VLT")
-    print(f"  {C.CYAN}3{C.RESET}. Claim staking rewards")
-    print(f"  {C.CYAN}4{C.RESET}. View active proposals")
-    print(f"  {C.CYAN}5{C.RESET}. Vote on a proposal")
-    print(f"  {C.CYAN}6{C.RESET}. Create a proposal")
-    print(f"  {C.CYAN}0{C.RESET}. Back\n")
-    choice = input(f"{C.CYAN}?{C.RESET}  Choose: ").strip()
-    input(f"\n{C.DIM}Selected: {choice} (implementation pending deployment){C.RESET}")
-    input(f"{C.DIM}Press Enter to continue...{C.RESET}")
+def screen_governance(client):
+    while True:
+        choice = menu("Governance", [
+            ("Stake VLT (earn voting power)", "stake"),
+            ("Unstake VLT", "unstake"),
+            ("Claim staking rewards", "claim"),
+            ("View active proposals", "proposals"),
+            ("Vote on a proposal", "vote"),
+            ("Create a proposal", "create"),
+            ("Back", None),
+        ], "Stake VLT, vote, propose")
+        if choice is None:
+            break
+        info_box("Coming Soon", [
+            "This feature will be available once",
+            "contracts are deployed on testnet.",
+            "",
+            "Expected: August 25, 2026",
+        ])
 
-def menu_mixer(client: XelisClient):
-    """PrivacyMixer — deposit and withdraw privately."""
-    clear()
-    print(BANNER)
-    print(f"\n{C.CYAN}{C.BOLD}Privacy Mixer{C.RESET}\n")
-    print(f"  {C.CYAN}1{C.RESET}. Deposit XEL (10 / 100 / 1000)")
-    print(f"  {C.CYAN}2{C.RESET}. Withdraw to fresh address (ZK proof)")
-    print(f"  {C.CYAN}3{C.RESET}. View Merkle root")
-    print(f"  {C.CYAN}4{C.RESET}. Check if nullifier used")
-    print(f"  {C.CYAN}0{C.RESET}. Back\n")
-    choice = input(f"{C.CYAN}?{C.RESET}  Choose: ").strip()
-    input(f"\n{C.DIM}Selected: {choice} (implementation pending deployment){C.RESET}")
-    input(f"{C.DIM}Press Enter to continue...{C.RESET}")
+def screen_mixer(client):
+    while True:
+        choice = menu("Privacy Mixer", [
+            ("Deposit XEL (10 / 100 / 1000)", "deposit"),
+            ("Withdraw to fresh address (ZK proof)", "withdraw"),
+            ("View Merkle root", "root"),
+            ("Check if nullifier used", "nullifier"),
+            ("Back", None),
+        ], "Private transfers")
+        if choice is None:
+            break
+        info_box("Coming Soon", [
+            "This feature will be available once",
+            "contracts are deployed on testnet.",
+            "",
+            "Expected: August 25, 2026",
+        ])
 
-def menu_chat(client: XelisClient):
-    """VaultChat — E2E encrypted messaging."""
-    clear()
-    print(BANNER)
-    print(f"\n{C.CYAN}{C.BOLD}Vault Chat{C.RESET}\n")
-    print(f"  {C.CYAN}1{C.RESET}. Register chat session (public key)")
-    print(f"  {C.CYAN}2{C.RESET}. Create a group")
-    print(f"  {C.CYAN}3{C.RESET}. Add group member")
-    print(f"  {C.CYAN}4{C.RESET}. View last anchored messages")
-    print(f"  {C.CYAN}0{C.RESET}. Back\n")
-    choice = input(f"{C.CYAN}?{C.RESET}  Choose: ").strip()
-    input(f"\n{C.DIM}Selected: {choice} (implementation pending deployment){C.RESET}")
-    input(f"{C.DIM}Press Enter to continue...{C.RESET}")
+def screen_chat(client):
+    while True:
+        choice = menu("Vault Chat", [
+            ("Register chat session (public key)", "register"),
+            ("Create a group", "create_group"),
+            ("Add group member", "add_member"),
+            ("View last anchored messages", "messages"),
+            ("Back", None),
+        ], "E2E encrypted messaging")
+        if choice is None:
+            break
+        info_box("Coming Soon", [
+            "This feature will be available once",
+            "contracts are deployed on testnet.",
+            "",
+            "Expected: August 25, 2026",
+        ])
 
-def menu_stats(client: XelisClient):
-    """Protocol statistics — public on-chain data."""
+def screen_stats(client):
     clear()
     print(BANNER)
     print(f"\n{C.CYAN}{C.BOLD}Protocol Statistics{C.RESET}\n")
-    print(f"  {C.BOLD}Oracle:{C.RESET}")
-    print(f"    XEL/USD price:     —")
-    print(f"    Active miners:     —")
-    print(f"    Last aggregation:  —")
-    print(f"    Circuit breaker:   —")
-    print()
-    print(f"  {C.BOLD}VaultEngine:{C.RESET}")
-    print(f"    Total vaults:      —")
-    print(f"    Total collateral:  —")
-    print(f"    Total borrowed:    —")
-    print(f"    Redemption queue:  —")
-    print()
-    print(f"  {C.BOLD}xUSD:{C.RESET}")
-    print(f"    Total supply:      —")
-    print(f"    Peg deviation:     —")
-    print()
-    print(f"  {C.BOLD}AMM Pools:{C.RESET}")
-    print(f"    VLT/XEL reserve:   —")
-    print(f"    xUSD/XEL reserve:  —")
-    print(f"    24h volume:        —")
-    print()
-    input(f"{C.DIM}Press Enter to continue...{C.RESET}")
+    print(f"  {C.GRAY}{'=' * 56}{C.RESET}")
+    stats = [
+        ("Oracle", [
+            "XEL/USD price:     --",
+            "Active miners:     --",
+            "Last aggregation:  --",
+            "Circuit breaker:   --",
+        ]),
+        ("VaultEngine", [
+            "Total vaults:      --",
+            "Total collateral:  --",
+            "Total borrowed:    --",
+            "Redemption queue:  --",
+        ]),
+        ("xUSD", [
+            "Total supply:      --",
+            "Peg deviation:     --",
+        ]),
+        ("AMM Pools", [
+            "VLT/XEL reserve:   --",
+            "xUSD/XEL reserve:  --",
+            "24h volume:        --",
+        ]),
+    ]
+    for section, lines in stats:
+        print(f"\n  {C.BOLD}{section}:{C.RESET}")
+        for line in lines:
+            print(f"    {C.CYAN}{line}{C.RESET}")
+    print(f"\n  {C.GRAY}{'=' * 56}{C.RESET}")
+    print(f"\n{C.DIM}  Press Enter to go back...{C.RESET}")
+    read_key()
 
-def main_menu(client: XelisClient):
-    """Main interactive menu."""
+def screen_settings(client):
+    while True:
+        choice = menu("Settings", [
+            ("Configure RPC & Wallet URLs", "rpc"),
+            ("Set your address", "address"),
+            ("Configure contract addresses", "contracts"),
+            ("Reset configuration", "reset"),
+            ("Back", None),
+        ], "Configure your setup")
+        if choice is None:
+            break
+        elif choice == "rpc":
+            client.cfg.data["rpc_url"] = text_input("Daemon RPC URL", client.cfg.get("rpc_url"))
+            client.cfg.data["wallet_url"] = text_input("Wallet RPC URL", client.cfg.get("wallet_url"))
+            client.cfg.save()
+            info_box("Saved", ["Configuration saved successfully."])
+        elif choice == "address":
+            client.cfg.data["miner_address"] = text_input("Your XELIS address", client.cfg.get("miner_address"))
+            client.cfg.save()
+            info_box("Saved", ["Address saved."])
+        elif choice == "contracts":
+            for key in ["staked_oracle", "miner", "vlt_token", "vlt_asset", "xusd",
+                         "vault_engine", "psm", "vault_swap", "governance_vault"]:
+                current = client.contracts.get(key, "")
+                val = text_input(f"{key}", current[:20] + "..." if len(current) > 20 else current)
+                if val:
+                    client.cfg.data["contracts"][key] = val
+            client.cfg.save()
+            info_box("Saved", ["Contract addresses saved."])
+        elif choice == "reset":
+            if confirm("Reset all configuration to defaults?"):
+                CONFIG_PATH.unlink(missing_ok=True)
+                client.cfg = Config()
+                info_box("Reset", ["Configuration reset to defaults."])
+
+def wallet_setup():
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}Wallet Setup{C.RESET}\n")
+    print(f"  {C.GRAY}{'=' * 56}{C.RESET}\n")
+
+    wallet_bin = ensure_wallet()
+    if wallet_bin:
+        print(f"  {C.GREEN}Wallet binary: {wallet_bin}{C.RESET}")
+    else:
+        print(f"  {C.YELLOW}Could not download wallet binary.{C.RESET}")
+        print(f"  Install manually from: https://github.com/xelis-project/xelis-blockchain{C.RESET}")
+
+    choice = menu("Do you want to:", [
+        ("Create a new wallet", "create"),
+        ("Import existing wallet (from seed)", "import"),
+        ("Skip (I already have a wallet)", "skip"),
+    ])
+
+    if choice == "create":
+        name = text_input("Wallet name", "xelis-vault")
+        password = text_input("Password", "", password=True)
+        info_box("Save Your Seed!", [
+            "When you create your wallet,",
+            "you will see a SEED PHRASE.",
+            "",
+            "WRITE IT DOWN AND KEEP IT SAFE.",
+            "It cannot be recovered if lost!",
+            "",
+            "Press Enter to continue...",
+        ])
+        if wallet_bin:
+            try:
+                result = subprocess.run(
+                    [str(wallet_bin), "create-wallet", "--name", name,
+                     "--password", password, "--data-dir", str(WALLET_DIR)],
+                    capture_output=True, text=True, timeout=30,
+                    shell=(os.name == "nt")
+                )
+                output = result.stdout + result.stderr
+                info_box("Wallet Created", [output[:500] if output else "Wallet created successfully."])
+            except Exception as e:
+                info_box("Error", [f"Failed: {e}"])
+    elif choice == "import":
+        seed = text_input("Enter your seed phrase", "", password=True)
+        name = text_input("Wallet name", "xelis-vault")
+        password = text_input("Password", "", password=True)
+        if wallet_bin:
+            try:
+                result = subprocess.run(
+                    [str(wallet_bin), "import-wallet", "--seed", seed,
+                     "--name", name, "--password", password,
+                     "--data-dir", str(WALLET_DIR)],
+                    capture_output=True, text=True, timeout=30,
+                    shell=(os.name == "nt")
+                )
+                info_box("Wallet Imported", ["Wallet imported successfully."])
+            except Exception as e:
+                info_box("Error", [f"Failed: {e}"])
+
+    client_cfg = Config()
+    client_cfg.save()
+    info_box("Setup Complete", [
+        "Wallet setup complete!",
+        "",
+        "Next: configure your address in Settings.",
+    ])
+
+def check_contracts(client):
+    if not client.contracts.get("staked_oracle"):
+        clear()
+        print(BANNER)
+        print(f"\n{C.YELLOW}{'=' * 60}{C.RESET}")
+        print(f"{C.YELLOW}  !  CONTRACTS NOT YET DEPLOYED{C.RESET}")
+        print(f"{C.YELLOW}{'=' * 60}{C.RESET}")
+        print(f"\n{C.BOLD}The smart contracts are not yet deployed.{C.RESET}")
+        print(f"{C.DIM}Expected deployment: August 25, 2026{C.RESET}\n")
+        print(f"The CLI is installed and ready, but cannot connect")
+        print(f"to the protocol until contract addresses are set.\n")
+        print(f"{C.CYAN}Once contracts are deployed (around Aug 25):{C.RESET}")
+        print(f"  1. Go to Settings -> Contract addresses")
+        print(f"  2. Enter the addresses")
+        print(f"  3. Use all features!\n")
+        print(f"{C.DIM}Follow @xelisvault for announcements{C.RESET}")
+        print(f"{C.DIM}Discord: https://discord.gg/UHpYAWbG{C.RESET}\n")
+        print(f"{C.DIM}  Press Enter to continue to menu...{C.RESET}")
+        read_key()
+
+def main():
+    cfg = Config()
+    client = XelisClient(cfg)
+
+    if not CONFIG_PATH.exists():
+        wallet_setup()
+
+    check_contracts(client)
+
+    signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
+
     while True:
         clear()
         print(BANNER)
         topo = client.get_topoheight()
-        addr = client.cfg.get("miner_address", "(not set)")
-        print(f"\n{C.GRAY}{'─' * 70}{C.RESET}")
-        print(f"{C.DIM}  Topo: {topo}  │  Address: {addr[:20]}...{C.RESET}")
-        print(f"{C.GRAY}{'─' * 70}{C.RESET}\n")
+        addr = cfg.get("miner_address") or "(not set)"
+        print(f"\n{C.GRAY}{'=' * 60}{C.RESET}")
+        print(f"{C.DIM}  Topo: {topo}  |  {addr[:25]}...{C.RESET}")
+        print(f"{C.GRAY}{'=' * 60}{C.RESET}")
 
-        print(f"  {C.CYAN}1{C.RESET}.  {C.BOLD}Dashboard{C.RESET}      — Overview & balance")
-        print(f"  {C.CYAN}2{C.RESET}.  {C.BOLD}Vault{C.RESET}         — Deposit, borrow, repay")
-        print(f"  {C.CYAN}3{C.RESET}.  {C.BOLD}Swap{C.RESET}          — Trade XEL, xUSD, VLT")
-        print(f"  {C.CYAN}4{C.RESET}.  {C.BOLD}Governance{C.RESET}    — Stake, vote, propose")
-        print(f"  {C.CYAN}5{C.RESET}.  {C.BOLD}Mixer{C.RESET}         — Private transfers")
-        print(f"  {C.CYAN}6{C.RESET}.  {C.BOLD}Chat{C.RESET}          — Encrypted messaging")
-        print(f"  {C.CYAN}7{C.RESET}.  {C.BOLD}Stats{C.RESET}         — Protocol statistics")
-        print(f"  {C.CYAN}8{C.RESET}.  {C.BOLD}Settings{C.RESET}      — Configure RPC, wallet")
-        print(f"  {C.CYAN}9{C.RESET}.  {C.BOLD}Start Miner{C.RESET}   — Launch miner dashboard")
-        print(f"  {C.CYAN}0{C.RESET}.  {C.BOLD}Exit{C.RESET}")
-        print()
+        choice = menu("XELIS Vault — Main Menu", [
+            ("Dashboard          — Overview & balance", "dashboard"),
+            ("Vault              — Deposit, borrow, repay", "vault"),
+            ("Swap               — Trade XEL, xUSD, VLT", "swap"),
+            ("Governance         — Stake, vote, propose", "governance"),
+            ("Mixer              — Private transfers", "mixer"),
+            ("Chat               — Encrypted messaging", "chat"),
+            ("Stats              — Protocol statistics", "stats"),
+            ("Settings           — Configure", "settings"),
+            ("Exit", None),
+        ])
 
-        choice = input(f"{C.CYAN}?{C.RESET}  Choose [0-9]: ").strip()
-
-        if choice == "1": menu_dashboard(client); input(f"\n{C.DIM}Press Enter...{C.RESET}")
-        elif choice == "2": menu_vault(client)
-        elif choice == "3": menu_swap(client)
-        elif choice == "4": menu_governance(client)
-        elif choice == "5": menu_mixer(client)
-        elif choice == "6": menu_chat(client)
-        elif choice == "7": menu_stats(client)
-        elif choice == "8": settings_menu(client)
-        elif choice == "9":
-            # Launch miner dashboard
-            miner_script = VAULT_DIR / "src" / "scripts" / "xvault-miner.py"
-            if miner_script.exists():
-                os.execvp("python3", ["python3", str(miner_script)])
-            else:
-                warn("Miner dashboard not found. Run: xvault-miner")
-        elif choice == "0":
-            print(f"\n{C.DIM}Goodbye!{C.RESET}\n")
+        if choice is None or choice == "exit":
+            clear()
+            print(f"\n{C.CYAN}{C.BOLD}Goodbye!{C.RESET}\n")
             break
-
-def settings_menu(client: XelisClient):
-    """Configure RPC, wallet, contract addresses."""
-    clear()
-    print(BANNER)
-    print(f"\n{C.CYAN}{C.BOLD}Settings{C.RESET}\n")
-
-    client.cfg["rpc_url"] = prompt("Daemon RPC URL", client.rpc_url)
-    client.cfg["wallet_url"] = prompt("Wallet RPC URL", client.wallet_url)
-    client.cfg["miner_address"] = prompt("Your address", client.cfg.get("miner_address", ""))
-
-    print(f"\n{C.BOLD}Contract addresses{C.RESET} (leave empty to keep current):")
-    for key in ["staked_oracle", "miner", "vlt_token", "vlt_asset", "xusd",
-                 "vault_engine", "psm", "vault_swap", "governance_vault"]:
-        current = client.contracts.get(key, "")
-        val = input(f"  {key} [{current[:16]}...]: ").strip()
-        if val:
-            client.contracts[key] = val
-            client.cfg["contracts"] = client.contracts
-
-    client.save_config()
-    ok("Settings saved")
-    time.sleep(1)
-
-# ── Main ────────────────────────────────────────────────────────────────────
-def main():
-    # Check if contracts are configured
-    client = XelisClient()
-    if not client.contracts.get("staked_oracle"):
-        print(BANNER)
-        print(f"\n{C.YELLOW}{'=' * 70}{C.RESET}")
-        print(f"{C.YELLOW}  ⚠  CONTRACTS NOT YET DEPLOYED{C.RESET}")
-        print(f"{C.YELLOW}{'=' * 70}{C.RESET}")
-        print(f"\n{C.BOLD}The XELIS Vault smart contracts are not yet deployed on testnet.{C.RESET}")
-        print(f"{C.DIM}Expected deployment: August 25, 2026{C.RESET}\n")
-        print(f"The CLI is installed and ready, but cannot connect to the protocol")
-        print(f"until contract addresses are configured.\n")
-        print(f"{C.CYAN}Once contracts are deployed (around Aug 25):{C.RESET}")
-        print(f"  1. Run: {C.BOLD}xvault --setup{C.RESET}")
-        print(f"  2. Enter the contract addresses when prompted")
-        print(f"  3. Use all features: {C.BOLD}xvault{C.RESET}\n")
-        print(f"{C.DIM}Follow https://x.com/xelisvault for deployment announcements.{C.RESET}")
-        print(f"{C.DIM}Discord: https://discord.gg/UHpYAWbG{C.RESET}\n")
-        return
-
-    parser = argparse.ArgumentParser(description="XELIS Vault Community CLI")
-    parser.add_argument("--setup", action="store_true", help="Run wallet setup")
-    parser.add_argument("--balance", action="store_true", help="Quick balance check")
-    parser.add_argument("--swap", action="store_true", help="Quick swap menu")
-    parser.add_argument("--vault", action="store_true", help="Vault management")
-    parser.add_argument("--governance", action="store_true", help="Governance")
-    parser.add_argument("-y", "--yes", action="store_true", help="Skip prompts")
-    args = parser.parse_args()
-
-    # First-run: no config → setup
-    if not CONFIG_PATH.exists() and not args.setup:
-        print(BANNER)
-        print(f"\n{C.CYAN}Welcome! Let's set up your XELIS Vault wallet.{C.RESET}\n")
-        wallet_setup()
-
-    if args.setup:
-        wallet_setup()
-        return
-
-    client = XelisClient()
-
-    if args.balance:
-        menu_dashboard(client)
-        return
-    if args.swap:
-        menu_swap(client)
-        return
-    if args.vault:
-        menu_vault(client)
-        return
-    if args.governance:
-        menu_governance(client)
-        return
-
-    # Default: main menu
-    main_menu(client)
+        elif choice == "dashboard":
+            screen_dashboard(client)
+        elif choice == "vault":
+            screen_vault(client)
+        elif choice == "swap":
+            screen_swap(client)
+        elif choice == "governance":
+            screen_governance(client)
+        elif choice == "mixer":
+            screen_mixer(client)
+        elif choice == "chat":
+            screen_chat(client)
+        elif choice == "stats":
+            screen_stats(client)
+        elif choice == "settings":
+            screen_settings(client)
 
 if __name__ == "__main__":
     main()

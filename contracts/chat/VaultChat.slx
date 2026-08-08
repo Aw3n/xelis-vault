@@ -655,12 +655,14 @@ const MAX_ONCHAIN_MESSAGES: u64 = 50
 // even if all relayers disappear.
 entry store_message(
     recipient: Address,
-    sender: Address,
     encrypted_blob: bytes,
     timestamp: u64
 ) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    // The sender IS the caller — no impersonation possible
+    let sender: Address = caller
     
     // Get or create message counter for recipient
     let count_key: string = MSG_COUNT_PREFIX + recipient.to_string()
@@ -837,12 +839,17 @@ entry admin_kick_member(group_id: u64, member: Address) -> u64 {
 // Store a group message on-chain (for group chat persistence)
 entry store_group_message(
     group_id: u64,
-    sender: Address,
     encrypted_blob: bytes,
     timestamp: u64
 ) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let sender: Address = caller
+    // Verify caller is a member of the group
+    let member_key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + caller.to_string()
+    let is_member: bool = s.load(member_key).unwrap_or(false)
+    require(is_member, "notmember")
     
     let count_key: string = MSG_COUNT_PREFIX + "group_" + group_id.to_string(10u32)
     let count: u64 = s.load(count_key).unwrap_or(0)
@@ -868,4 +875,129 @@ pub fn get_group_message(group_id: u64, index: u64) -> string {
 // Get group message count
 pub fn get_group_message_count(group_id: u64) -> u64 {
     return Storage::new().load(MSG_COUNT_PREFIX + "group_" + group_id.to_string(10u32)).unwrap_or(0)
+}
+
+
+// ============================================================================
+// v7.1: PREMIUM MESSAGE PAYMENT SYSTEM
+// ----------------------------------------------------------------------------
+// Relayers set their own pricing. Users pay in VLT (preferred) or XEL.
+// First 100 messages/day are FREE (enforced on-chain).
+// Relayer earns the premium payment.
+// ============================================================================
+
+const FREE_DAILY_LIMIT: u64 = 100
+const DAILY_COUNT_PREFIX: string = "dcount_"
+const DAILY_DATE_PREFIX: string = "ddate_"
+const RELAYER_FEE_PREFIX: string = "rfee_"
+const RELAYER_TOKEN_PREFIX: string = "rtok_"
+const VLT_ASSET_KEY: string = "va"
+
+// Relayer sets their own fee per premium message (in atomic units)
+// token: 0 = VLT, 1 = XEL
+entry set_relayer_fee(fee_amount: u64, token: u8) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    require(token <= 1, "badtoken")
+    require(fee_amount <= 100000000, "badfee")  // max 1 VLT/XEL per message
+    s.store(RELAYER_FEE_PREFIX + caller.to_string(), fee_amount)
+    s.store(RELAYER_TOKEN_PREFIX + caller.to_string(), token)
+    return 0
+}
+
+// Get a relayer's fee
+pub fn get_relayer_fee(relayer: Address) -> (u64, u8) {
+    let s: Storage = Storage::new()
+    return (
+        s.load(RELAYER_FEE_PREFIX + relayer.to_string()).unwrap_or(1000000),  // default 0.01 VLT
+        s.load(RELAYER_TOKEN_PREFIX + relayer.to_string()).unwrap_or(0)
+    )
+}
+
+// Check how many free messages a user has left today
+pub fn get_free_messages_remaining(user: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let today: u64 = get_current_topoheight() / 17280  // day number
+    let stored_day: u64 = s.load(DAILY_DATE_PREFIX + user.to_string()).unwrap_or(0)
+    if stored_day != today { return FREE_DAILY_LIMIT }
+    let count: u64 = s.load(DAILY_COUNT_PREFIX + user.to_string()).unwrap_or(0)
+    if count >= FREE_DAILY_LIMIT { return 0 }
+    return FREE_DAILY_LIMIT - count
+}
+
+// Increment daily message count (called by store_message)
+fn increment_daily_count(user: Address) {
+    let s: Storage = Storage::new()
+    let today: u64 = get_current_topoheight() / 17280
+    let stored_day: u64 = s.load(DAILY_DATE_PREFIX + user.to_string()).unwrap_or(0)
+    if stored_day != today {
+        s.store(DAILY_DATE_PREFIX + user.to_string(), today)
+        s.store(DAILY_COUNT_PREFIX + user.to_string(), 1u64)
+    } else {
+        let count: u64 = s.load(DAILY_COUNT_PREFIX + user.to_string()).unwrap_or(0)
+        s.store(DAILY_COUNT_PREFIX + user.to_string(), count + 1)
+    }
+}
+
+// Pay for a premium message (called when free limit is exceeded)
+// Payment goes to the relayer who processes the message
+entry pay_premium_message(relayer: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    // Verify caller has exceeded free limit
+    let remaining: u64 = get_free_messages_remaining(caller)
+    require(remaining == 0, "stillfree")
+    
+    // Verify relayer is authorized
+    let is_relayer: bool = s.load(RELAYER_PREFIX + relayer.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    
+    // Get relayer fee
+    let fee: u64 = s.load(RELAYER_FEE_PREFIX + relayer.to_string()).unwrap_or(1000000)
+    let token: u8 = s.load(RELAYER_TOKEN_PREFIX + relayer.to_string()).unwrap_or(0)
+    
+    // Transfer payment to relayer
+    if token == 0 {
+        // VLT payment
+        let vlt_asset: Hash = s.load(VLT_ASSET_KEY).unwrap_or(Hash::zero())
+        if vlt_asset != Hash::zero() {
+            let ok: bool = transfer(relayer, fee, vlt_asset)
+            require(ok, "vltfail")
+        }
+    } else {
+        // XEL payment (native)
+        let ok: bool = transfer(relayer, fee, Hash::zero())
+        require(ok, "xelfail")
+    }
+    
+    // Grant 1 premium message credit (resets on next store_message)
+    let today: u64 = get_current_topoheight() / 17280
+    let count: u64 = s.load(DAILY_COUNT_PREFIX + caller.to_string()).unwrap_or(0)
+    s.store(DAILY_COUNT_PREFIX + caller.to_string(), count - 1)  // decrement to give 1 free slot
+    
+    return 0
+}
+
+// Relayer claims their accumulated fees (if any held in contract)
+entry claim_relayer_fees() -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    
+    // Transfer all VLT balance to relayer
+    let vlt_asset: Hash = s.load(VLT_ASSET_KEY).unwrap_or(Hash::zero())
+    if vlt_asset != Hash::zero() {
+        let bal: u64 = get_balance_for_asset(vlt_asset).unwrap_or(0)
+        if bal > 0 { transfer(caller, bal, vlt_asset) }
+    }
+    
+    // Transfer all XEL balance to relayer
+    let xel_bal: u64 = get_balance_for_asset(Hash::zero()).unwrap_or(0)
+    if xel_bal > 0 { transfer(caller, xel_bal, Hash::zero()) }
+    
+    return 0
 }

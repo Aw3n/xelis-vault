@@ -4,7 +4,7 @@
 
 **Privacy-First DeFi on XELIS BlockDAG**
 
-CDPstablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mixer · E2E chat
+CDP stablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mixer · E2E chat
 
 [![Network](https://img.shields.io/badge/network-testnet-blue)](https://testnet-explorer.xelis.io/)
 [![Contracts](https://img.shields.io/badge/contracts-33%20Silex-blueviolet)](contracts/)

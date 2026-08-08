@@ -426,6 +426,25 @@ def interactive_setup(cfg: Config, os_info: dict) -> Config:
 
 # ── Main Loop ───────────────────────────────────────────────────────────────
 def main():
+    # Check if contracts are configured
+    cfg = Config()
+    if not cfg.contracts.get("staked_oracle") or not cfg.contracts.get("miner"):
+        print(BANNER)
+        print(f"\n{C.YELLOW}{'=' * 70}{C.RESET}")
+        print(f"{C.YELLOW}  ⚠  CONTRACTS NOT YET DEPLOYED{C.RESET}")
+        print(f"{C.YELLOW}{'=' * 70}{C.RESET}")
+        print(f"\n{C.BOLD}The XELIS Vault smart contracts are not yet deployed on testnet.{C.RESET}")
+        print(f"{C.DIM}Expected deployment: August 25, 2026{C.RESET}\n")
+        print(f"The dashboard is installed and ready, but cannot connect to the protocol")
+        print(f"until contract addresses are configured.\n")
+        print(f"{C.CYAN}Once contracts are deployed (around Aug 25):{C.RESET}")
+        print(f"  1. Run: {C.BOLD}xvault-miner --setup{C.RESET}")
+        print(f"  2. Enter the contract addresses when prompted")
+        print(f"  3. Start mining: {C.BOLD}xvault-miner --miner{C.RESET}\n")
+        print(f"{C.DIM}Follow https://x.com/xelisvault for deployment announcements.{C.RESET}")
+        print(f"{C.DIM}Discord: https://discord.gg/UHpYAWbG{C.RESET}\n")
+        return
+
     parser = argparse.ArgumentParser(description="XELIS Vault Miner Dashboard")
     parser.add_argument("--rpc", help="Daemon RPC URL")
     parser.add_argument("--wallet-url", help="Wallet RPC URL")

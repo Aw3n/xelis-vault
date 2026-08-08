@@ -482,6 +482,25 @@ def settings_menu(client: XelisClient):
 
 # ── Main ────────────────────────────────────────────────────────────────────
 def main():
+    # Check if contracts are configured
+    client = XelisClient()
+    if not client.contracts.get("staked_oracle"):
+        print(BANNER)
+        print(f"\n{C.YELLOW}{'=' * 70}{C.RESET}")
+        print(f"{C.YELLOW}  ⚠  CONTRACTS NOT YET DEPLOYED{C.RESET}")
+        print(f"{C.YELLOW}{'=' * 70}{C.RESET}")
+        print(f"\n{C.BOLD}The XELIS Vault smart contracts are not yet deployed on testnet.{C.RESET}")
+        print(f"{C.DIM}Expected deployment: August 25, 2026{C.RESET}\n")
+        print(f"The CLI is installed and ready, but cannot connect to the protocol")
+        print(f"until contract addresses are configured.\n")
+        print(f"{C.CYAN}Once contracts are deployed (around Aug 25):{C.RESET}")
+        print(f"  1. Run: {C.BOLD}xvault --setup{C.RESET}")
+        print(f"  2. Enter the contract addresses when prompted")
+        print(f"  3. Use all features: {C.BOLD}xvault{C.RESET}\n")
+        print(f"{C.DIM}Follow https://x.com/xelisvault for deployment announcements.{C.RESET}")
+        print(f"{C.DIM}Discord: https://discord.gg/UHpYAWbG{C.RESET}\n")
+        return
+
     parser = argparse.ArgumentParser(description="XELIS Vault Community CLI")
     parser.add_argument("--setup", action="store_true", help="Run wallet setup")
     parser.add_argument("--balance", action="store_true", help="Quick balance check")

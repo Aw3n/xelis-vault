@@ -1,5 +1,10 @@
 # XELIS Vault — CLI Guide
 
+> ⚠️ **IMPORTANT**: The smart contracts are not yet deployed on testnet.
+> Expected deployment: **August 25, 2026**.
+> Until then, `xvault` and `xvault-miner` will install and run, but cannot
+> connect to the protocol. Install now to be ready.
+
 ## For Miners: `xvault-miner`
 
 ### First-time setup

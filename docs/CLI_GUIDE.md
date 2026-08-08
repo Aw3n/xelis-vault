@@ -96,6 +96,14 @@ xvault --governance  # Governance menu
 curl -fsSL https://xelisvault.github.io/install | bash
 ```
 
+### Windows (PowerShell)
+```powershell
+irm https://xelisvault.github.io/install.ps1 | iex
+```
+
+### Windows (Command Prompt)
+Download `install.bat` and double-click it.
+
 ### Manual
 ```bash
 git clone https://github.com/XelisVault/xelis-vault.git ~/.xelis-vault/src
@@ -124,10 +132,12 @@ curl -fsSL https://xelisvault.github.io/install | bash -s -- --uninstall
 Install Python 3.10+:
 - Ubuntu/Debian: `sudo apt install python3 python3-venv`
 - macOS: `brew install python`
+- Windows: Download from https://www.python.org/downloads/ (check "Add Python to PATH")
 
 ### "git required"
 - Ubuntu/Debian: `sudo apt install git`
 - macOS: `brew install git`
+- Windows: Download from https://git-scm.com/download/win
 
 ### "requests not installed"
 The installer creates a venv and installs requests. If it fails:

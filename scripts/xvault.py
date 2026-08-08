@@ -54,6 +54,8 @@ XELIS_WALLET_URLS = {
     "linux-arm64": "https://github.com/xelis-project/xelis-blockchain/releases/latest/download/xelis_wallet-linux-arm64",
     "macos-x64": "https://github.com/xelis-project/xelis-blockchain/releases/latest/download/xelis_wallet-macos-amd64",
     "macos-arm64": "https://github.com/xelis-project/xelis-blockchain/releases/latest/download/xelis_wallet-macos-arm64",
+    "windows-x64": "https://github.com/xelis-project/xelis-blockchain/releases/latest/download/xelis_wallet-windows-amd64.exe",
+    "windows-arm64": "https://github.com/xelis-project/xelis-blockchain/releases/latest/download/xelis_wallet-windows-arm64.exe",
 }
 
 # ── ANSI Colors ─────────────────────────────────────────────────────────────
@@ -85,6 +87,9 @@ def prompt(msg, default=""):
 def detect_platform() -> str:
     os_name = platform.system()
     arch = platform.machine()
+    if os_name == "Windows":
+        if arch in ("AMD64", "x86_64"): return "windows-x64"
+        if arch in ("ARM64", "aarch64"): return "windows-arm64"
     if os_name == "Linux":
         if arch in ("x86_64", "amd64"): return "linux-x64"
         if arch in ("arm64", "aarch64"): return "linux-arm64"
@@ -97,13 +102,14 @@ def detect_platform() -> str:
 # ── Wallet Management ───────────────────────────────────────────────────────
 def ensure_wallet_binary() -> Path:
     """Ensure xelis_wallet binary is available. Download if needed."""
-    # Check if already in PATH
-    if shutil.which("xelis_wallet"):
-        return Path(shutil.which("xelis_wallet"))
+    # Check if already in PATH (Windows uses .exe)
+    wallet_name = "xelis_wallet.exe" if os.name == "nt" else "xelis_wallet"
+    if shutil.which(wallet_name):
+        return Path(shutil.which(wallet_name))
 
     # Check local install
-    local_wallet = WALLET_DIR / "xelis_wallet"
-    if local_wallet.exists() and os.access(local_wallet, os.X_OK):
+    local_wallet = WALLET_DIR / ("xelis_wallet.exe" if os.name == "nt" else "xelis_wallet")
+    if local_wallet.exists():
         return local_wallet
 
     # Need to download
@@ -154,7 +160,8 @@ def wallet_setup():
             result = subprocess.run(
                 [str(wallet_bin), "create-wallet", "--name", wallet_name,
                  "--password", password, "--data-dir", str(WALLET_DIR)],
-                capture_output=True, text=True, timeout=30
+                capture_output=True, text=True, timeout=30,
+                shell=(os.name == "nt")
             )
             if result.returncode == 0:
                 # Extract seed and address from output
@@ -179,7 +186,8 @@ def wallet_setup():
                 [str(wallet_bin), "import-wallet", "--seed", seed,
                  "--name", wallet_name, "--password", password,
                  "--data-dir", str(WALLET_DIR)],
-                capture_output=True, text=True, timeout=30
+                capture_output=True, text=True, timeout=30,
+                shell=(os.name == "nt")
             )
             if result.returncode == 0:
                 ok("Wallet imported!")

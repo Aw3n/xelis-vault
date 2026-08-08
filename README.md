@@ -14,11 +14,21 @@ CDP stablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mix
 
 ### Install everything in one line
 
+**Linux & macOS:**
+
 ```bash
 curl -fsSL https://xelisvault.github.io/install | bash
 ```
 
-This installs **both** `xvault` (community CLI) and `xvault-miner` (miner dashboard).
+**Windows (PowerShell):**
+
+```powershell
+irm https://xelisvault.github.io/install.ps1 | iex
+```
+
+**Windows (Command Prompt):** download [`install.bat`](install.bat) and double-click it.
+
+All three methods install **both** `xvault` (community CLI) and `xvault-miner` (miner dashboard).
 
 ---
 
@@ -33,23 +43,33 @@ This installs **both** `xvault` (community CLI) and `xvault-miner` (miner dashbo
 
 ## Quick Start
 
-### Step 1 — Install (one line, works on Linux & macOS)
+### Step 1 — Install
+
+**Linux & macOS:**
 
 ```bash
 curl -fsSL https://xelisvault.github.io/install | bash
 ```
 
+**Windows (PowerShell):**
+
+```powershell
+irm https://xelisvault.github.io/install.ps1 | iex
+```
+
+**Windows (Command Prompt):** download [`install.bat`](install.bat) and double-click it.
+
 This single command:
-- Detects your OS and architecture
-- Clones the repository to `~/.xelis-vault/src`
+- Detects your OS and architecture (Linux, macOS, Windows)
+- Clones the repository to `~/.xelis-vault/src` (or `%USERPROFILE%\.xelis-vault\src` on Windows)
 - Creates a Python virtualenv with all dependencies
-- Installs **two launchers** in `~/.local/bin`:
+- Installs **two launchers**:
   - `xvault` — community CLI (wallet, vaults, swaps, governance, mixer, chat)
   - `xvault-miner` — miner dashboard (real-time TUI with reputation, rewards, stats)
-- Generates `~/.xelis-vault/config/config.json` with testnet defaults
+- Generates config with testnet defaults
 - No telemetry, no phone-home, all data stays local
 
-If `~/.local/bin` is not in your PATH, the installer tells you exactly what to add to your shell profile.
+If the launcher directory is not in your PATH, the installer tells you exactly what to do.
 
 ### Step 2 — Choose your role
 
@@ -102,8 +122,16 @@ xvault --governance  # Governance menu
 
 ### Uninstall
 
+**Linux & macOS:**
+
 ```bash
 curl -fsSL https://xelisvault.github.io/install | bash -s -- --uninstall
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://xelisvault.github.io/install.ps1 | iex -Args "--uninstall"
 ```
 
 ---

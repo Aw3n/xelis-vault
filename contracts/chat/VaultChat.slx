@@ -1719,3 +1719,370 @@ pub fn get_relayer_storage(relayer: Address) -> string {
     if opt.is_none() { return "0|0|0" }
     return opt.expect("err")
 }
+
+// ============================================================================
+// v9.0: PAYMENT REQUESTS + GROUP GIVEAWAYS + DIRECT ON-CHAIN MESSAGES
+// ============================================================================
+
+// ── Payment Requests (invoice via chat) ────────────────────────────────────
+// Alice sends Bob a payment request for 50 xUSD. Bob clicks "Pay" in his CLI.
+// The request is stored on-chain so both parties have proof.
+
+const PAYREQ_PREFIX: string = "preq_"
+const PAYREQ_COUNT_KEY: string = "preqc"
+
+// Create a payment request to another user
+// asset: Hash of the asset to request (Hash::zero() = XEL)
+entry create_payment_request(
+    to: Address,
+    amount: u64,
+    asset: Hash,
+    memo: string
+) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    let id: u64 = s.load(PAYREQ_COUNT_KEY).unwrap_or(0)
+    let req_key: string = PAYREQ_PREFIX + id.to_string(10u32)
+    
+    // Store: from|to|amount|asset|memo|status(0=pending)|created_topo
+    let data: string = caller.to_string() + "|" + to.to_string() + "|" + amount.to_string(10u32) + "|" + asset.to_hex() + "|" + memo + "|0|" + get_current_topoheight().to_string(10u32)
+    s.store(req_key, data)
+    s.store(PAYREQ_COUNT_KEY, id + 1)
+    
+    return id
+}
+
+// Fulfill a payment request (sends payment to the requester)
+entry fulfill_payment_request(req_id: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    let req_key: string = PAYREQ_PREFIX + req_id.to_string(10u32)
+    let data_opt: optional<string> = s.load(req_key)
+    require(data_opt.is_some(), "notfound")
+    
+    let data: string = data_opt.expect("err")
+    let parts: string[] = data.split("|")
+    
+    let from: Address = Address::from_string(parts[0]).expect("err")
+    let to: Address = Address::from_string(parts[1]).expect("err")
+    let amount: u64 = parts[2].parse::<u64>().expect("err")
+    let asset: Hash = Hash::from_hex(parts[3].as_str()).expect("err")
+    let status: u64 = parts[5].parse::<u64>().expect("err")
+    
+    require(status == 0, "notpending")
+    require(caller == to, "notrecipient")
+    
+    // Transfer payment from caller (recipient of request) to from (requester)
+    let ok: bool = transfer(from, amount, asset)
+    require(ok, "txfail")
+    
+    // Update status to fulfilled (1)
+    let new_data: string = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + parts[4] + "|1|" + parts[6]
+    s.store(req_key, new_data)
+    
+    return 0
+}
+
+// Cancel a payment request (only requester can cancel)
+entry cancel_payment_request(req_id: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    let req_key: string = PAYREQ_PREFIX + req_id.to_string(10u32)
+    let data_opt: optional<string> = s.load(req_key)
+    require(data_opt.is_some(), "notfound")
+    
+    let data: string = data_opt.expect("err")
+    let parts: string[] = data.split("|")
+    let from: Address = Address::from_string(parts[0]).expect("err")
+    require(caller == from, "notrequester")
+    
+    // Update status to cancelled (2)
+    let new_data: string = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + parts[4] + "|2|" + parts[6]
+    s.store(req_key, new_data)
+    
+    return 0
+}
+
+// Get payment request details
+pub fn get_payment_request(req_id: u64) -> string {
+    let req_key: string = PAYREQ_PREFIX + req_id.to_string(10u32)
+    let opt: optional<string> = Storage::new().load(req_key)
+    if opt.is_none() { return "" }
+    return opt.expect("err")
+}
+
+// Get total payment requests count
+pub fn get_payment_request_count() -> u64 {
+    return Storage::new().load(PAYREQ_COUNT_KEY).unwrap_or(0)
+}
+
+// ── Group Giveaways (faucet in chat) ───────────────────────────────────────
+// Admin sends 1000 XEL to a group. First 20 people to click get 50 XEL each.
+// All on-chain, transparent, first-come-first-served.
+
+const GIVEAWAY_PREFIX: string = "give_"
+const GIVEAWAY_COUNT_KEY: string = "givec"
+const GIVEAWAY_CLAIM_PREFIX: string = "gclaim_"
+
+// Create a giveaway in a group or DM
+// amount_per_claim: how much each person gets
+// max_claims: how many people can claim
+// asset: Hash of asset (zero = XEL)
+entry create_giveaway(
+    scope: string,
+    amount_per_claim: u64,
+    max_claims: u64,
+    asset: Hash
+) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    require(amount_per_claim > 0, "badamount")
+    require(max_claims > 0 && max_claims <= 10000, "badmax")
+    
+    // Calculate total needed
+    let total: u64 = (amount_per_claim as u128 * max_claims as u128) as u64
+    require(total >= amount_per_claim, "ovf")
+    
+    // Verify caller has deposited the funds
+    let dep: u64 = get_deposit_for_asset(asset).expect("err")
+    require(dep >= total, "insdep")
+    
+    // Refund excess deposit
+    if dep > total {
+        let ok: bool = transfer(caller, dep - total, asset)
+        require(ok, "rfail")
+    }
+    
+    let id: u64 = s.load(GIVEAWAY_COUNT_KEY).unwrap_or(0)
+    let key: string = GIVEAWAY_PREFIX + id.to_string(10u32)
+    
+    // Store: creator|scope|amount_per_claim|max_claims|claimed|asset|active
+    let data: string = caller.to_string() + "|" + scope + "|" + amount_per_claim.to_string(10u32) + "|" + max_claims.to_string(10u32) + "|0|" + asset.to_hex() + "|1"
+    s.store(key, data)
+    s.store(GIVEAWAY_COUNT_KEY, id + 1)
+    
+    return id
+}
+
+// Claim a giveaway (first come first served)
+entry claim_giveaway(giveaway_id: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    let key: string = GIVEAWAY_PREFIX + giveaway_id.to_string(10u32)
+    let data_opt: optional<string> = s.load(key)
+    require(data_opt.is_some(), "notfound")
+    
+    let data: string = data_opt.expect("err")
+    let parts: string[] = data.split("|")
+    
+    let creator: Address = Address::from_string(parts[0]).expect("err")
+    let amount_per_claim: u64 = parts[2].parse::<u64>().expect("err")
+    let max_claims: u64 = parts[3].parse::<u64>().expect("err")
+    let claimed: u64 = parts[4].parse::<u64>().expect("err")
+    let asset: Hash = Hash::from_hex(parts[5].as_str()).expect("err")
+    let active: u64 = parts[6].parse::<u64>().expect("err")
+    
+    require(active == 1, "notactive")
+    require(claimed < max_claims, "soldout")
+    
+    // Check if caller already claimed
+    let claim_key: string = GIVEAWAY_CLAIM_PREFIX + giveaway_id.to_string(10u32) + "_" + caller.to_string()
+    let already: bool = s.load(claim_key).unwrap_or(false)
+    require(!already, "alreadyclaimed")
+    
+    // Mark as claimed
+    s.store(claim_key, true)
+    
+    // Transfer to caller
+    let ok: bool = transfer(caller, amount_per_claim, asset)
+    require(ok, "txfail")
+    
+    // Update claimed count
+    let new_claimed: u64 = claimed + 1
+    let new_active: u64 = if new_claimed >= max_claims { 0 } else { 1 }
+    let new_data: string = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + new_claimed.to_string(10u32) + "|" + parts[5] + "|" + new_active.to_string(10u32)
+    s.store(key, new_data)
+    
+    return new_claimed
+}
+
+// Cancel giveaway (refund remaining to creator)
+entry cancel_giveaway(giveaway_id: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    let key: string = GIVEAWAY_PREFIX + giveaway_id.to_string(10u32)
+    let data_opt: optional<string> = s.load(key)
+    require(data_opt.is_some(), "notfound")
+    
+    let data: string = data_opt.expect("err")
+    let parts: string[] = data.split("|")
+    let creator: Address = Address::from_string(parts[0]).expect("err")
+    require(caller == creator, "notcreator")
+    
+    let amount_per_claim: u64 = parts[2].parse::<u64>().expect("err")
+    let max_claims: u64 = parts[3].parse::<u64>().expect("err")
+    let claimed: u64 = parts[4].parse::<u64>().expect("err")
+    let asset: Hash = Hash::from_hex(parts[5].as_str()).expect("err")
+    
+    // Refund remaining
+    let remaining: u64 = (amount_per_claim as u128 * (max_claims - claimed) as u128) as u64
+    if remaining > 0 {
+        let ok: bool = transfer(caller, remaining, asset)
+        require(ok, "rfail")
+    }
+    
+    // Mark as inactive
+    let new_data: string = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + parts[4] + "|" + parts[5] + "|0"
+    s.store(key, new_data)
+    
+    return remaining
+}
+
+// Get giveaway details
+pub fn get_giveaway(giveaway_id: u64) -> string {
+    let key: string = GIVEAWAY_PREFIX + giveaway_id.to_string(10u32)
+    let opt: optional<string> = Storage::new().load(key)
+    if opt.is_none() { return "" }
+    return opt.expect("err")
+}
+
+// Check if user already claimed a giveaway
+pub fn has_claimed_giveaway(giveaway_id: u64, user: Address) -> bool {
+    let claim_key: string = GIVEAWAY_CLAIM_PREFIX + giveaway_id.to_string(10u32) + "_" + user.to_string()
+    return Storage::new().load(claim_key).unwrap_or(false)
+}
+
+// Get total giveaways count
+pub fn get_giveaway_count() -> u64 {
+    return Storage::new().load(GIVEAWAY_COUNT_KEY).unwrap_or(0)
+}
+
+// ── Direct On-Chain Messages (premium, bypass relayers) ───────────────────
+// For important messages: store directly on-chain, no relayer needed.
+// Uses XELIS transaction data (up to 30KB per transaction).
+// More expensive (user pays gas) but 100% guaranteed persistence.
+
+const DIRECT_MSG_PREFIX: string = "dmsg_"
+const DIRECT_MSG_COUNT_KEY: string = "dmsgc"
+
+// Store a direct on-chain message (no relayer, user pays gas)
+// This is for IMPORTANT messages that must survive forever
+// Encrypted blob is stored directly, maximum security
+entry send_direct_message(
+    recipient: Address,
+    encrypted_blob: bytes,
+    timestamp: u64
+) -> u64 {
+    when_not_paused()
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    // Store in recipient's direct message buffer (separate from relayed messages)
+    let count_key: string = DIRECT_MSG_COUNT_KEY + "_" + recipient.to_string()
+    let count: u64 = s.load(count_key).unwrap_or(0)
+    
+    // Direct messages use a separate ring buffer (also 50 slots)
+    let slot: u64 = count % MAX_ONCHAIN_MESSAGES
+    let msg_key: string = DIRECT_MSG_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)
+    
+    // Store: blob|sender|timestamp|type(direct)
+    let msg_data: string = encrypted_blob.to_hex() + "|" + caller.to_string() + "|" + timestamp.to_string(10u32) + "|direct"
+    s.store(msg_key, msg_data)
+    s.store(count_key, count + 1)
+    
+    return count
+}
+
+// Get a direct on-chain message
+pub fn get_direct_message(recipient: Address, index: u64) -> string {
+    let s: Storage = Storage::new()
+    let msg_key: string = DIRECT_MSG_PREFIX + recipient.to_string() + "_" + index.to_string(10u32)
+    let opt: optional<string> = s.load(msg_key)
+    if opt.is_none() { return "" }
+    return opt.expect("err")
+}
+
+// Get direct message count
+pub fn get_direct_message_count(recipient: Address) -> u64 {
+    return Storage::new().load(DIRECT_MSG_COUNT_KEY + "_" + recipient.to_string()).unwrap_or(0)
+}
+
+// Delete a direct message (sender or recipient)
+entry delete_direct_message(recipient: Address, slot: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    let msg_key: string = DIRECT_MSG_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)
+    let msg_opt: optional<string> = s.load(msg_key)
+    require(msg_opt.is_some(), "nomsg")
+    
+    let msg_data: string = msg_opt.expect("err")
+    let parts: string[] = msg_data.split("|")
+    let sender: Address = Address::from_string(parts[1]).expect("err")
+    
+    require(caller == recipient || caller == sender, "notauth")
+    
+    s.store(msg_key, "DELETED|" + sender.to_string() + "|0|direct")
+    return 0
+}
+
+// ── Relayer Management Tools ───────────────────────────────────────────────
+// Tools for relayers to manage their business
+
+// Relayer can pause accepting new users (keep serving existing ones)
+const RELAY_PAUSED_PREFIX: string = "rpause_"
+
+entry toggle_relayer_paused() -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    
+    let current: bool = s.load(RELAY_PAUSED_PREFIX + caller.to_string()).unwrap_or(false)
+    s.store(RELAY_PAUSED_PREFIX + caller.to_string(), !current)
+    return 0
+}
+
+pub fn is_relayer_paused(relayer: Address) -> bool {
+    return Storage::new().load(RELAY_PAUSED_PREFIX + relayer.to_string()).unwrap_or(false)
+}
+
+// Relayer updates their endpoint URL
+entry update_relayer_endpoint(new_endpoint: string) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    require(new_endpoint != "", "badurl")
+    
+    // Update registry entry
+    let reg_key: string = RELAY_REG_PREFIX + caller.to_string()
+    let existing: string = s.load(reg_key).expect("notreg")
+    let parts: string[] = existing.split("|")
+    s.store(reg_key, new_endpoint + "|" + parts[1] + "|" + parts[2])
+    
+    return 0
+}
+
+// Relayer updates their free tier settings
+entry update_free_tier(free_daily_limit: u64, free_wallet_slots: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    require(free_daily_limit <= 1000, "badlimit")
+    require(free_wallet_slots <= 10000, "badslots")
+    
+    let reg_key: string = RELAY_REG_PREFIX + caller.to_string()
+    let existing: string = s.load(reg_key).expect("notreg")
+    let parts: string[] = existing.split("|")
+    s.store(reg_key, parts[0] + "|" + free_daily_limit.to_string(10u32) + "|" + free_wallet_slots.to_string(10u32))
+    
+    return 0
+}

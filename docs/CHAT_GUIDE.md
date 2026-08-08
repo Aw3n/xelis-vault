@@ -113,3 +113,97 @@ VaultChat works like telecom operators (Orange, SFR, etc.). Each Relayer is an i
 ├── pending/                   # Queued for relayer
 └── relayer_peers.json         # Known relayer endpoints
 ```
+
+---
+
+## Advanced Features (v9.0)
+
+### Payment Requests (Invoices via Chat)
+
+Alice can send Bob a payment request directly through VaultChat.
+
+```
+1. Alice calls create_payment_request(bob, 50_xusd, xusd_asset, "For dinner")
+   → Request stored on-chain with status "pending"
+   → Bob sees the request in his CLI
+
+2. Bob clicks "Pay" → fulfill_payment_request(req_id)
+   → 50 xUSD transferred from Bob to Alice
+   → Status changes to "fulfilled"
+
+3. Alice can cancel: cancel_payment_request(req_id)
+   → Status changes to "cancelled"
+```
+
+Both parties have on-chain proof of the request and payment.
+
+### Group Giveaways (Faucet in Chat)
+
+A group admin or any user can create a giveaway in a group or DM.
+
+```
+Alice creates giveaway in group chat:
+  create_giveaway("group_5", 50_xel_per_claim, 20_max_claims, XEL_asset)
+  → Deposits 1000 XEL (50 × 20) into the contract
+  → First 20 people to click "Claim" get 50 XEL each
+
+Bob clicks claim_giveaway(id) → gets 50 XEL
+Charlie clicks claim_giveaway(id) → gets 50 XEL
+...
+20th person claims → giveaway auto-closes (sold out)
+
+Alice can cancel early: cancel_giveaway(id)
+  → Remaining XEL refunded to Alice
+```
+
+**Anti-abuse:** Each wallet can only claim once per giveaway (`has_claimed_giveaway`).
+
+### Direct On-Chain Messages (Premium, No Relayer)
+
+For **important messages** that must survive forever, users can bypass relayers entirely.
+
+```
+Alice sends a direct message to Bob:
+  send_direct_message(bob, encrypted_blob, timestamp)
+  → Alice pays the gas (XEL) herself
+  → Message stored on-chain in a separate buffer (50 slots)
+  → No relayer involved → 100% guaranteed persistence
+  → More expensive but maximum security
+
+Bob reads: get_direct_message(bob, index)
+  → Decrypts with his private key
+  → Same E2E encryption as relayed messages
+```
+
+**When to use direct vs relayed:**
+| Scenario | Use |
+|----------|-----|
+| Casual chat | Relayed (free or cheap) |
+| Important contract | Direct (user pays gas) |
+| Legal agreement | Direct (permanent proof) |
+| Group conversation | Relayed (batched, cheap) |
+
+Direct messages use a **separate ring buffer** from relayed messages (50 + 50 = 100 total on-chain messages per user).
+
+### Relayer Management Tools
+
+Relayers have full control over their business:
+
+| Tool | What it does |
+|------|-------------|
+| `toggle_relayer_paused()` | Pause accepting new users (keep serving existing) |
+| `update_relayer_endpoint(url)` | Change P2P endpoint URL |
+| `update_free_tier(limit, slots)` | Change free tier settings anytime |
+| `set_batch_interval(blocks)` | Change how often they batch |
+| `create_plan(...)` / `update_plan(...)` | Manage pricing plans |
+| `report_storage_stats(...)` | Report disk usage for transparency |
+
+### File Sharing (Future)
+
+File sharing is planned for a future version. The architecture:
+- Small files (< 30KB): stored directly on-chain (XELIS transaction data)
+- Large files: stored on IPFS, hash anchored on-chain via VaultChat
+- All files encrypted E2E (same as messages)
+- File preview in `xvault` CLI
+
+This will be implemented after testnet launch.

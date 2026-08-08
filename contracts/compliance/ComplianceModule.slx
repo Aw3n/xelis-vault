@@ -307,8 +307,6 @@ entry get_version() -> string {
 // @returns: true if both parties are compliant or asset is not gated
 // @security: read-only view, no access control
 // check transfer.
-pub fn check_transfer(from: Address, to: Address, asset: Hash, amount: u64) -> bool {
-    return check_transfer_entry(from, to, asset, amount)
 }
 
 // Verify a Merkle proof against the current compliance Merkle root (read-only wrapper).

@@ -177,7 +177,7 @@ entry transfer_asset(to: Address, amount: u64) -> u64 {
     let compliance_opt: optional<Hash> = s.load(COMPLIANCE_KEY)
     if compliance_opt.is_some() {
         let compliance: Contract = Contract::new(compliance_opt.expect("err")).expect("err")
-        let allowed: bool = compliance.call(u16, [caller, to, hash, amount], {})
+        let allowed: bool = compliance.call(3u16, [caller, to, hash, amount], {})
         require(allowed, "notallowed")
     }
 

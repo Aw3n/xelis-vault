@@ -3,7 +3,7 @@
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
 
 Each `entry` function gets a sequential ID starting at 0 in declaration order.
-**Total entry functions across 33 contracts:** 630
+**Total entry functions across 33 contracts:** 617
 
 `pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.
 
@@ -202,6 +202,8 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 13 | `get_version` | `—` | `s` |
 | 14 | `request_emergency_withdraw` | `—` | `u` |
 | 15 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 16 | `verify_callback` | `callback_contract: Hash` | `u` |
+| 17 | `revoke_callback` | `callback_contract: Hash` | `u` |
 
 ## `governance/GovernanceVault.slx`
 
@@ -210,24 +212,22 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 0 | `stake` | `amount: u64, lock_days: u64` | `u` |
 | 1 | `unstake` | `stake_id: u64` | `u` |
 | 2 | `claim_rewards` | `—` | `u` |
-| 3 | `get_voting_power_entry` | `addr: Address` | `u` |
-| 4 | `get_total_voting_power_entry` | `—` | `u` |
-| 5 | `get_total_staked_entry` | `—` | `u` |
-| 6 | `get_user_staked_entry` | `addr: Address` | `u` |
-| 7 | `get_stakes_count_entry` | `—` | `u` |
-| 8 | `notify_reward_amount` | `amount: u64` | `u` |
-| 9 | `set_reward_distributor` | `contract_hash: Hash, enabled: bool` | `u` |
-| 10 | `set_vlt_contract` | `vc: Hash` | `u` |
-| 11 | `set_vlt_asset` | `va: Hash` | `u` |
-| 12 | `set_registry` | `reg: Hash` | `u` |
-| 13 | `set_timelock` | `tl: Hash` | `u` |
-| 14 | `pause` | `reason: string` | `u` |
-| 15 | `unpause` | `—` | `u` |
-| 16 | `transfer_admin` | `new_admin: Address` | `u` |
-| 17 | `set_emergency` | `e: Address` | `u` |
-| 18 | `get_version` | `—` | `s` |
-| 19 | `request_emergency_withdraw` | `—` | `u` |
-| 20 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 3 | `get_total_staked_entry` | `—` | `u` |
+| 4 | `get_user_staked_entry` | `addr: Address` | `u` |
+| 5 | `get_stakes_count_entry` | `—` | `u` |
+| 6 | `notify_reward_amount` | `amount: u64` | `u` |
+| 7 | `set_reward_distributor` | `contract_hash: Hash, enabled: bool` | `u` |
+| 8 | `set_vlt_contract` | `vc: Hash` | `u` |
+| 9 | `set_vlt_asset` | `va: Hash` | `u` |
+| 10 | `set_registry` | `reg: Hash` | `u` |
+| 11 | `set_timelock` | `tl: Hash` | `u` |
+| 12 | `pause` | `reason: string` | `u` |
+| 13 | `unpause` | `—` | `u` |
+| 14 | `transfer_admin` | `new_admin: Address` | `u` |
+| 15 | `set_emergency` | `e: Address` | `u` |
+| 16 | `get_version` | `—` | `s` |
+| 17 | `request_emergency_withdraw` | `—` | `u` |
+| 18 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
 
 ## `governance/Governor.slx`
 
@@ -296,20 +296,18 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 
 | ID | Name | Parameters | Return |
 |----|------|------------|--------|
-| 0 | `submit_proposal` | `target: Hash, entry_id: u16, params: bytes, delay: u64` | `u` |
-| 1 | `execute_proposal` | `proposal_id: u64` | `u` |
-| 2 | `cancel_proposal` | `proposal_id: u64` | `u` |
-| 3 | `submit_emergency_proposal` | `target: Hash, entry_id: u16, params: bytes` | `u` |
-| 4 | `set_min_delay` | `delay: u64` | `u` |
-| 5 | `set_max_delay` | `delay: u64` | `u` |
-| 6 | `set_governor` | `gov: Hash` | `u` |
-| 7 | `set_guardian` | `g: Address` | `u` |
-| 8 | `set_guardian_contract` | `gc: Hash` | `u` |
-| 9 | `set_emergency` | `e: Address` | `u` |
-| 10 | `transfer_admin` | `new_admin: Address` | `u` |
-| 11 | `get_version` | `—` | `s` |
-| 12 | `request_emergency_withdraw` | `—` | `u` |
-| 13 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 0 | `execute_proposal` | `proposal_id: u64` | `u` |
+| 1 | `cancel_proposal` | `proposal_id: u64` | `u` |
+| 2 | `set_min_delay` | `delay: u64` | `u` |
+| 3 | `set_max_delay` | `delay: u64` | `u` |
+| 4 | `set_governor` | `gov: Hash` | `u` |
+| 5 | `set_guardian` | `g: Address` | `u` |
+| 6 | `set_guardian_contract` | `gc: Hash` | `u` |
+| 7 | `set_emergency` | `e: Address` | `u` |
+| 8 | `transfer_admin` | `new_admin: Address` | `u` |
+| 9 | `get_version` | `—` | `s` |
+| 10 | `request_emergency_withdraw` | `—` | `u` |
+| 11 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
 
 ## `insurance/InsurancePool.slx`
 
@@ -488,71 +486,56 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 4 | `decrease_stake` | `amount: u64` | `u` |
 | 5 | `deregister_miner` | `—` | `u` |
 | 6 | `submit_heartbeat` | `—` | `u` |
-| 7 | `slash_miner` | `miner_addr: Address, severity: u8, reporter: Address` | `u` |
-| 8 | `distribute_reward` | `miner_addr: Address, service_id: u8, is_valid: bool` | `u` |
-| 9 | `is_miner_active_entry` | `addr: Address, service_id: u8` | `u` |
-| 10 | `get_miner_stake_entry` | `addr: Address` | `u` |
-| 11 | `get_miner_reputation_entry` | `addr: Address` | `u` |
-| 12 | `get_active_miners_for_service_entry` | `service_id: u8` | `u` |
-| 13 | `get_miners_count_entry` | `—` | `u` |
-| 14 | `get_total_staked_entry` | `—` | `u` |
-| 15 | `get_base_reward_oracle_entry` | `—` | `u` |
-| 16 | `register_service` | `service_id: u8, contract_hash: Hash` | `u` |
-| 17 | `unregister_service` | `contract_hash: Hash` | `u` |
-| 18 | `set_min_stake` | `amount: u64` | `u` |
-| 19 | `set_heartbeat_interval` | `blocks: u64` | `u` |
-| 20 | `set_heartbeat_timeout` | `blocks: u64` | `u` |
-| 21 | `set_base_reward_oracle` | `amount: u64` | `u` |
-| 22 | `set_base_reward_chat` | `amount: u64` | `u` |
-| 23 | `set_total_budget` | `amount: u64` | `u` |
-| 24 | `set_target_duration` | `blocks: u64` | `u` |
-| 25 | `set_vlt_contract` | `vc: Hash` | `u` |
-| 26 | `set_vlt_asset` | `va: Hash` | `u` |
-| 27 | `set_treasury` | `t: Address` | `u` |
-| 28 | `set_registry` | `reg: Hash` | `u` |
-| 29 | `set_timelock` | `tl: Hash` | `u` |
-| 30 | `set_guardian` | `g: Address` | `u` |
-| 31 | `set_emergency` | `e: Address` | `u` |
-| 32 | `pause` | `reason: string` | `u` |
-| 33 | `unpause` | `—` | `u` |
-| 34 | `transfer_admin` | `new_admin: Address` | `u` |
-| 35 | `get_version` | `—` | `s` |
-| 36 | `request_emergency_withdraw` | `—` | `u` |
-| 37 | `cancel_emergency_withdraw` | `—` | `u` |
-| 38 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 7 | `get_miner_stake_entry` | `addr: Address` | `u` |
+| 8 | `get_miner_reputation_entry` | `addr: Address` | `u` |
+| 9 | `get_miners_count_entry` | `—` | `u` |
+| 10 | `get_total_staked_entry` | `—` | `u` |
+| 11 | `get_base_reward_oracle_entry` | `—` | `u` |
+| 12 | `register_service` | `service_id: u8, contract_hash: Hash` | `u` |
+| 13 | `unregister_service` | `contract_hash: Hash` | `u` |
+| 14 | `set_min_stake` | `amount: u64` | `u` |
+| 15 | `set_heartbeat_interval` | `blocks: u64` | `u` |
+| 16 | `set_heartbeat_timeout` | `blocks: u64` | `u` |
+| 17 | `set_base_reward_chat` | `amount: u64` | `u` |
+| 18 | `set_total_budget` | `amount: u64` | `u` |
+| 19 | `set_target_duration` | `blocks: u64` | `u` |
+| 20 | `set_vlt_contract` | `vc: Hash` | `u` |
+| 21 | `set_vlt_asset` | `va: Hash` | `u` |
+| 22 | `set_treasury` | `t: Address` | `u` |
+| 23 | `set_registry` | `reg: Hash` | `u` |
+| 24 | `set_timelock` | `tl: Hash` | `u` |
+| 25 | `set_guardian` | `g: Address` | `u` |
+| 26 | `set_emergency` | `e: Address` | `u` |
+| 27 | `pause` | `reason: string` | `u` |
+| 28 | `unpause` | `—` | `u` |
+| 29 | `transfer_admin` | `new_admin: Address` | `u` |
+| 30 | `get_version` | `—` | `s` |
+| 31 | `request_emergency_withdraw` | `—` | `u` |
+| 32 | `cancel_emergency_withdraw` | `—` | `u` |
+| 33 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 34 | `set_compound` | `enabled: bool` | `u` |
+| 35 | `set_rep_decay_params` | `interval: u64, amount: u64` | `u` |
 
 ## `oracle/StakedOracle.slx`
 
 | ID | Name | Parameters | Return |
 |----|------|------------|--------|
-| 0 | `add_feed` | `name: string, asset: Hash, decimals: u8, min_price: u64, max_price: u64` | `u` |
-| 1 | `update_feed` | `feed_id: u64, min_price: u64, max_price: u64, decimals: u8` | `u` |
-| 2 | `set_feed_active` | `feed_id: u64, active: bool` | `u` |
-| 3 | `trigger_feed_cb` | `feed_id: u64, reason: string` | `u` |
-| 4 | `reset_feed_cb` | `feed_id: u64` | `u` |
-| 5 | `submit_price` | `feed_id: u64, price: u64` | `u` |
-| 6 | `aggregate_now` | `feed_id: u64` | `u` |
-| 7 | `get_price_by_feed_entry` | `feed_id: u64` | `u` |
-| 8 | `get_price_entry` | `name: string` | `u` |
-| 9 | `get_price_for_asset_entry` | `asset: Hash` | `u` |
-| 10 | `get_feed_id_entry` | `name: string` | `u` |
-| 11 | `pause` | `reason: string` | `u` |
-| 12 | `unpause` | `—` | `u` |
-| 13 | `set_max_deviation_bps` | `bps: u64` | `u` |
-| 14 | `set_cb_threshold_bps` | `bps: u64` | `u` |
-| 15 | `set_aggregation_blocks` | `n: u64` | `u` |
-| 16 | `set_max_stale_blocks` | `n: u64` | `u` |
-| 17 | `set_hard_stale_blocks` | `n: u64` | `u` |
-| 18 | `disable_bootstrap` | `—` | `u` |
-| 19 | `set_bootstrap_min_providers` | `n: u64` | `u` |
-| 20 | `set_min_providers` | `n: u64` | `u` |
-| 21 | `set_miner_contract` | `mc: Hash` | `u` |
-| 22 | `set_registry` | `reg: Hash` | `u` |
-| 23 | `set_timelock` | `tl: Hash` | `u` |
-| 24 | `set_guardian` | `g: Address` | `u` |
-| 25 | `set_emergency` | `e: Address` | `u` |
-| 26 | `transfer_admin` | `new_admin: Address` | `u` |
-| 27 | `get_version` | `—` | `s` |
+| 0 | `submit_price` | `feed_id: u64, price: u64` | `u` |
+| 1 | `aggregate_now` | `feed_id: u64` | `u` |
+| 2 | `get_price_by_feed_entry` | `feed_id: u64` | `u` |
+| 3 | `get_price_entry` | `name: string` | `u` |
+| 4 | `get_price_for_asset_entry` | `asset: Hash` | `u` |
+| 5 | `get_feed_id_entry` | `name: string` | `u` |
+| 6 | `disable_bootstrap` | `—` | `u` |
+| 7 | `set_bootstrap_min_providers` | `n: u64` | `u` |
+| 8 | `set_min_providers` | `n: u64` | `u` |
+| 9 | `set_miner_contract` | `mc: Hash` | `u` |
+| 10 | `set_registry` | `reg: Hash` | `u` |
+| 11 | `set_timelock` | `tl: Hash` | `u` |
+| 12 | `set_guardian` | `g: Address` | `u` |
+| 13 | `set_emergency` | `e: Address` | `u` |
+| 14 | `transfer_admin` | `new_admin: Address` | `u` |
+| 15 | `get_version` | `—` | `s` |
 
 ## `payroll/Payroll.slx`
 
@@ -598,6 +581,8 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 15 | `get_version` | `—` | `s` |
 | 16 | `request_emergency_withdraw` | `—` | `u` |
 | 17 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 18 | `set_denomination` | `denom_id: u8, amount: u64` | `u` |
+| 19 | `add_denomination` | `amount: u64` | `u` |
 
 ## `proxy/ContractRegistry.slx`
 
@@ -696,23 +681,23 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 
 | ID | Name | Parameters | Return |
 |----|------|------------|--------|
-| 0 | `mint_to` | `to: Address, amount: u64` | `u` |
-| 1 | `burn_own` | `amount: u64` | `u` |
-| 2 | `mint_batch` | `recipients: Address[], amounts: u64[]` | `u` |
-| 3 | `set_minter` | `contract_hash: Hash, enabled: bool` | `u` |
-| 4 | `set_burner` | `contract_hash: Hash, enabled: bool` | `u` |
-| 5 | `create_asset` | `—` | `u` |
-| 6 | `set_registry` | `reg: Hash` | `u` |
-| 7 | `set_timelock` | `tl: Hash` | `u` |
-| 8 | `transfer_admin` | `new_admin: Address` | `u` |
-| 9 | `set_emergency` | `e: Address` | `u` |
-| 10 | `get_version` | `—` | `s` |
-| 11 | `get_asset_hash_entry` | `—` | `H` |
-| 12 | `get_max_supply_entry` | `—` | `u` |
-| 13 | `get_total_burned_entry` | `—` | `u` |
-| 14 | `get_circulating_supply_entry` | `—` | `u` |
-| 15 | `request_emergency_withdraw` | `—` | `u` |
-| 16 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 0 | `burn_own` | `amount: u64` | `u` |
+| 1 | `mint_batch` | `recipients: Address[], amounts: u64[]` | `u` |
+| 2 | `set_minter` | `contract_hash: Hash, enabled: bool` | `u` |
+| 3 | `set_burner` | `contract_hash: Hash, enabled: bool` | `u` |
+| 4 | `create_asset` | `—` | `u` |
+| 5 | `set_registry` | `reg: Hash` | `u` |
+| 6 | `set_timelock` | `tl: Hash` | `u` |
+| 7 | `transfer_admin` | `new_admin: Address` | `u` |
+| 8 | `set_emergency` | `e: Address` | `u` |
+| 9 | `get_version` | `—` | `s` |
+| 10 | `get_asset_hash_entry` | `—` | `H` |
+| 11 | `get_max_supply_entry` | `—` | `u` |
+| 12 | `get_total_burned_entry` | `—` | `u` |
+| 13 | `get_circulating_supply_entry` | `—` | `u` |
+| 14 | `request_emergency_withdraw` | `—` | `u` |
+| 15 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 16 | `mint_to_entry` | `to: Address, amount: u64` | `u` |
 
 ## `treasury/TreasuryVault.slx`
 
@@ -745,22 +730,24 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | ID | Name | Parameters | Return |
 |----|------|------------|--------|
 | 0 | `create_asset` | `—` | `u` |
-| 1 | `mint_tokens` | `to: Address, amount: u64` | `u` |
-| 2 | `mint_split` | `to: Address, amount: u64, treasury: Address, fee: u64` | `u` |
-| 3 | `burn_tokens` | `amount: u64` | `u` |
-| 4 | `transfer_tokens` | `to: Address, amount: u64` | `u` |
-| 5 | `set_minter` | `contract_hash: Hash, enabled: bool` | `u` |
-| 6 | `set_burner` | `contract_hash: Hash, enabled: bool` | `u` |
-| 7 | `set_registry` | `reg: Hash` | `u` |
-| 8 | `set_timelock` | `tl: Hash` | `u` |
-| 9 | `transfer_admin` | `new_admin: Address` | `u` |
-| 10 | `set_emergency` | `e: Address` | `u` |
-| 11 | `get_version` | `—` | `s` |
-| 12 | `get_asset_hash_entry` | `—` | `H` |
-| 13 | `get_asset_info_entry` | `—` | `(` |
-| 14 | `get_balance_entry` | `addr: Address` | `u` |
-| 15 | `request_emergency_withdraw` | `—` | `u` |
-| 16 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 1 | `transfer_tokens` | `to: Address, amount: u64` | `u` |
+| 2 | `get_asset_info` | `—` | `(` |
+| 3 | `set_vault_contract` | `contract_hash: Hash` | `u` |
+| 4 | `set_timelock` | `tl: Hash` | `u` |
+| 5 | `transfer_admin` | `new_admin: Address` | `u` |
+| 6 | `set_psm` | `hash: Hash` | `u` |
+| 7 | `set_emergency` | `e: Address` | `u` |
+| 8 | `emergency_withdraw` | `—` | `u` |
+| 9 | `set_savings` | `hash: Hash` | `u` |
+| 10 | `set_minter` | `contract_hash: Hash, enabled: bool` | `u` |
+| 11 | `set_burner` | `contract_hash: Hash, enabled: bool` | `u` |
+| 12 | `set_registry` | `reg: Hash` | `u` |
+| 13 | `get_version` | `—` | `s` |
+| 14 | `get_asset_hash_entry` | `—` | `H` |
+| 15 | `get_asset_info_entry` | `—` | `(` |
+| 16 | `get_balance_entry` | `addr: Address` | `u` |
+| 17 | `request_emergency_withdraw` | `—` | `u` |
+| 18 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
 
 ## `vault/VaultEngineV3.slx`
 

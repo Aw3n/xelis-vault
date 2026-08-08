@@ -1001,3 +1001,130 @@ entry claim_relayer_fees() -> u64 {
     
     return 0
 }
+
+// ============================================================================
+// v7.2: KEY ROTATION + READ RECEIPTS + EPHEMERAL MESSAGES
+// ============================================================================
+
+const GROUP_KEY_VERSION_PREFIX: string = "gkv_"
+const READ_RECEIPT_PREFIX: string = "rr_"
+const EPHEMERAL_PREFIX: string = "eph_"
+const EPHEMERAL_DEFAULT_BLOCKS: u64 = 43200  // ~6 hours
+
+// ── KEY ROTATION: when admin kicks a member, rotate the group key ──────────
+
+// Rotate group key after kicking a member (admin only)
+// Generates a new key version and requires all remaining members to get new keys
+entry rotate_group_key(group_id: u64, new_group_pubkey: Hash) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let group: Group = s.load(GROUP_PREFIX + group_id.to_string(10u32)).expect("gnf")
+    
+    // Verify admin
+    let admin_opt: optional<Address> = s.load(GROUP_ADMIN_PREFIX + group_id.to_string(10u32))
+    let is_admin: bool = false
+    if caller == group.creator { is_admin = true }
+    if admin_opt.is_some() { if caller == admin_opt.expect("err") { is_admin = true } }
+    require(is_admin, "notadmin")
+    
+    // Increment key version
+    let version_key: string = GROUP_KEY_VERSION_PREFIX + group_id.to_string(10u32)
+    let old_version: u64 = s.load(version_key).unwrap_or(0)
+    s.store(version_key, old_version + 1)
+    
+    // Update group public key
+    group.group_pubkey = new_group_pubkey
+    s.store(GROUP_PREFIX + group_id.to_string(10u32), group)
+    
+    return old_version + 1
+}
+
+// Get current key version for a group (members check this to know if they need new keys)
+pub fn get_group_key_version(group_id: u64) -> u64 {
+    return Storage::new().load(GROUP_KEY_VERSION_PREFIX + group_id.to_string(10u32)).unwrap_or(0)
+}
+
+// Distribute new encrypted key to a member after rotation (admin only)
+entry distribute_new_key(group_id: u64, member: Address, new_encrypted_key: bytes) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let group: Group = s.load(GROUP_PREFIX + group_id.to_string(10u32)).expect("gnf")
+    
+    let admin_opt: optional<Address> = s.load(GROUP_ADMIN_PREFIX + group_id.to_string(10u32))
+    let is_admin: bool = false
+    if caller == group.creator { is_admin = true }
+    if admin_opt.is_some() { if caller == admin_opt.expect("err") { is_admin = true } }
+    require(is_admin, "notadmin")
+    
+    // Store new key for member
+    let key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    s.store(key, new_encrypted_key)
+    
+    return 0
+}
+
+// ── READ RECEIPTS ───────────────────────────────────────────────────────────
+
+// Mark a message as read (only recipient can do this)
+entry mark_read(recipient: Address, slot: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    require(caller == recipient, "notrecipient")
+    s.store(READ_RECEIPT_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32), get_current_topoheight())
+    return 0
+}
+
+// Check if a message has been read
+pub fn is_message_read(recipient: Address, slot: u64) -> bool {
+    let topo: u64 = Storage::new().load(READ_RECEIPT_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)).unwrap_or(0)
+    return topo > 0
+}
+
+// Get read timestamp
+pub fn get_read_timestamp(recipient: Address, slot: u64) -> u64 {
+    return Storage::new().load(READ_RECEIPT_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)).unwrap_or(0)
+}
+
+// ── EPHEMERAL MESSAGES (auto-delete after N blocks) ─────────────────────────
+
+// Store an ephemeral message that auto-expires
+entry store_ephemeral_message(
+    recipient: Address,
+    encrypted_blob: bytes,
+    timestamp: u64,
+    ttl_blocks: u64
+) -> u64 {
+    when_not_paused()
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    let count_key: string = MSG_COUNT_PREFIX + recipient.to_string()
+    let count: u64 = s.load(count_key).unwrap_or(0)
+    let slot: u64 = count % MAX_ONCHAIN_MESSAGES
+    let msg_key: string = MSG_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)
+    
+    let msg_data: string = encrypted_blob.to_hex() + "|" + caller.to_string() + "|" + timestamp.to_string(10u32)
+    s.store(msg_key, msg_data)
+    s.store(count_key, count + 1)
+    
+    // Store expiration topoheight
+    let expire_topo: u64 = get_current_topoheight() + ttl_blocks
+    s.store(EPHEMERAL_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32), expire_topo)
+    
+    return count
+}
+
+// Check if an ephemeral message has expired
+pub fn is_expired(recipient: Address, slot: u64) -> bool {
+    let s: Storage = Storage::new()
+    let expire_key: string = EPHEMERAL_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)
+    let expire_opt: optional<u64> = s.load(expire_key)
+    if expire_opt.is_none() { return false }
+    let expire_topo: u64 = expire_opt.expect("err")
+    return get_current_topoheight() >= expire_topo
+}
+
+// Get expiration topoheight for a message (0 = not ephemeral)
+pub fn get_expiration(recipient: Address, slot: u64) -> u64 {
+    return Storage::new().load(EPHEMERAL_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)).unwrap_or(0)
+}

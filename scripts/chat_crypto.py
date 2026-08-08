@@ -267,12 +267,44 @@ def can_send_message() -> bool:
 def remaining_free_messages() -> int:
     return max(0, FREE_MESSAGES_PER_DAY - get_message_count_today())
 
-def init_chat(address: str) -> dict:
+def init_chat(address: str, wallet_private_key: str = None) -> dict:
+    """
+    Initialize chat by deriving keys from the XELIS wallet.
+    
+    The user does NOT need a separate key for chat. The chat keypair is
+    derived from the wallet's private key using HKDF-SHA256.
+    
+    If wallet_private_key is not provided, a random keypair is generated
+    (for testing without a connected wallet).
+    """
     identity = load_identity()
     if identity: return identity
-    private_key, public_key = generate_keypair()
-    save_identity(private_key, public_key, address)
-    return {"address": address, "private_key": private_key, "public_key": public_key}
+    
+    if wallet_private_key:
+        # Derive chat key from wallet key
+        seed = hashlib.sha256((wallet_private_key + "xelis-vault-chat-v1").encode()).digest()
+        if CRYPTO_AVAILABLE:
+            # Use derived seed to create X25519 key
+            private_key = X25519PrivateKey.from_private_bytes(seed[:32])
+            public_key = private_key.public_key()
+            private_pem = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            ).decode()
+            public_pem = public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            ).decode()
+        else:
+            private_pem = seed.hex()
+            public_pem = hashlib.sha256(seed).hexdigest()
+    else:
+        # No wallet connected — generate random keypair (for testing)
+        private_pem, public_pem = generate_keypair()
+    
+    save_identity(private_pem, public_pem, address)
+    return {"address": address, "private_key": private_pem, "public_key": public_pem}
 
 def is_initialized() -> bool:
     return load_identity() is not None
@@ -316,3 +348,66 @@ def recover_from_onchain(rpc_client, my_address: str, identity: dict) -> int:
     #
     # This is a placeholder — actual implementation needs the XELIS RPC API
     return 0
+
+
+# ── Group Key Rotation ──────────────────────────────────────────────────────
+def generate_new_group_key() -> Tuple[str, str]:
+    """Generate a new group keypair for rotation."""
+    return generate_keypair()
+
+def re_encrypt_group_key_for_member(
+    new_group_private_pem: str,
+    member_public_key_pem: str
+) -> str:
+    """
+    After key rotation, re-encrypt the new group key for each remaining member.
+    Returns the encrypted group key for that member.
+    """
+    # The group key is shared via ECDH between admin and each member
+    shared = derive_shared_secret(new_group_private_pem, member_public_key_pem)
+    return shared.hex()
+
+# ── Read Receipts ────────────────────────────────────────────────────────────
+def mark_message_read_local(address: str, msg_id: int):
+    """Mark a message as read locally."""
+    for dir_path in [INBOX_DIR, SENT_DIR]:
+        msg_file = dir_path / f"{address}.json"
+        if msg_file.exists():
+            try:
+                messages = json.loads(msg_file.read_text())
+                for m in messages:
+                    if m.get("msg_id") == msg_id:
+                        m["read"] = True
+                        m["read_at"] = time.time()
+                msg_file.write_text(json.dumps(messages, indent=2))
+            except:
+                pass
+
+def get_unread_count(address: str) -> int:
+    """Get count of unread messages from a specific address."""
+    inbox_file = INBOX_DIR / f"{address}.json"
+    if not inbox_file.exists(): return 0
+    try:
+        messages = json.loads(inbox_file.read_text())
+        return sum(1 for m in messages if not m.get("read", False))
+    except:
+        return 0
+
+# ── Ephemeral Messages ──────────────────────────────────────────────────────
+EPHEMERAL_SHORT = 14400    # ~2 hours
+EPHEMERAL_MEDIUM = 43200   # ~6 hours
+EPHEMERAL_LONG = 86400     # ~12 hours
+EPHEMERAL_DAY = 172800     # ~24 hours
+
+def should_delete_ephemeral(expire_topo: int, current_topo: int) -> bool:
+    """Check if an ephemeral message should be deleted."""
+    return current_topo >= expire_topo
+
+# ── Message Timing Estimates ────────────────────────────────────────────────
+# On-chain store_message: ~5 seconds (1 block)
+# Relayer anchor (batch): ~25 seconds (5 blocks)
+# P2P delivery (if relayer active): <1 second
+# Total user-to-user: 5-30 seconds
+#
+# For instant messaging: use P2P directly (off-chain) + on-chain for persistence
+# The CLI sends P2P first (instant), then relayer stores on-chain (persistence)

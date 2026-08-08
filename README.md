@@ -311,6 +311,7 @@ Full CLI guide: [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md)
 | Document | Description |
 |----------|-------------|
 | [CLI Guide](docs/CLI_GUIDE.md) | Complete guide for `xvault` and `xvault-miner` |
+| [Chat Guide](docs/CHAT_GUIDE.md) | How E2E encrypted chat works |
 | [Whitepaper](docs/WHITEPAPER.md) | Full technical whitepaper |
 | [Miner Guide](docs/MINER_GUIDE.md) | How to become a miner |
 | [Provider Guide](docs/PROVIDER_GUIDE.md) | Price data provider setup |

@@ -1128,3 +1128,153 @@ pub fn is_expired(recipient: Address, slot: u64) -> bool {
 pub fn get_expiration(recipient: Address, slot: u64) -> u64 {
     return Storage::new().load(EPHEMERAL_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)).unwrap_or(0)
 }
+
+// ============================================================================
+// v7.3: RELAY SUBSCRIPTION TIER + RELAYER REPUTATION
+// ============================================================================
+
+const RELAY_SUB_PREFIX: string = "rsub_"
+const RELAY_STATS_PREFIX: string = "rstat_"
+const RELAY_SUB_DEFAULT_BLOCKS: u64 = 2592000  // ~30 days
+
+// ── Relay Subscription: user pays for unlimited messages for N days ────────
+
+// User buys a subscription from a specific relayer
+// Payment goes directly to the relayer
+entry buy_subscription(relayer: Address, duration_blocks: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    // Verify relayer is authorized
+    let is_relayer: bool = s.load(RELAYER_PREFIX + relayer.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    
+    // Get relayer's per-message fee (subscription = 100x per-message fee)
+    let fee: u64 = s.load(RELAYER_FEE_PREFIX + relayer.to_string()).unwrap_or(1000000)
+    let token: u8 = s.load(RELAYER_TOKEN_PREFIX + relayer.to_string()).unwrap_or(0)
+    let sub_price: u64 = fee * 100  // 100 messages worth = 30 days unlimited
+    
+    // Default duration
+    if duration_blocks == 0 { duration_blocks = RELAY_SUB_DEFAULT_BLOCKS }
+    
+    // Transfer payment to relayer
+    if token == 0 {
+        let vlt_asset: Hash = s.load(VLT_ASSET_KEY).unwrap_or(Hash::zero())
+        if vlt_asset != Hash::zero() {
+            let ok: bool = transfer(relayer, sub_price, vlt_asset)
+            require(ok, "vltfail")
+        }
+    } else {
+        let ok: bool = transfer(relayer, sub_price, Hash::zero())
+        require(ok, "xelfail")
+    }
+    
+    // Store subscription expiry
+    let expiry: u64 = get_current_topoheight() + duration_blocks
+    s.store(RELAY_SUB_PREFIX + caller.to_string(), expiry)
+    
+    // Update relayer stats
+    let stats_key: string = RELAY_STATS_PREFIX + relayer.to_string()
+    let stats: u64 = s.load(stats_key).unwrap_or(0)
+    s.store(stats_key, stats + 1)
+    
+    return expiry
+}
+
+// Check if user has an active subscription
+pub fn has_subscription(user: Address) -> bool {
+    let s: Storage = Storage::new()
+    let expiry: u64 = s.load(RELAY_SUB_PREFIX + user.to_string()).unwrap_or(0)
+    return get_current_topoheight() < expiry
+}
+
+// Get subscription expiry topoheight
+pub fn get_subscription_expiry(user: Address) -> u64 {
+    return Storage::new().load(RELAY_SUB_PREFIX + user.to_string()).unwrap_or(0)
+}
+
+// ── Relayer Reputation (on-chain, public) ──────────────────────────────────
+
+const RELAY_REP_PREFIX: string = "rrep_"
+const RELAY_HEARTBEAT_PREFIX: string = "rhb_"
+const RELAY_HEARTBEAT_INTERVAL: u64 = 100
+const RELAY_HEARTBEAT_TIMEOUT: u64 = 300
+
+// Relayer submits heartbeat (proves they're online)
+entry relayer_heartbeat() -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    
+    let last_hb: u64 = s.load(RELAY_HEARTBEAT_PREFIX + caller.to_string()).unwrap_or(0)
+    let now: u64 = get_current_topoheight()
+    require(now >= last_hb + RELAY_HEARTBEAT_INTERVAL, "toosoon")
+    
+    s.store(RELAY_HEARTBEAT_PREFIX + caller.to_string(), now)
+    
+    // Increment reputation for being online
+    let rep: u64 = s.load(RELAY_REP_PREFIX + caller.to_string()).unwrap_or(0)
+    s.store(RELAY_REP_PREFIX + caller.to_string(), rep + 1)
+    
+    return 0
+}
+
+// Check if relayer is online (heartbeat within timeout)
+pub fn is_relayer_online(relayer: Address) -> bool {
+    let s: Storage = Storage::new()
+    let last_hb: u64 = s.load(RELAY_HEARTBEAT_PREFIX + relayer.to_string()).unwrap_or(0)
+    if last_hb == 0 { return false }
+    let now: u64 = get_current_topoheight()
+    if now > last_hb + RELAY_HEARTBEAT_TIMEOUT { return false }
+    return true
+}
+
+// Get relayer reputation score
+pub fn get_relayer_reputation(relayer: Address) -> u64 {
+    return Storage::new().load(RELAY_REP_PREFIX + relayer.to_string()).unwrap_or(0)
+}
+
+// Get relayer stats (messages relayed, subscriptions sold)
+pub fn get_relayer_stats(relayer: Address) -> (u64, u64) {
+    let s: Storage = Storage::new()
+    return (
+        s.load(RELAY_STATS_PREFIX + relayer.to_string()).unwrap_or(0),  // subscriptions
+        s.load(RELAY_REP_PREFIX + relayer.to_string()).unwrap_or(0)     // reputation
+    )
+}
+
+// Rate a relayer (users can rate after using their service)
+const RELAY_RATING_PREFIX: string = "rrat_"
+const RELAY_RATING_COUNT_PREFIX: string = "rrc_"
+
+entry rate_relayer(relayer: Address, rating: u8) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    require(rating >= 1 && rating <= 5, "badrating")
+    
+    // Prevent double rating
+    let rated_key: string = RELAY_RATING_PREFIX + relayer.to_string() + "_" + caller.to_string()
+    let already: bool = s.load(rated_key).unwrap_or(false)
+    require(!already, "alreadyrated")
+    
+    s.store(rated_key, true)
+    
+    // Update rating sum and count
+    let count_key: string = RELAY_RATING_COUNT_PREFIX + relayer.to_string()
+    let current_count: u64 = s.load(count_key + "_c").unwrap_or(0)
+    let current_sum: u64 = s.load(count_key + "_s").unwrap_or(0)
+    s.store(count_key + "_c", current_count + 1)
+    s.store(count_key + "_s", current_sum + rating as u64)
+    
+    return 0
+}
+
+// Get relayer average rating
+pub fn get_relayer_rating(relayer: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(RELAY_RATING_COUNT_PREFIX + relayer.to_string() + "_c").unwrap_or(0)
+    if count == 0 { return 0 }
+    let sum: u64 = s.load(RELAY_RATING_COUNT_PREFIX + relayer.to_string() + "_s").unwrap_or(0)
+    return (sum * 100 / count)  // returns rating * 100 (e.g. 450 = 4.50)
+}

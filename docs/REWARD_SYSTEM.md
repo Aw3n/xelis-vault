@@ -229,8 +229,8 @@ Once 20+ active miners are registered, governance can call `StakedOracle.disable
 | Founding team | 1,000,000 | 10% | 4-year vesting, 1-year cliff |
 | Protocol treasury | 1,000,000 | 10% | Governance-controlled |
 | DEX liquidity (VaultSwap) | 1,200,000 | 12% | 6-month linear unlock |
-| Seed investors | 500,000 | 5% | 2-year vesting, 6-month cliff |
-| Community airdrop | 200,000 | 2% | 1 year post-mainnet |
+| Community airdrop | 500,000 | 5% | Contributors & helpers |
+| Community airdrop (launch) | 200,000 | 2% | Launch community distribution |
 | Bug bounty | 100,000 | 1% | Perpetual |
 
 ### Burn Mechanisms (Deflationary Pressure)

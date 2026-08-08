@@ -107,8 +107,8 @@ VLT is the governance and reward token of the protocol. It has a fixed total sup
 | DEX liquidity (VaultSwapV2 seed) | 1,200,000 | 12% | 6-month linear unlock |
 | Founding team | 1,000,000 | 10% | 4-year vesting, 1-year cliff |
 | Protocol treasury | 1,000,000 | 10% | Governance-controlled, no vesting |
-| Seed investors | 500,000 | 5% | 2-year vesting, 6-month cliff |
-| Community airdrop | 200,000 | 2% | 1 year post-mainnet |
+| Community airdrop | 500,000 | 5% | Contributors & helpers |
+| Community airdrop (launch) | 200,000 | 2% | Launch community distribution |
 | Bug bounty | 100,000 | 1% | Perpetual, never unlocked as team funds |
 
 Three independent burn mechanisms apply deflationary pressure to VLT. First, **50% of every slash is burned**: when `StakedOracle` detects an outlier and calls `XelisVaultMiner.slash_miner(addr, severity, reporter)`, half of the slashed stake is sent to `burn(amount/2, VLT_asset)` and permanently removed from supply; 10% goes to the reporter as a whistleblower bounty and 40% to the treasury. Second, **50% of protocol fees are burned**: VaultEngine borrow fees, PSM mint/redeem fees, and VaultSwap swap fees each split 50/50 between treasury and burn. Third, **governance burns**: the community may pass a proposal to burn treasury-held VLT, reducing circulating supply. At an outlier rate of roughly 5% of oracle submissions, slash burns alone remove an estimated 100–500 VLT per day.
@@ -408,7 +408,7 @@ The remaining auxiliary contracts complete the protocol stack:
 Deployment is deterministic and ordered by the layered dependency graph. The recommended sequence is:
 
 1. **ContractRegistry** — deployed first; no dependencies. Admin = deployer EOA.
-2. **VLTToken** — deployed with fixed supply 10,000,000 VLT; `mint_batch` called immediately to distribute to the team vesting contract, treasury, DEX liquidity, seed, airdrop, and bug-bounty allocations. 6,000,000 VLT remains unminted (reserved for `XelisVaultMiner` budget).
+2. **VLTToken** — deployed with fixed supply 10,000,000 VLT; `mint_batch` called immediately to distribute to the team vesting contract, treasury, DEX liquidity, airdrop, and bug-bounty allocations. 6,000,000 VLT remains unminted (reserved for `XelisVaultMiner` budget).
 3. **XelisVaultMiner** — deployed; `set_vlt_contract(VLTToken)` wired; VLTToken grants minter role to XelisVaultMiner.
 4. **StakedOracle** — deployed; `set_miner_contract(XelisVaultMiner)` and `set_registry(ContractRegistry)` wired; XelisVaultMiner is granted permission to call `distribute_reward` and `slash_miner`.
 5. **XUSDToken** — deployed with elastic supply; no mint at deployment.

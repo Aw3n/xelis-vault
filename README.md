@@ -12,25 +12,18 @@ CDP stablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mix
 
 ---
 
-### Become a miner in one line
+### Install everything in one line
 
 ```bash
 curl -fsSL https://xelisvault.github.io/install | bash
 ```
 
-Then:
+This installs **both** `xvault` (community CLI) and `xvault-miner` (miner dashboard).
 
-```bash
-xvault-miner
-```
+---
 
-### Or use the community CLI
-
-```bash
-xvault
-```
-
-Interactive menu: wallet setup, vaults, swaps, governance, mixer, chat — all in one beautiful TUI.
+**Miner?** Run `xvault-miner` after install.  
+**Community member?** Run `xvault` after install.
 
 ---
 
@@ -40,35 +33,56 @@ Interactive menu: wallet setup, vaults, swaps, governance, mixer, chat — all i
 
 ## Quick Start
 
-### For Miners
+### Step 1 — Install (one line, works on Linux & macOS)
 
 ```bash
-# 1. Install (one line — detects OS, sets up everything)
 curl -fsSL https://xelisvault.github.io/install | bash
-
-# 2. Start the miner dashboard (interactive TUI)
-xvault-miner
-
-# 3. Choose your services (oracle, chat, or both)
-# 4. Watch your reputation and rewards in real-time
 ```
 
-The miner dashboard shows:
-- **Real-time reputation** (Excellent / Good / Warning / Critical / Banned)
+This single command:
+- Detects your OS and architecture
+- Clones the repository to `~/.xelis-vault/src`
+- Creates a Python virtualenv with all dependencies
+- Installs **two launchers** in `~/.local/bin`:
+  - `xvault` — community CLI (wallet, vaults, swaps, governance, mixer, chat)
+  - `xvault-miner` — miner dashboard (real-time TUI with reputation, rewards, stats)
+- Generates `~/.xelis-vault/config/config.json` with testnet defaults
+- No telemetry, no phone-home, all data stays local
+
+If `~/.local/bin` is not in your PATH, the installer tells you exactly what to add to your shell profile.
+
+### Step 2 — Choose your role
+
+#### For Miners
+
+```bash
+xvault-miner
+```
+
+Interactive dashboard that shows in real-time:
+- **Reputation** (Excellent / Good / Warning / Critical / Banned) with progress bar
 - **Stake & rewards** (VLT balance, total earned, total slashed)
 - **Submission stats** (valid / total, success rate)
 - **Protocol stats** (budget, distribution, budget factor, active miners)
 - **Price feeds** (XEL/USD, deviation, sources count, staleness)
 - **Service selection** (oracle only, chat only, or both)
 
-### For Community Members
+Quick start with flags:
+```bash
+xvault-miner --miner                          # Start mining immediately
+xvault-miner --services oracle                # Oracle only
+xvault-miner --services chat                  # Chat only
+xvault-miner --services both                  # Both (default)
+xvault-miner --dry-run                        # Simulate without submitting
+```
+
+#### For Community Members
 
 ```bash
-# One command for everything
 xvault
 ```
 
-The community CLI lets you:
+Interactive menu with:
 - **Create or import** a XELIS wallet (auto-downloads official wallet binary)
 - **View your balance** (XEL, VLT, xUSD)
 - **Manage vaults** (deposit XEL, borrow xUSD, repay, withdraw, liquidate)
@@ -78,12 +92,26 @@ The community CLI lets you:
 - **Chat** (E2E encrypted messaging anchored on-chain)
 - **View stats** (protocol-wide statistics, all public on-chain data)
 
+Quick commands:
+```bash
+xvault --balance     # Quick balance check
+xvault --swap        # Quick swap menu
+xvault --vault       # Vault management
+xvault --governance  # Governance menu
+```
+
+### Uninstall
+
+```bash
+curl -fsSL https://xelisvault.github.io/install | bash -s -- --uninstall
+```
+
 ---
 
 ## Architecture
 
 ```
-XELIS Vault v6.0 — 33 Silex contracts
+XELIS Vault v7.0 — 33 Silex contracts
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    CONTRACT REGISTRY                         │
@@ -172,19 +200,18 @@ reward = BASE_REWARD_ORACLE (0.4756 VLT)
 
 **Budget: 6,000,000 VLT over 10 years** (60% of total supply).
 
-### New Features in v6.0
+### Features
 
 - **Auto-slash offline miners** — keepers slash miners who miss heartbeats
 - **Reputation temporal decay** — inactive miners slowly lose reputation
 - **Compound rewards** — auto re-stake rewards for compound growth
-- **Contract events** — frontend indexing support
 - **Graceful degradation** — protocol works with 1 to 100+ miners
 
 ---
 
 ## Tokenomics
 
-### VLT Token (10,000,000 fixed supply)
+### VLT Token (10,000,000 fixed supply — no presale, no seed investors)
 
 | Allocation | Amount | % | Purpose |
 |------------|--------|---|---------|
@@ -192,9 +219,11 @@ reward = BASE_REWARD_ORACLE (0.4756 VLT)
 | Team | 1,000,000 | 10% | 4-year vesting, 1-year cliff |
 | Treasury | 1,000,000 | 10% | Governance-controlled |
 | DEX liquidity | 1,200,000 | 12% | VLT/XEL pool seeding |
-| Seed investors | 500,000 | 5% | 2-year vesting, 6-month cliff |
-| Airdrop | 200,000 | 2% | Community distribution |
+| Community airdrop | 500,000 | 5% | Contributors & helpers |
+| Community airdrop (launch) | 200,000 | 2% | Launch community distribution |
 | Bug bounty | 100,000 | 1% | Perpetual |
+
+**100% fair launch** — no presale, no seed investors, no VC allocation. The 7% airdrop is distributed to community members, contributors, and helpers who support the protocol.
 
 ### xUSD Stablecoin
 
@@ -237,19 +266,21 @@ The AMM pool (`VaultSwapV2`) includes a VLT/XEL pool where:
 | `--vault` | Vault management |
 | `--governance` | Governance menu |
 
+Full CLI guide: [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md)
+
 ---
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
+| [CLI Guide](docs/CLI_GUIDE.md) | Complete guide for `xvault` and `xvault-miner` |
 | [Whitepaper](docs/WHITEPAPER.md) | Full technical whitepaper |
 | [Miner Guide](docs/MINER_GUIDE.md) | How to become a miner |
 | [Provider Guide](docs/PROVIDER_GUIDE.md) | Price data provider setup |
 | [User Guide](docs/USER_GUIDE.md) | End-user guide |
 | [Reward System](docs/REWARD_SYSTEM.md) | Reward + reputation mechanics |
 | [Roadmap](docs/ROADMAP.md) | Development roadmap |
-| [Audit Report](docs/AUDIT_v5.0_REMEDIATION.md) | Security audit + remediation |
 | [Entry IDs](docs/ENTRY_IDS.md) | Auto-generated entry ID table |
 
 ---

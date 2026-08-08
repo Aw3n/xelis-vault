@@ -17,13 +17,13 @@ CDP stablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mix
 **Linux & macOS:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install | bash
+curl -fsSL https://raw.githubusercontent.com/XelisVault/xelis-vault/install | bash
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/XelisVault/xelis-vault/install.ps1 | iex
 ```
 
 **Windows (Command Prompt):** download [`install.bat`](install.bat) and double-click it.
@@ -48,13 +48,13 @@ All three methods install **both** `xvault` (community CLI) and `xvault-miner` (
 **Linux & macOS:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install | bash
+curl -fsSL https://raw.githubusercontent.com/XelisVault/xelis-vault/install | bash
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/XelisVault/xelis-vault/install.ps1 | iex
 ```
 
 **Windows (Command Prompt):** download [`install.bat`](install.bat) and double-click it.
@@ -125,13 +125,13 @@ xvault --governance  # Governance menu
 **Linux & macOS:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install | bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/XelisVault/xelis-vault/install | bash -s -- --uninstall
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install.ps1 | iex -Args "--uninstall"
+irm https://raw.githubusercontent.com/XelisVault/xelis-vault/install.ps1 | iex -Args "--uninstall"
 ```
 
 ---

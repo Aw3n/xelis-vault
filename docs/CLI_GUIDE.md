@@ -93,12 +93,12 @@ xvault --governance  # Governance menu
 
 ### One-liner
 ```bash
-curl -fsSL https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install | bash
+curl -fsSL https://raw.githubusercontent.com/XelisVault/xelis-vault/install | bash
 ```
 
 ### Windows (PowerShell)
 ```powershell
-irm https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/XelisVault/xelis-vault/install.ps1 | iex
 ```
 
 ### Windows (Command Prompt)
@@ -121,7 +121,7 @@ chmod +x ~/.local/bin/xvault
 
 ### Uninstall
 ```bash
-curl -fsSL https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install | bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/XelisVault/xelis-vault/install | bash -s -- --uninstall
 ```
 
 ---

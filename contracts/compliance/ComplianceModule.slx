@@ -88,7 +88,7 @@ fn only_verifier() {
 // @returns: true if both parties are compliant or asset is not gated
 // @security: read-only view, no access control; returns true if asset not flagged compliance-required
 // check transfer entry.
-entry check_transfer_entry(from: Address, to: Address, asset: Hash, amount: u64) -> bool {
+pub fn check_transfer(from: Address, to: Address, asset: Hash, amount: u64) -> bool {
     let s: Storage = Storage::new()
     let required: bool = s.load(ASSET_COMPLIANCE_PREFIX + asset.to_hex()).unwrap_or(false)
     if !required { return true }

@@ -114,7 +114,7 @@ entry flash_loan(
     let cb: Contract = Contract::new(callback_contract).expect("err")
     // Callback contract must implement entry 0 with signature (asset, amount, fee, caller_addr, callback_data)
     let _ = transfer(caller, amount, asset)
-    let result: u64 = cb.call(0u16, [asset, amount, fee, caller, callback_data], {})
+    let result: u64 = cb.call(2u16, [asset, amount, fee, caller, callback_data], {})
     require(result == 0, "cbfail")
 
     // After callback, balance must be >= balance_before + fee

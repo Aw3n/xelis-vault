@@ -4,7 +4,7 @@
 // E2E encrypted chat with anchored Merkle roots, preserved from v4.2.
 //
 // NEW v5.0: anchor_messages() distributes a reward to the relayer via the
-// XelisVaultMiner v5.0 contract: miner.call(8u16, [addr, 2u64, is_valid], {})
+// XelisVaultMiner v5.0 contract: miner.call(18u16, [addr, 2u64, is_valid], {})
 // where service_id=2 designates the chat service. The miner contract hash is
 // stored in MINER_CONTRACT_KEY (set via the admin-only set_miner_contract
 // pub fn). If MINER_CONTRACT_KEY is unset (Hash::zero()) the reward call is
@@ -263,7 +263,7 @@ entry anchor_messages(merkle_root: Hash, message_count: u64, msg_type: u8) -> u6
         let miner_hash: Hash = miner_hash_opt.expect("err")
         if miner_hash != Hash::zero() {
             let miner: Contract = Contract::new(miner_hash).expect("err")
-            let _ = miner.call(8u16, [caller, CHAT_SERVICE_ID, true], {})
+            let _ = miner.call(18u16, [caller, CHAT_SERVICE_ID, true], {})
         }
     }
     return 0

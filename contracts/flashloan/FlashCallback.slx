@@ -60,7 +60,7 @@ fn only_admin() {
 // @params: data - bytes
 // @returns: u
 // @security: standard access control
-entry on_flash_loan(
+pub fn on_flash_loan(
     asset: Hash,
     amount: u64,
     fee: u64,

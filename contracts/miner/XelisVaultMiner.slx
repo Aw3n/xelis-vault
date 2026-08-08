@@ -1152,3 +1152,20 @@ entry set_rep_decay_params(interval: u64, amount: u64) -> u64 {
     s.store(REP_DECAY_AMOUNT_KEY, amount)
     return 0
 }
+
+// v7.0: Standalone pub fn getters for MinerPool cross-contract calls
+pub fn get_miner_stake(addr: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let miner_opt: optional<Miner> = s.load(MINER_PREFIX + addr.to_string())
+    if miner_opt.is_none() { return 0 }
+    let miner: Miner = miner_opt.expect("err")
+    return miner.stake
+}
+
+pub fn get_miner_reputation(addr: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let miner_opt: optional<Miner> = s.load(MINER_PREFIX + addr.to_string())
+    if miner_opt.is_none() { return 0 }
+    let miner: Miner = miner_opt.expect("err")
+    return miner.reputation
+}

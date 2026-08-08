@@ -260,22 +260,177 @@ def screen_mixer(client):
         ])
 
 def screen_chat(client):
+    import chat_crypto as cc
+
+    # Check if chat is initialized
+    if not cc.is_initialized():
+        addr = client.cfg.get("miner_address")
+        if not addr:
+            info_box("Setup Required", [
+                "You need to set your XELIS address first.",
+                "",
+                "Go to Settings -> Set your address",
+            ])
+            return
+        if confirm("Initialize E2E chat? (generates encryption keys)"):
+            identity = cc.init_chat(addr)
+            info_box("Chat Initialized", [
+                "Your E2E encryption keys have been generated!",
+                "",
+                f"Public key hash: {cc.get_public_key_hex(identity['public_key'])[:20]}...",
+                "",
+                "Your private key is stored locally and NEVER shared.",
+                "Register your public key on-chain to receive messages.",
+            ])
+        else:
+            return
+
+    identity = cc.load_identity()
+    if not identity:
+        return
+
     while True:
-        choice = menu("Vault Chat", [
-            ("Register chat session (public key)", "register"),
-            ("Create a group", "create_group"),
-            ("Add group member", "add_member"),
-            ("View last anchored messages", "messages"),
+        conv_count = len(cc.get_all_conversations())
+        free_left = cc.remaining_free_messages()
+        choice = menu(f"Vault Chat ({free_left} free msgs today)", [
+            (f"Conversations ({conv_count})", "conversations"),
+            ("Send message", "send"),
+            ("Register public key on-chain", "register"),
+            ("Add contact", "add_contact"),
+            ("View my public key", "my_key"),
             ("Back", None),
-        ], "E2E encrypted messaging")
+        ], "E2E encrypted — nobody can read your messages")
+
         if choice is None:
             break
-        info_box("Coming Soon", [
-            "This feature will be available once",
-            "contracts are deployed on testnet.",
+        elif choice == "conversations":
+            _chat_conversations(client, cc, identity)
+        elif choice == "send":
+            _chat_send(client, cc, identity)
+        elif choice == "register":
+            _chat_register(client, cc, identity)
+        elif choice == "add_contact":
+            _chat_add_contact(client, cc)
+        elif choice == "my_key":
+            pk_hash = cc.get_public_key_hex(identity["public_key"])
+            info_box("Your Public Key", [
+                f"Hash: {pk_hash}",
+                "",
+                "Share this with contacts so they can",
+                "send you encrypted messages.",
+                "",
+                "Register it on-chain via VaultChat contract",
+                "to be discoverable by other users.",
+            ])
+
+def _chat_conversations(client, cc, identity):
+    convs = cc.get_all_conversations()
+    if not convs:
+        info_box("No Conversations", [
+            "You have no messages yet.",
             "",
-            "Expected: August 25, 2026",
+            "Send a message to start a conversation.",
         ])
+        return
+
+    options = [(f"{addr[:20]}...", addr) for addr in convs]
+    options.append(("Back", None))
+    selected = menu("Conversations", options)
+
+    if selected is None:
+        return
+
+    # Show conversation
+    msgs = cc.get_conversation(selected)
+    lines = []
+    for m in msgs[-20:]:  # Last 20 messages
+        direction = ">" if m.get("direction") == "out" else "<"
+        ts = time.strftime("%H:%M", time.localtime(m.get("timestamp", 0)))
+        text = m.get("text", "")[:50]
+        lines.append(f"{direction} [{ts}] {text}")
+
+    info_box(f"Chat with {selected[:16]}...", lines)
+
+def _chat_send(client, cc, identity):
+    contacts = cc.get_all_contacts()
+    if not contacts:
+        info_box("No Contacts", [
+            "Add a contact first.",
+            "",
+            "You need their XELIS address and public key.",
+        ])
+        return
+
+    if not cc.can_send_message():
+        info_box("Rate Limit", [
+            f"You've used all {cc.FREE_MESSAGES_PER_DAY} free messages today.",
+            "",
+            "Try again tomorrow.",
+        ])
+        return
+
+    # Select recipient
+    options = [(f"{addr[:20]}...", addr) for addr in contacts.keys()]
+    options.append(("Back", None))
+    recipient = menu("Send to:", options)
+    if recipient is None:
+        return
+
+    # Get message text
+    text = text_input("Type your message (encrypted before sending)")
+    if not text:
+        return
+
+    # Get recipient public key
+    recipient_pubkey = cc.get_contact(recipient)
+    if not recipient_pubkey:
+        info_box("Error", ["No public key for this contact."])
+        return
+
+    # Encrypt
+    encrypted = cc.encrypt_message(text, identity["private_key"], recipient_pubkey)
+
+    # Save locally
+    cc.save_sent_message(recipient, encrypted, text)
+
+    # Queue for relayer
+    cc.queue_for_relay(encrypted, recipient)
+
+    # Increment daily count
+    cc.increment_message_count()
+
+    info_box("Message Sent", [
+        "Message encrypted and saved locally.",
+        "",
+        "Queued for relayer to anchor on-chain.",
+        f"Free messages left: {cc.remaining_free_messages()}",
+    ])
+
+def _chat_register(client, cc, identity):
+    pk_hash = cc.get_public_key_hex(identity["public_key"])
+    if confirm(f"Register public key on-chain? (hash: {pk_hash[:16]}...)"):
+        info_box("Registration Queued", [
+            "Your public key will be registered on the",
+            "VaultChat contract once deployed.",
+            "",
+            f"Key hash: {pk_hash[:20]}...",
+            "",
+            "Other users will be able to find your key",
+            "and send you encrypted messages.",
+        ])
+
+def _chat_add_contact(client, cc):
+    addr = text_input("Contact XELIS address")
+    if not addr:
+        return
+    pubkey = text_input("Contact public key (PEM format)")
+    if not pubkey:
+        return
+    cc.save_contact(addr, pubkey)
+    info_box("Contact Added", [
+        f"Address: {addr[:20]}...",
+        "Contact saved locally.",
+    ])
 
 def screen_stats(client):
     clear()

@@ -1,8 +1,8 @@
 # ============================================================================
 #  XELIS Vault — Windows PowerShell Installer
 # ============================================================================
-#  Install:   irm https://xelisvault.github.io/install.ps1 | iex
-#  Uninstall: irm https://xelisvault.github.io/install.ps1 | iex -Args "--uninstall"
+#  Install:   irm https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install.ps1 | iex
+#  Uninstall: irm https://raw.githubusercontent.com/XelisVault/xelis-vault/main/install.ps1 | iex -Args "--uninstall"
 # ============================================================================
 
 param([string]$Args = "")

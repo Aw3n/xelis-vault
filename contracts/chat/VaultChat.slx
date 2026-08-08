@@ -1137,48 +1137,177 @@ const RELAY_SUB_PREFIX: string = "rsub_"
 const RELAY_STATS_PREFIX: string = "rstat_"
 const RELAY_SUB_DEFAULT_BLOCKS: u64 = 2592000  // ~30 days
 
-// ── Relay Subscription: user pays for unlimited messages for N days ────────
+// ── Flexible Pricing: relayers create their own plans ──────────────────────
+// Each relayer can create MULTIPLE plans with different prices/durations
+// Plans are stored on-chain and visible to everyone
 
-// User buys a subscription from a specific relayer
-// Payment goes directly to the relayer
-entry buy_subscription(relayer: Address, duration_blocks: u64) -> u64 {
+const PLAN_PREFIX: string = "plan_"
+const PLAN_COUNT_PREFIX: string = "planc_"
+const USER_PLAN_PREFIX: string = "uplan_"
+const USER_CREDITS_PREFIX: string = "ucred_"
+const MAX_PLANS_PER_RELAYER: u64 = 10
+
+// Plan types: 0 = per_message, 1 = duration (days), 2 = message_pack
+const PLAN_TYPE_PER_MSG: u8 = 0
+const PLAN_TYPE_DURATION: u8 = 1
+const PLAN_TYPE_PACK: u8 = 2
+
+// Relayer creates a pricing plan (they can have up to 10 plans)
+// plan_type: 0=per_message, 1=duration, 2=message_pack
+// For per_message: amount = price per message, duration = 0, msg_count = 0
+// For duration: amount = total price, duration = blocks, msg_count = 0 (unlimited)
+// For message_pack: amount = total price, duration = 0, msg_count = N messages
+entry create_plan(plan_type: u8, amount: u64, duration_blocks: u64, msg_count: u64, token: u8) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    require(plan_type <= 2, "badtype")
+    require(token <= 1, "badtoken")
+    require(amount > 0, "badamount")
+    
+    if plan_type == 0 { require(duration_blocks == 0 && msg_count == 0, "badpermsg") }
+    if plan_type == 1 { require(duration_blocks > 0, "badduration") }
+    if plan_type == 2 { require(msg_count > 0, "badpack") }
+    
+    let count_key: string = PLAN_COUNT_PREFIX + caller.to_string()
+    let plan_count: u64 = s.load(count_key).unwrap_or(0)
+    require(plan_count < MAX_PLANS_PER_RELAYER, "maxplans")
+    
+    let plan_id: u64 = plan_count
+    let plan_key: string = PLAN_PREFIX + caller.to_string() + "_" + plan_id.to_string(10u32)
+    
+    // Store plan as string: type|amount|duration|msg_count|token
+    let plan_data: string = plan_type.to_string(10u32) + "|" + amount.to_string(10u32) + "|" + duration_blocks.to_string(10u32) + "|" + msg_count.to_string(10u32) + "|" + token.to_string(10u32)
+    s.store(plan_key, plan_data)
+    s.store(count_key, plan_id + 1)
+    
+    return plan_id
+}
+
+// Relayer updates an existing plan (can change price anytime)
+entry update_plan(plan_id: u64, amount: u64, duration_blocks: u64, msg_count: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let plan_key: string = PLAN_PREFIX + caller.to_string() + "_" + plan_id.to_string(10u32)
+    let plan_opt: optional<string> = s.load(plan_key)
+    require(plan_opt.is_some(), "noplan")
+    
+    let plan_data: string = plan_opt.expect("err")
+    let parts: string[] = plan_data.split("|")
+    let plan_type: u8 = parts[0].parse::<u8>().expect("err")
+    
+    if plan_type == 0 { require(duration_blocks == 0 && msg_count == 0, "badpermsg") }
+    if plan_type == 1 { require(duration_blocks > 0, "badduration") }
+    if plan_type == 2 { require(msg_count > 0, "badpack") }
+    
+    let new_data: string = parts[0] + "|" + amount.to_string(10u32) + "|" + duration_blocks.to_string(10u32) + "|" + msg_count.to_string(10u32) + "|" + parts[4]
+    s.store(plan_key, new_data)
+    
+    return 0
+}
+
+// Relayer deletes a plan
+entry delete_plan(plan_id: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let plan_key: string = PLAN_PREFIX + caller.to_string() + "_" + plan_id.to_string(10u32)
+    s.delete(plan_key)
+    return 0
+}
+
+// Get a relayer's plan count
+pub fn get_plan_count(relayer: Address) -> u64 {
+    return Storage::new().load(PLAN_COUNT_PREFIX + relayer.to_string()).unwrap_or(0)
+}
+
+// Get a specific plan (returns type|amount|duration|msg_count|token as string)
+pub fn get_plan(relayer: Address, plan_id: u64) -> string {
+    let plan_key: string = PLAN_PREFIX + relayer.to_string() + "_" + plan_id.to_string(10u32)
+    let opt: optional<string> = Storage::new().load(plan_key)
+    if opt.is_none() { return "" }
+    return opt.expect("err")
+}
+
+// User buys a plan from a relayer
+// Payment goes DIRECTLY to the relayer (no escrow, no middleman)
+entry buy_plan(relayer: Address, plan_id: u64) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     
-    // Verify relayer is authorized
-    let is_relayer: bool = s.load(RELAYER_PREFIX + relayer.to_string()).unwrap_or(false)
-    require(is_relayer, "notrelayer")
+    // Get plan
+    let plan_key: string = PLAN_PREFIX + relayer.to_string() + "_" + plan_id.to_string(10u32)
+    let plan_opt: optional<string> = s.load(plan_key)
+    require(plan_opt.is_some(), "noplan")
+    let plan_data: string = plan_opt.expect("err")
+    let parts: string[] = plan_data.split("|")
     
-    // Get relayer's per-message fee (subscription = 100x per-message fee)
-    let fee: u64 = s.load(RELAYER_FEE_PREFIX + relayer.to_string()).unwrap_or(1000000)
-    let token: u8 = s.load(RELAYER_TOKEN_PREFIX + relayer.to_string()).unwrap_or(0)
-    let sub_price: u64 = fee * 100  // 100 messages worth = 30 days unlimited
-    
-    // Default duration
-    if duration_blocks == 0 { duration_blocks = RELAY_SUB_DEFAULT_BLOCKS }
+    let plan_type: u8 = parts[0].parse::<u8>().expect("err")
+    let amount: u64 = parts[1].parse::<u64>().expect("err")
+    let duration_blocks: u64 = parts[2].parse::<u64>().expect("err")
+    let msg_count: u64 = parts[3].parse::<u64>().expect("err")
+    let token: u8 = parts[4].parse::<u8>().expect("err")
     
     // Transfer payment to relayer
     if token == 0 {
         let vlt_asset: Hash = s.load(VLT_ASSET_KEY).unwrap_or(Hash::zero())
         if vlt_asset != Hash::zero() {
-            let ok: bool = transfer(relayer, sub_price, vlt_asset)
+            let ok: bool = transfer(relayer, amount, vlt_asset)
             require(ok, "vltfail")
         }
     } else {
-        let ok: bool = transfer(relayer, sub_price, Hash::zero())
+        let ok: bool = transfer(relayer, amount, Hash::zero())
         require(ok, "xelfail")
     }
     
-    // Store subscription expiry
-    let expiry: u64 = get_current_topoheight() + duration_blocks
-    s.store(RELAY_SUB_PREFIX + caller.to_string(), expiry)
+    // Grant the plan to the user (stored on-chain, can't be tampered)
+    let user_plan_key: string = USER_PLAN_PREFIX + caller.to_string() + "_" + relayer.to_string()
+    let now: u64 = get_current_topoheight()
+    
+    if plan_type == 0 {
+        // Per message: store credits (user pre-pays, each message decrements)
+        // This is handled by pay_premium_message instead
+        s.store(USER_CREDITS_PREFIX + caller.to_string(), 0u64)
+    } else if plan_type == 1 {
+        // Duration: store expiry topoheight
+        s.store(user_plan_key, now + duration_blocks)
+    } else if plan_type == 2 {
+        // Message pack: store remaining message count
+        s.store(USER_CREDITS_PREFIX + caller.to_string() + "_" + relayer.to_string(), msg_count)
+    }
     
     // Update relayer stats
     let stats_key: string = RELAY_STATS_PREFIX + relayer.to_string()
     let stats: u64 = s.load(stats_key).unwrap_or(0)
     s.store(stats_key, stats + 1)
     
-    return expiry
+    return 0
+}
+
+// Check if user has an active duration plan with a relayer
+pub fn has_active_plan(user: Address, relayer: Address) -> bool {
+    let s: Storage = Storage::new()
+    let key: string = USER_PLAN_PREFIX + user.to_string() + "_" + relayer.to_string()
+    let expiry: u64 = s.load(key).unwrap_or(0)
+    return get_current_topoheight() < expiry
+}
+
+// Check user's remaining message pack credits with a relayer
+pub fn get_remaining_credits(user: Address, relayer: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let key: string = USER_CREDITS_PREFIX + user.to_string() + "_" + relayer.to_string()
+    let credits: u64 = s.load(key).unwrap_or(0)
+    return credits
+}
+
+// Consume one message credit (called by store_message when using a pack)
+fn consume_credit(user: Address, relayer: Address) -> bool {
+    let s: Storage = Storage::new()
+    let key: string = USER_CREDITS_PREFIX + user.to_string() + "_" + relayer.to_string()
+    let credits: u64 = s.load(key).unwrap_or(0)
+    if credits == 0 { return false }
+    s.store(key, credits - 1)
+    return true
 }
 
 // Check if user has an active subscription

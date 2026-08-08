@@ -2,7 +2,7 @@
 
 ## How It Works — The Telecom Operator Analogy
 
-VaultChat works like telecom operators (Orange, SFR, Bouygues). Each relayer is an independent operator.
+VaultChat works like telecocom operator . Each relayer is an independent operator.
 
 ### Key Principle: Each Relayer is Independent
 

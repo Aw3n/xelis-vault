@@ -30,6 +30,14 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex
 
 All three methods install **both** `xvault` (community CLI) and `xvault-miner` (miner dashboard).
 
+> **IMPORTANT — Contracts not yet deployed**
+>
+> The smart contracts are currently being tested. The official testnet deployment is scheduled for **August 25, 2026**.
+>
+> Until then, `xvault` and `xvault-miner` will install and run, but **cannot connect to the protocol** (contract addresses are not yet available).
+>
+> Install now to be ready — once contracts are deployed, simply run `xvault-miner --setup` (or `xvault --setup`) to configure the addresses and start using the protocol.
+
 ---
 
 **Miner?** Run `xvault-miner` after install.  

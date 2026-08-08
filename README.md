@@ -41,7 +41,8 @@ All three methods install **both** `xvault` (community CLI) and `xvault-miner` (
 ---
 
 **Miner?** Run `xvault-miner` after install.  
-**Community member?** Run `xvault` after install.
+**Community member?** Run `xvault` after install.  
+**Want to run a chat relayer?** Run `xvault-relayer` after install.
 
 ---
 

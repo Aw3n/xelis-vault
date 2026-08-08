@@ -197,7 +197,14 @@ $xvaultBat = @"
 "@
 $xvaultBat | Out-File -FilePath "$BIN_DIR\xvault.bat" -Encoding ascii
 
-Write-Success "Launchers installed: xvault-miner.bat, xvault.bat"
+# xvault-relayer.bat
+$xvaultRelayerBat = @"
+@echo off
+"$VENV_DIR\Scripts\python.exe" "$INSTALL_DIR\src\scripts\relayer_daemon.py" %*
+"@
+$xvaultRelayerBat | Out-File -FilePath "$BIN_DIR\xvault-relayer.bat" -Encoding ascii
+
+Write-Success "Launchers installed: xvault-miner.bat, xvault.bat, xvault-relayer.bat"
 
 # Add to PATH
 $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")

@@ -194,6 +194,64 @@ def progress_bar(current, maximum, width=30):
     color = C.GREEN if pct > 0.5 else C.YELLOW if pct > 0.25 else C.RED
     return f"[{color}{'#' * filled}{'.' * (width - filled)}{C.RESET}]"
 
+
+# ── Non-blocking key check (for auto-refresh) ───────────────────────────────
+def kbhit():
+    """Check if a key is available without blocking. Returns True/False."""
+    if os.name == "nt":
+        import msvcrt
+        return msvcrt.kbhit()
+    else:
+        import select
+        return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
+
+def read_key_timeout(timeout_sec=1.0):
+    """Read a key with timeout. Returns key string or None if timeout."""
+    if os.name == "nt":
+        import msvcrt
+        import time
+        start = time.time()
+        while time.time() - start < timeout_sec:
+            if msvcrt.kbhit():
+                return read_key()
+            time.sleep(0.05)
+        return None
+    else:
+        import select
+        r, _, _ = select.select([sys.stdin], [], [], timeout_sec)
+        if r:
+            return read_key()
+        return None
+
+
+# ── Non-blocking key check (for auto-refresh) ───────────────────────────────
+def kbhit():
+    """Check if a key is available without blocking. Returns True/False."""
+    if os.name == "nt":
+        import msvcrt
+        return msvcrt.kbhit()
+    else:
+        import select
+        return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
+
+def read_key_timeout(timeout_sec=1.0):
+    """Read a key with timeout. Returns key string or None if timeout."""
+    if os.name == "nt":
+        import msvcrt
+        import time
+        start = time.time()
+        while time.time() - start < timeout_sec:
+            if msvcrt.kbhit():
+                return read_key()
+            time.sleep(0.05)
+        return None
+    else:
+        import select
+        r, _, _ = select.select([sys.stdin], [], [], timeout_sec)
+        if r:
+            return read_key()
+        return None
+
 BANNER = f"""{C.CYAN}{C.BOLD}
  ██████  ██      ██   ██ ██ ███████  ██████ ████████ ██  ██████  ███    ██
 ██    ██ ██      ██  ██  ██ ██      ██         ██    ██ ██    ██ ████   ██

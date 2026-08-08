@@ -1560,3 +1560,162 @@ pub fn get_relayer_profile(relayer: Address) -> (bool, bool, u64, u64, u64, u64,
     let reliable: u64 = if is_relayer_reliable(relayer) { 1 } else { 0 }
     return (is_reg, is_rel2 > 0, batches, last_batch, plan_count, bl_count, reliable)
 }
+
+// ============================================================================
+// v8.1: PROTOCOL FEE + STORAGE MANAGEMENT
+// ============================================================================
+
+const PROTOCOL_FEE_BPS_KEY: string = "pfee"
+const DEFAULT_PROTOCOL_FEE_BPS: u64 = 500  // 5% of relayer fee goes to treasury
+const TREASURY_KEY: string = "tr"
+const STORAGE_WARNING_THRESHOLD: u64 = 86400  // ~6 hours of messages before prune needed
+const PRUNE_INTERVAL_KEY: string = "prune_int"
+const DEFAULT_PRUNE_INTERVAL: u64 = 43200  // prune every ~6 hours
+
+// ── Protocol Fee (treasury takes a small cut) ─────────────────────────────
+// When a user pays a relayer for a plan, the protocol takes a small %.
+// This funds: liquidity pools, bug bounty, treasury, protocol development.
+
+// Set protocol fee (governance only, max 10%)
+entry set_protocol_fee_bps(bps: u64) -> u64 {
+    only_admin()
+    require(bps <= 1000, "max10pct")  // max 10%
+    Storage::new().store(PROTOCOL_FEE_BPS_KEY, bps)
+    return 0
+}
+
+pub fn get_protocol_fee_bps() -> u64 {
+    return Storage::new().load(PROTOCOL_FEE_BPS_KEY).unwrap_or(DEFAULT_PROTOCOL_FEE_BPS)
+}
+
+// Modified buy_plan: protocol takes a cut before relayer gets paid
+// (This replaces the old buy_plan — same entry ID, same logic + fee)
+// NOTE: In Silex, you can't override entries. The old buy_plan must be
+// updated in place. For now, the fee is taken when claim_relayer_fees is called.
+
+// Relayer claims accumulated fees — protocol takes its cut
+entry claim_relayer_fees() -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    
+    let fee_bps: u64 = s.load(PROTOCOL_FEE_BPS_KEY).unwrap_or(DEFAULT_PROTOCOL_FEE_BPS)
+    let treasury: Address = s.load(TREASURY_KEY).expect("notset")
+    
+    // VLT balance
+    let vlt_asset: Hash = s.load(VLT_ASSET_KEY).unwrap_or(Hash::zero())
+    if vlt_asset != Hash::zero() {
+        let bal: u64 = get_balance_for_asset(vlt_asset).unwrap_or(0)
+        if bal > 0 {
+            let protocol_cut: u64 = (bal as u128 * fee_bps as u128 / 10000u128) as u64
+            let relayer_share: u64 = bal - protocol_cut
+            if protocol_cut > 0 { transfer(treasury, protocol_cut, vlt_asset) }
+            if relayer_share > 0 { transfer(caller, relayer_share, vlt_asset) }
+        }
+    }
+    
+    // XEL balance
+    let xel_bal: u64 = get_balance_for_asset(Hash::zero()).unwrap_or(0)
+    if xel_bal > 0 {
+        let protocol_cut: u64 = (xel_bal as u128 * fee_bps as u128 / 10000u128) as u64
+        let relayer_share: u64 = xel_bal - protocol_cut
+        if protocol_cut > 0 { transfer(treasury, protocol_cut, Hash::zero()) }
+        if relayer_share > 0 { transfer(caller, relayer_share, Hash::zero()) }
+    }
+    
+    return 0
+}
+
+// Set treasury address (where protocol fees go)
+entry set_treasury(addr: Address) -> u64 {
+    only_admin()
+    Storage::new().store(TREASURY_KEY, addr)
+    return 0
+}
+
+// ── Storage Management (on-chain ring buffer) ─────────────────────────────
+// On-chain storage is limited (50 messages per user, ring buffer).
+// This is by design: old messages are overwritten by new ones.
+// 
+// For FULL history: relayers store off-chain + sync with each other.
+// Off-chain storage is managed by the relayer's local software.
+//
+// On-chain: automatic ring buffer (no manual prune needed)
+// Off-chain: relayer software manages with configurable retention
+
+// Get storage info for a user
+pub fn get_storage_info(user: Address) -> (u64, u64, u64) {
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(MSG_COUNT_PREFIX + user.to_string()).unwrap_or(0)
+    let onchain: u64 = if count > MAX_ONCHAIN_MESSAGES { MAX_ONCHAIN_MESSAGES } else { count }
+    let deleted: u64 = 0
+    // Count deleted messages
+    let i: u64 = 0
+    while i < onchain {
+        let del_key: string = MSG_DELETED_PREFIX + user.to_string() + "_" + i.to_string(10u32)
+        if s.load(del_key).unwrap_or(false) { deleted += 1 }
+        i += 1
+    }
+    return (count, onchain, deleted)
+}
+
+// ── Off-chain storage guidance (for relayer software) ─────────────────────
+// Relayers should implement these strategies in their local software:
+//
+// 1. RING BUFFER: Keep last N messages per user (configurable, e.g. 10000)
+// 2. COMPRESSION: Compress old messages (zstd/gzip)
+// 3. TIERED STORAGE:
+//    - Hot (last 7 days): SSD, fast access
+//    - Warm (7-90 days): HDD, slower
+//    - Cold (>90 days): Compressed archive, on-demand
+// 4. DEDUPLICATION: Same message synced from multiple relayers = store once
+// 5. PRUNING: Delete messages older than retention period (configurable)
+//    - User can set their own retention (default: 90 days)
+//    - Relayer can set their own retention (default: 30 days)
+//    - Important messages (anchored) kept longer
+//
+// When a relayer runs low on disk:
+// 1. Compress old messages (saves 50-70% space)
+// 2. Move to cold storage (compressed archive)
+// 3. Prune messages older than retention
+// 4. If still low: reduce retention period
+// 5. If still low: stop accepting new messages (graceful degradation)
+// 6. Other relayers take over (sync has copies)
+//
+// This is all handled by the relayer's local Python script,
+// NOT by the on-chain contract (which has fixed 50-message ring buffer).
+
+entry set_prune_interval(blocks: u64) -> u64 {
+    only_admin()
+    require(blocks >= 7200, "mintoolong")  // min 1 hour
+    Storage::new().store(PRUNE_INTERVAL_KEY, blocks)
+    return 0
+}
+
+pub fn get_prune_interval() -> u64 {
+    return Storage::new().load(PRUNE_INTERVAL_KEY).unwrap_or(DEFAULT_PRUNE_INTERVAL)
+}
+
+// ── Relayer storage stats (self-reported, for transparency) ───────────────
+const RELAY_STORAGE_PREFIX: string = "rstore_"
+
+// Relayer reports their storage capacity (for user transparency)
+entry report_storage_stats(total_gb: u64, used_gb: u64, messages_stored: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    
+    let stats: string = total_gb.to_string(10u32) + "|" + used_gb.to_string(10u32) + "|" + messages_stored.to_string(10u32)
+    s.store(RELAY_STORAGE_PREFIX + caller.to_string(), stats)
+    
+    return 0
+}
+
+pub fn get_relayer_storage(relayer: Address) -> string {
+    let s: Storage = Storage::new()
+    let opt: optional<string> = s.load(RELAY_STORAGE_PREFIX + relayer.to_string())
+    if opt.is_none() { return "0|0|0" }
+    return opt.expect("err")
+}

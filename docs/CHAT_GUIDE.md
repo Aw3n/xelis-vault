@@ -175,3 +175,70 @@ wallet_key → HKDF-SHA256 → chat_key
 ├── pending/                   # Queued for relayer
 └── relayer_peers.json         # Known relayer endpoints
 ```
+
+### Protocol Fee (Treasury)
+
+When a relayer claims their fees, the protocol takes a small percentage.
+
+```
+User pays 1 VLT for a plan → goes to VaultChat contract
+Relayer claims → protocol takes 5% (0.05 VLT) → treasury
+              → relayer gets 95% (0.95 VLT)
+
+Treasury uses the 5% for:
+  - Strengthening VLT/XEL liquidity pool
+  - Bug bounty fund
+  - Protocol development
+  - Community airdrops
+```
+
+The fee is configurable by governance (0% to 10%, default 5%).
+
+### Storage Management
+
+**On-chain (VaultChat contract):**
+- Fixed ring buffer: 50 messages per user
+- Old messages automatically overwritten by new ones
+- No manual pruning needed — it's automatic
+- Zero storage growth on-chain
+
+**Off-chain (relayer's local disk):**
+
+Relayers use tiered storage to manage disk space:
+
+```
+HOT (last 7 days)
+├── SSD, uncompressed, instant access
+├── ~1 MB per 1000 messages
+└── Auto-synced with other relayers
+
+WARM (7-90 days)
+├── HDD, compressed (zstd, 50-70% smaller)
+├── On-demand access (decompress when needed)
+└── Auto-pruned after 90 days
+
+COLD (>90 days)
+├── Compressed archive
+├── Only if retention > 90 days
+└── Can be deleted to free space
+```
+
+**When a relayer runs low on disk:**
+1. Compress warm storage (saves 50-70%)
+2. Move to cold archive
+3. Prune messages older than retention period
+4. If still low: reduce retention (e.g., 90 → 30 days)
+5. If still low: stop accepting new users (graceful)
+6. Other relayers take over (they have copies via sync)
+
+**Deduplication:** Same message synced from 3 relayers = stored once (hash-based).
+
+**Relayer storage stats (on-chain):**
+- `report_storage_stats(total_gb, used_gb, messages_stored)`: relayer reports
+- `get_relayer_storage(relayer)`: users can check before choosing
+
+**User retention:**
+- Users set their own local retention (default: 90 days)
+- Messages older than retention are deleted from local storage
+- On-chain copy remains (50-message ring buffer) until overwritten
+- Relayer copy remains until relayer prunes

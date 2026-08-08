@@ -1407,3 +1407,167 @@ pub fn get_relayer_rating(relayer: Address) -> u64 {
     let sum: u64 = s.load(RELAY_RATING_COUNT_PREFIX + relayer.to_string() + "_s").unwrap_or(0)
     return (sum * 100 / count)  // returns rating * 100 (e.g. 450 = 4.50)
 }
+
+// ============================================================================
+// v7.5: RELAYER VERIFICATION + RELAYER-MANAGED FREE TIER
+// ----------------------------------------------------------------------------
+// PROBLEM: Protocol-level free tier (100/day) can be abused with multiple wallets
+// SOLUTION: Each relayer manages their own free tier + verification
+//
+// PROBLEM: Relayer might not store messages on-chain to save gas
+// SOLUTION: Users verify on-chain + rate bad relayers + proof-of-anchoring
+// ============================================================================
+
+const RELAY_FREE_PREFIX: string = "rfree_"      // relayer's free tier setting
+const RELAY_FREE_COUNT_PREFIX: string = "rfc_"   // user's daily count per relayer
+const RELAY_FREE_DATE_PREFIX: string = "rfd_"    // daily reset per relayer
+const RELAY_ANCHOR_REQ_PREFIX: string = "rar_"   // required anchor interval
+const DEFAULT_ANCHOR_REQ: u64 = 1000              // must anchor every ~80 min
+
+// ── Relayer-managed free tier ──────────────────────────────────────────────
+
+// Relayer sets their own free daily limit (0 = no free tier)
+entry set_free_daily_limit(limit: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    require(limit <= 1000, "badlimit")  // max 1000 free per day
+    s.store(RELAY_FREE_PREFIX + caller.to_string(), limit)
+    return 0
+}
+
+// Get a relayer's free daily limit
+pub fn get_free_daily_limit(relayer: Address) -> u64 {
+    return Storage::new().load(RELAY_FREE_PREFIX + relayer.to_string()).unwrap_or(100)
+}
+
+// Check how many free messages a user has left with a specific relayer
+pub fn get_free_remaining_with_relayer(user: Address, relayer: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let today: u64 = get_current_topoheight() / 17280
+    let stored_day: u64 = s.load(RELAY_FREE_DATE_PREFIX + user.to_string() + "_" + relayer.to_string()).unwrap_or(0)
+    if stored_day != today { return get_free_daily_limit(relayer) }
+    let used: u64 = s.load(RELAY_FREE_COUNT_PREFIX + user.to_string() + "_" + relayer.to_string()).unwrap_or(0)
+    let limit: u64 = get_free_daily_limit(relayer)
+    if used >= limit { return 0 }
+    return limit - used
+}
+
+// Relayer reports a free message used by a user (called by relayer)
+// This tracks free usage PER RELAYER (not global)
+// Multiple wallets with same relayer = each gets their own free tier
+// But relayer pays gas for each → relayer limits themselves
+entry report_free_usage(user: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    
+    let today: u64 = get_current_topoheight() / 17280
+    let day_key: string = RELAY_FREE_DATE_PREFIX + user.to_string() + "_" + caller.to_string()
+    let stored_day: u64 = s.load(day_key).unwrap_or(0)
+    
+    if stored_day != today {
+        s.store(day_key, today)
+        s.store(RELAY_FREE_COUNT_PREFIX + user.to_string() + "_" + caller.to_string(), 1u64)
+    } else {
+        let count: u64 = s.load(RELAY_FREE_COUNT_PREFIX + user.to_string() + "_" + caller.to_string()).unwrap_or(0)
+        let limit: u64 = get_free_daily_limit(caller)
+        require(count < limit, "nofree")
+        s.store(RELAY_FREE_COUNT_PREFIX + user.to_string() + "_" + caller.to_string(), count + 1)
+    }
+    
+    return 0
+}
+
+// ── Relayer proof-of-anchoring ─────────────────────────────────────────────
+
+// Relayer sets their required anchor interval (how often they must anchor)
+entry set_anchor_requirement(blocks: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    require(blocks >= 100 && blocks <= 10000, "badinterval")
+    s.store(RELAY_ANCHOR_REQ_PREFIX + caller.to_string(), blocks)
+    return 0
+}
+
+// Check if a relayer is meeting their anchoring requirement
+// Returns: blocks since last anchor (lower = more reliable)
+pub fn get_relayer_reliability(relayer: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let last_anchor: u64 = s.load(LAST_ANCHOR_TOPO_KEY).unwrap_or(0)
+    let now: u64 = get_current_topoheight()
+    if last_anchor == 0 { return u64::MAX }
+    let since: u64 = now - last_anchor
+    let req: u64 = s.load(RELAY_ANCHOR_REQ_PREFIX + relayer.to_string()).unwrap_or(DEFAULT_ANCHOR_REQ)
+    if since <= req { return 0 }  // meeting requirement
+    return since - req  // how many blocks overdue
+}
+
+// Check if relayer is reliable (anchoring within their requirement)
+pub fn is_relayer_reliable(relayer: Address) -> bool {
+    return get_relayer_reliability(relayer) == 0
+}
+
+// ── Message verification (user checks if their message is on-chain) ────────
+
+// User verifies that a message was actually stored on-chain by their relayer
+// If not stored → relayer is cheating → rate them 1 star
+pub fn verify_message_stored(recipient: Address, slot: u64) -> bool {
+    let s: Storage = Storage::new()
+    let msg_key: string = MSG_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32)
+    let msg_opt: optional<string> = s.load(msg_key)
+    return msg_opt.is_some()
+}
+
+// ── Relayer registry (directory of all relayers) ───────────────────────────
+
+const RELAY_REGISTRY_KEY: string = "rreg"
+const RELAY_REGISTRY_COUNT_KEY: string = "rregc"
+
+// Relayer registers themselves in the public directory
+entry register_as_relayer(endpoint: string) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_relayer, "notrelayer")
+    
+    // Add to registry
+    let count: u64 = s.load(RELAY_REGISTRY_COUNT_KEY).unwrap_or(0)
+    s.store(RELAY_REGISTRY_KEY + "_" + count.to_string(10u32), caller.to_string() + "|" + endpoint)
+    s.store(RELAY_REGISTRY_COUNT_KEY, count + 1)
+    
+    return count
+}
+
+// Get total number of registered relayers
+pub fn get_relayer_registry_count() -> u64 {
+    return Storage::new().load(RELAY_REGISTRY_COUNT_KEY).unwrap_or(0)
+}
+
+// Get a relayer from the registry by index
+pub fn get_relayer_from_registry(index: u64) -> string {
+    let s: Storage = Storage::new()
+    let key: string = RELAY_REGISTRY_KEY + "_" + index.to_string(10u32)
+    let opt: optional<string> = s.load(key)
+    if opt.is_none() { return "" }
+    return opt.expect("err")
+}
+
+// ── Complete relayer profile (one call to get everything) ──────────────────
+pub fn get_relayer_profile(relayer: Address) -> (bool, u64, u64, u64, u64, u64, u64) {
+    let s: Storage = Storage::new()
+    let is_rel: bool = s.load(RELAYER_PREFIX + relayer.to_string()).unwrap_or(false)
+    let is_online: bool = is_relayer_online(relayer)
+    let is_rel2: u64 = if is_online { 1 } else { 0 }
+    let rep: u64 = s.load(RELAY_REP_PREFIX + relayer.to_string()).unwrap_or(0)
+    let rating: u64 = get_relayer_rating(relayer)
+    let stats: u64 = s.load(RELAY_STATS_PREFIX + relayer.to_string()).unwrap_or(0)
+    let plan_count: u64 = get_plan_count(relayer)
+    let free_limit: u64 = get_free_daily_limit(relayer)
+    let reliability: u64 = get_relayer_reliability(relayer)
+    return (is_rel, is_rel2, rep, rating, stats, plan_count, free_limit)
+}

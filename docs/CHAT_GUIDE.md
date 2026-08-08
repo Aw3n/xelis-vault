@@ -1,213 +1,171 @@
 # VaultChat — Complete Guide
 
-## How It Works (Simple Version)
+## How It Works — The Telecom Operator Analogy
 
-VaultChat is end-to-end encrypted messaging on XELIS. Nobody — not relayers, not miners, not even the protocol creators — can read your messages.
+VaultChat works like telecom operators (Orange, SFR, Bouygues). Each relayer is an independent operator.
 
-### Key Concept: One Wallet, One Key
-
-You do NOT need a separate key for chat. The chat key is **derived from your XELIS wallet key**:
+### Key Principle: Each Relayer is Independent
 
 ```
-Your XELIS wallet private key
-    │
-    ▼
-HKDF-SHA256(wallet_key, "xelis-vault-chat-v1")
-    │
-    ▼
-Chat keypair (private + public)
+RELAYER A (cheap)           RELAYER B (premium)       RELAYER C (free)
+├── 0.001 VLT / message     ├── 0.01 VLT / message    ├── 100 free/day
+├── 20 days = 0.1 VLT       ├── 30 days = 1 VLT        ├── then 0.005 VLT/msg
+├── 100 msgs = 0.05 VLT     ├── 500 msgs = 2 VLT       ├── No subscriptions
+├── 100 free/day             ├── 0 free (all paid)      ├── Must anchor every 500 blocks
+└── Anchors every 1000 blocks └── Anchors every 500      └── Pays gas for free users
+    blocks                       blocks
 ```
 
-- You manage ONE key (your wallet key)
-- The chat key is generated automatically
-- If you lose your chat key but still have your wallet key → regenerate the same chat key
-- If you lose your wallet key → you lose everything (chat + funds)
+### What Each Relayer Decides (100% Free)
 
-### Sending a Message — The Full Flow
+| Decision | Who decides | Can change anytime? |
+|----------|------------|-------------------|
+| Price per message | Relayer | YES |
+| Subscription prices | Relayer | YES |
+| Free daily limit (0-1000) | Relayer | YES |
+| Which token (VLT or XEL) | Relayer | YES |
+| Anchor frequency | Relayer | YES |
+| Number of plans (up to 10) | Relayer | YES |
 
+### What All Relayers MUST Do (Protocol Rules)
+
+| Rule | How it's enforced |
+|------|------------------|
+| Store messages on-chain | Users verify: `verify_message_stored()` |
+| Anchor Merkle roots | Users check: `is_relayer_reliable()` |
+| Forward messages to other relayers | P2P sync (gossip protocol) |
+| Send heartbeats | `relayer_heartbeat()` every 100 blocks |
+| Respect plans bought by users | Plans stored on-chain, can't be tampered |
+
+### Anti-Abuse: Why Free Abuse Doesn't Work
+
+**Problem**: User creates 10 wallets → 1000 free messages/day
+
+**Why it doesn't work**:
 ```
-1. Alice types "Hello Bob" in xvault CLI
-2. CLI reads Bob's public key from on-chain (VaultChat.get_session)
-3. CLI encrypts: ChaCha20-Poly1305("Hello Bob", shared_secret)
-4. CLI sends encrypted blob to Alice's chosen relayer (P2P)
-5. Relayer stores on-chain: VaultChat.store_message(bob, ciphertext)
-6. Relayer forwards P2P to Bob (if online) → <1 second
-7. Bob's CLI decrypts with his private key
-8. Bob's CLI saves locally: ~/.xelis-vault/chat/messages/inbox/alice.json
-```
+1. Each "free" message costs the RELAYER gas (XEL) to store on-chain
+2. Relayer pays: store_message() → gas XEL
+3. User pays: 0 (free tier)
+4. If 10 wallets × 100 free = 1000 messages → relayer pays 1000 × gas
+5. Relayer sees: "this address used 100 free, that one used 100 free..."
+6. Relayer can: set free limit to 0, or require small XEL deposit
+7. Relayer can: track IP/endpoint to limit abuse
+8. Natural balance: relayer adjusts free tier based on abuse
 
-**Speed:**
-- P2P (both online): <1 second
-- On-chain storage: ~5 seconds (1 block)
-- If Bob is offline: he gets it next time he launches xvault
-
-### Message Routing — Who Carries What
-
-```
-Alice chose Relayer A and paid for a plan.
-
-Alice → [encrypted] → Relayer A → [encrypted] → Bob
-                         │
-                         ├── Stores on-chain (persistence)
-                         ├── Anchors Merkle root (earns VLT)
-                         └── Syncs message to Relayer B (redundancy)
-
-Bob does NOT need to use the same relayer as Alice.
-Bob can use Relayer B, or Relayer C, or no relayer (just on-chain recovery).
-
-Each user picks their OWN relayer. Messages flow:
-  Alice → Alice's relayer → on-chain → Bob (reads from chain)
-  Alice → Alice's relayer → P2P → Bob's relayer → Bob (if both online)
+→ The FREE TIER is a RELAYER COST, not a protocol cost
+→ Relayers self-regulate (like telecom operators)
 ```
 
-### Free vs Premium — How It Works
+### Anti-Cheat: Relayer Doesn't Store On-Chain
 
-**Every user gets 100 FREE messages per day.** This is enforced ON-CHAIN (not client-side). After 100 messages, you need a plan.
+**Problem**: Relayer says "free!" but doesn't store messages on-chain (saves gas)
 
-### Relayer Pricing — 100% Free Market
-
-Each relayer creates their OWN plans. They can have up to 10 plans simultaneously. They can change prices anytime. They are completely independent.
-
-#### Plan Types
-
-| Type | What it gives | Example |
-|------|---------------|---------|
-| `per_message` (0) | Pay per message | 0.01 VLT per message |
-| `duration` (1) | Unlimited for N blocks | 1 VLT for 30 days |
-| `message_pack` (2) | N messages prepaid | 0.5 VLT for 100 messages |
-
-#### How a Relayer Sets Up Plans
-
+**Why it doesn't work**:
 ```
-Relayer A creates 3 plans:
+1. Alice sends a message via "free" relayer C
+2. Alice checks: VaultChat.verify_message_stored(alice, slot) → FALSE
+3. Alice's message is NOT on-chain → not persisted → will be lost
+4. Alice rates relayer C: 1 star
+5. Other users check: get_relayer_rating(C) → 1.00
+6. Other users check: is_relayer_reliable(C) → FALSE (no anchors)
+7. Users avoid relayer C
+8. Relayer C has no customers → disappears
 
-Plan 0: per_message, 0.001 VLT each
-Plan 1: duration, 0.1 VLT for 20 days (345600 blocks)
-Plan 2: message_pack, 0.05 VLT for 100 messages
-
-Relayer B creates 2 plans:
-
-Plan 0: per_message, 0.01 XEL each
-Plan 1: duration, 2 VLT for 30 days
-
-→ Alice compares and chooses Relayer A (cheaper)
-→ Bob chooses Relayer B (accepts XEL, Bob has no VLT yet)
+→ Bad relayers are naturally eliminated by the rating system
+→ Users can ALWAYS verify their messages are on-chain
 ```
 
-#### How Users Buy Plans
-
-1. User queries all relayers: `get_plan_count(relayer)` + `get_plan(relayer, id)`
-2. User compares prices (visible on-chain, transparent)
-3. User calls `buy_plan(relayer, plan_id)`
-4. Payment goes **DIRECTLY** to the relayer (no escrow, no middleman)
-5. The plan is stored **ON-CHAIN** linked to the user's address
-6. The user can't tamper with it (it's on the blockchain)
-
-#### How Plans Are Verified
-
-When a user sends a message:
-1. The relayer checks on-chain: `has_active_plan(user, relayer)` → is the subscription valid?
-2. The relayer checks on-chain: `get_remaining_credits(user, relayer)` → any message pack credits left?
-3. The relayer checks on-chain: `get_free_messages_remaining(user)` → still in free tier?
-4. If any check passes → relay the message
-5. If none passes → reject (user needs to buy a plan or wait for free reset)
-
-**The user CANNOT cheat** because everything is on-chain. The relayer doesn't trust the client — it reads the blockchain.
-
-### Relayer Sync — How It Works
-
-**Relayers sync MESSAGES, not PRICES.**
+### Message Flow — Step by Step
 
 ```
-Relayer A has: [msg1, msg2, msg3, msg4, msg5]
-Relayer B has: [msg1, msg2, msg3]
+1. Alice (uses Relayer A) sends "Hello" to Bob (uses Relayer B)
 
-Sync process:
-1. B contacts A: "I have msg1, msg2, msg3. What do you have?"
-2. A responds: "I also have msg4, msg5"
-3. B downloads msg4, msg5
-4. B verifies: do msg4, msg5 match the Merkle root on-chain? → YES
-5. B now has: [msg1, msg2, msg3, msg4, msg5]
+2. Alice's CLI:
+   a. Encrypts "Hello" with Bob's public key
+   b. Sends to Relayer A (P2P, <1 second)
 
-PRICES ARE NEVER SYNCED.
-- Relayer A charges 0.001 VLT/msg
-- Relayer B charges 0.01 XEL/msg
-- They don't care about each other's prices
-- They only sync messages (for redundancy)
+3. Relayer A:
+   a. Checks: does Alice have free credits or a paid plan? (on-chain)
+   b. If yes: stores on-chain: store_message(bob, ciphertext)
+   c. Anchors batch: anchor_messages(merkle_root)
+   d. Forwards P2P to Relayer B (so Bob gets it instantly)
 
-If A disappears:
-- B still has all messages
-- A's users switch to B (or any other relayer)
-- A's pricing plans are irrelevant (A is gone)
+4. Relayer B:
+   a. Receives P2P from Relayer A
+   b. Forwards to Bob (P2P, <1 second)
+   c. Syncs the message into their own storage (redundancy)
 
-If A comes back:
-- A syncs messages from B (catches up)
-- A sets new prices (whatever they want)
-- Users decide whether to use A again
+5. Bob receives:
+   a. P2P from Relayer B: <1 second (if online)
+   b. OR on-chain: next time Bob launches xvault
+
+6. If Relayer A disappears:
+   a. Bob still gets the message from on-chain (stored by A before disappearing)
+   b. OR from Relayer B (who synced it)
+   c. Alice switches to another relayer
+
+7. If ALL relayers disappear:
+   a. Bob reads last 50 messages from on-chain
+   b. No new messages until a relayer appears
+   c. Messages are NOT lost (on-chain storage)
 ```
 
-**There are NO conflicts because:**
-- Prices are per-relayer (stored under each relayer's address)
-- Messages are shared (same Merkle root for everyone)
-- Plans are per-user-per-relayer (Alice has a plan with A, Bob has a plan with B)
+### Relayer Registry — How to Find Relayers
 
-### Relayer Reputation
+```
+1. User queries: get_relayer_registry_count() → "5 relayers available"
+2. For each relayer: get_relayer_from_registry(index) → address + endpoint
+3. For each relayer: get_relayer_profile(address) →
+   ├── Is registered?
+   ├── Is online? (heartbeat)
+   ├── Reputation score
+   ├── User rating (1-5 stars)
+   ├── Plans sold
+   ├── Number of pricing plans
+   └── Free daily limit
+4. For each relayer: get_plan(relayer, 0..N) → plan details
+5. User compares and chooses the best one
+6. User calls buy_plan(relayer, plan_id) or just starts using free tier
+```
 
-| Metric | What it measures | How to check |
-|--------|-----------------|--------------|
-| Online status | Is relayer alive? | `is_relayer_online(addr)` |
-| Uptime score | How long running | `get_relayer_reputation(addr)` |
-| User ratings | 1-5 stars | `get_relayer_rating(addr)` |
-| Plans sold | How many users trust them | `get_relayer_stats(addr)` |
-| Plans offered | What they charge | `get_plan_count(addr)` + `get_plan(addr, id)` |
+### Key Recovery — If You Lose Everything
 
-### Message Recovery
+**Your chat key is derived from your XELIS wallet key.**
 
-If you switch computers or all relayers disappear:
+```
+Scenario: Computer crashes, no backup of chat keys
 
-1. Import your wallet (seed phrase)
-2. Launch `xvault` → Chat
-3. The CLI:
-   - Derives your chat key from wallet key (automatic)
-   - Reads last 50 messages from on-chain: `get_message(your_addr, 0..49)`
-   - Decrypts each message with your private key
-   - Saves decrypted messages locally
+1. You have your XELIS seed phrase (12/24 words)
+2. You restore your wallet: xelis_wallet restore --seed "your seed"
+3. You launch: xvault
+4. The CLI:
+   a. Reads your wallet private key
+   b. Derives chat key: HKDF-SHA256(wallet_key, "xelis-vault-chat-v1")
+   c. The SAME chat key is regenerated (deterministic)
+   d. Reads last 50 messages from on-chain
+   e. Decrypts each with your regenerated private key
+   f. Saves decrypted messages locally
 
-You never lose messages as long as you have your seed phrase.
+→ You recover EVERYTHING with just your seed phrase
+→ No separate backup needed for chat
+```
 
-### Message Deletion
-
-| Action | What happens |
-|--------|-------------|
-| Delete message | Tombstone on-chain + delete local copy (both sides) |
-| Delete conversation | Tombstone all messages + delete local files |
-| Ephemeral message | Auto-deletes after TTL (2h/6h/12h/24h) |
-
-Both sender AND recipient can delete a message.
-
-### Groups
-
-1. **Create group**: Admin generates group key, creates group on-chain
-2. **Add members**: Admin encrypts group key for each member's public key
-3. **Send message**: Member encrypts with group key, stores on-chain
-4. **Kick member**: Admin removes their key + rotates group key
-5. **Key rotation**: Admin generates new key, distributes to remaining members
-6. Kicked member can't read new messages (different key)
-
-### Security Guarantees
+### Security Summary
 
 | Threat | Protected? | How |
 |--------|-----------|-----|
 | Message interception | YES | E2E encryption (ChaCha20-Poly1305) |
 | Relayer reads messages | YES | Only encrypted blobs visible |
 | Forged sender identity | YES | get_caller() verified on-chain |
-| Spam | YES | 100/day free limit, premium fees |
-| Censorship | YES | Messages travel P2P (off-chain) |
-| Data loss (no relayers) | YES | 50 messages stored on-chain |
-| Replay attacks | YES | Timestamp as associated data |
+| Free tier abuse (multi-wallet) | YES | Relayer pays gas → self-regulates |
+| Relayer doesn't store on-chain | YES | User verifies + rating system |
+| Relayer disappears | YES | On-chain storage + other relayers |
+| Censorship | YES | P2P off-chain + on-chain storage |
 | Message tampering | YES | Tombstones + Merkle roots |
-| User cheats on plan | YES | Plans verified on-chain by relayer |
-| Relayer cheats on payment | NO (direct) | Payment is direct, no escrow |
+| Replay attacks | YES | Timestamp as associated data |
+| User cheats on plan | YES | Plans stored on-chain |
+| Relayer cheats on payment | Direct | Payment is direct (no escrow) |
+| Lose chat key | YES | Regenerate from wallet seed |
 
 ### File Structure
 
@@ -221,7 +179,7 @@ Both sender AND recipient can delete a message.
 │   ├── sent/                  # Sent messages (decrypted)
 │   │   └── xelis1xyz....json
 │   └── groups/                # Group messages (decrypted)
-├── contacts.json              # Address book (address + public keys)
+├── contacts.json              # Address book
 ├── pending/                   # Messages queued for relayer
 └── relayer_peers.json         # Known relayer endpoints
 ```

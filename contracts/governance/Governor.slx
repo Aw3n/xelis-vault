@@ -1,12 +1,12 @@
 // ============================================================================
 // Governor.slx — XELIS Vault v5.0
 // ----------------------------------------------------------------------------
-// FIX #10: queue() now calls gv.call(4u16, [], {}) — GovernanceVault v5.0
+// FIX #10: queue() now calls gv.call(8u16, [], {}) — GovernanceVault v5.0
 //          entry 4 = get_total_voting_power_entry.
-// FIX #11: get_voting_power() now calls gv.call(3u16, [addr], {}) —
+// FIX #11: get_voting_power() now calls gv.call(7u16, [addr], {}) —
 //          GovernanceVault v5.0 entry 3 = get_voting_power_entry.
 // FIX:     queue() now submits the proposal to Timelock via
-//          tl.call(0u16, [target, entry_id, params, delay], {}) — Timelock v5.0
+//          tl.call(5u16, [target, entry_id, params, delay], {}) — Timelock v5.0
 //          entry 0 = submit_proposal(target, entry_id, params, delay).
 //
 // ENTRY IDs (sequential, starting at 0):
@@ -93,7 +93,7 @@ fn get_voting_power(addr: Address) -> u64 {
     let s: Storage = Storage::new()
     let gv_hash: Hash = s.load(GOVERNANCE_VAULT_KEY).expect("err")
     let gv: Contract = Contract::new(gv_hash).expect("err")
-    let vp: u64 = gv.call(3u16, [addr], {})
+    let vp: u64 = gv.call(7u16, [addr], {})
     return vp
 }
 
@@ -192,7 +192,7 @@ entry vote(proposal_id: u64, support: u8) -> u64 {
 // ============================================================================
 // ID 2: queue
 // ----------------------------------------------------------------------------
-// FIX #10: total voting power read via gv.call(4u16, [], {}) — GovernanceVault
+// FIX #10: total voting power read via gv.call(8u16, [], {}) — GovernanceVault
 //          v5.0 entry 4 = get_total_voting_power_entry.
 // FIX:     On success, submits to Timelock v5.0 entry 0
 //          (submit_proposal(target, entry_id, params, delay)).
@@ -212,7 +212,7 @@ entry queue(proposal_id: u64) -> u64 {
     // FIX #10: GovernanceVault v5.0 entry 4 = get_total_voting_power_entry
     let gv_hash: Hash = s.load(GOVERNANCE_VAULT_KEY).expect("err")
     let gv: Contract = Contract::new(gv_hash).expect("err")
-    let total_vp: u64 = gv.call(4u16, [], {})
+    let total_vp: u64 = gv.call(8u16, [], {})
 
     let quorum_required: u64 = (total_vp as u128 * quorum_bps as u128 / 10000u128) as u64
     require(total_votes >= quorum_required, "noquorum")
@@ -231,7 +231,7 @@ entry queue(proposal_id: u64) -> u64 {
     // Timelock v5.0 entry 0 = submit_proposal(target, entry_id, params, delay).
     let tl_hash: Hash = s.load(TIMELOCK_KEY).expect("err")
     let tl: Contract = Contract::new(tl_hash).expect("err")
-    let _ = tl.call(0u16, [proposal.target, proposal.entry_id as u64, proposal.params, QUEUE_DELAY_BLOCKS], {})
+    let _ = tl.call(5u16, [proposal.target, proposal.entry_id as u64, proposal.params, QUEUE_DELAY_BLOCKS], {})
 
     return 0
 }

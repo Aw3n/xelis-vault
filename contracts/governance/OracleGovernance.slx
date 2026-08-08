@@ -2,22 +2,22 @@
 // OracleGovernance.slx — XELIS Vault v5.0
 // ----------------------------------------------------------------------------
 // FIX #2:  Corrected StakedOracle v5.0 entry IDs in execute_proposal():
-//            TYPE_ADD_FEED      → oracle.call(0u16, [...], {})
-//            TYPE_UPDATE_FEED   → oracle.call(1u16, [...], {})
-//            TYPE_REMOVE_FEED   → oracle.call(2u16, [feed_id, false], {})
+//            TYPE_ADD_FEED      → oracle.call(8u16, [...], {})
+//            TYPE_UPDATE_FEED   → oracle.call(9u16, [...], {})
+//            TYPE_REMOVE_FEED   → oracle.call(10u16, [feed_id, false], {})
 //                                 (StakedOracle v5.0 entry 2 = set_feed_active)
 //            TYPE_SET_PARAM:
-//              PARAM_MAX_STALE    → oracle.call(16u16, [value], {})  set_max_stale_blocks
-//              PARAM_HARD_STALE   → oracle.call(17u16, [value], {})  set_hard_stale_blocks
-//              PARAM_MAX_DEV      → oracle.call(13u16, [value], {})  set_max_deviation_bps
-//              PARAM_CB_THRESH    → oracle.call(14u16, [value], {})  set_cb_threshold_bps
-//              PARAM_SUBMIT_WINDOW→ oracle.call(15u16, [value], {})  set_aggregation_blocks
-//            TYPE_EMERGENCY_CB  → oracle.call(3u16, [feed_id, "governance"], {})
+//              PARAM_MAX_STALE    → oracle.call(38u16, [value], {})  set_max_stale_blocks
+//              PARAM_HARD_STALE   → oracle.call(39u16, [value], {})  set_hard_stale_blocks
+//              PARAM_MAX_DEV      → oracle.call(35u16, [value], {})  set_max_deviation_bps
+//              PARAM_CB_THRESH    → oracle.call(36u16, [value], {})  set_cb_threshold_bps
+//              PARAM_SUBMIT_WINDOW→ oracle.call(37u16, [value], {})  set_aggregation_blocks
+//            TYPE_EMERGENCY_CB  → oracle.call(11u16, [feed_id, "governance"], {})
 //                                 (StakedOracle v5.0 entry 3 = trigger_feed_cb)
-//            TYPE_RESET_FEED    → oracle.call(4u16, [feed_id], {})
+//            TYPE_RESET_FEED    → oracle.call(12u16, [feed_id], {})
 //                                 (StakedOracle v5.0 entry 4 = reset_feed_cb)
 //
-// FIX #11: get_voting_power() now calls gv.call(3u16, [addr], {}) —
+// FIX #11: get_voting_power() now calls gv.call(7u16, [addr], {}) —
 //          GovernanceVault v5.0 entry 3 = get_voting_power_entry.
 //
 // FIX #15: TYPE_SET_REWARD branch implemented — calls
@@ -156,7 +156,7 @@ fn get_voting_power(addr: Address) -> u64 {
     let s: Storage = Storage::new()
     let gv_hash: Hash = s.load(GOVERNANCE_VAULT_KEY).expect("err")
     let gv: Contract = Contract::new(gv_hash).expect("err")
-    let vp: u64 = gv.call(3u16, [addr], {})
+    let vp: u64 = gv.call(7u16, [addr], {})
     return vp
 }
 
@@ -600,7 +600,7 @@ entry execute_proposal(proposal_id: u64) -> u64 {
 
     if proposal.proposal_type == TYPE_ADD_FEED {
         // StakedOracle v5.0 entry 0 = add_feed(name, asset, decimals, min, max)
-        let _ = oracle.call(0u16, [
+        let _ = oracle.call(8u16, [
             proposal.feed_name,
             proposal.feed_asset,
             proposal.feed_decimals as u64,
@@ -609,7 +609,7 @@ entry execute_proposal(proposal_id: u64) -> u64 {
         ], {})
     } else if proposal.proposal_type == TYPE_UPDATE_FEED {
         // StakedOracle v5.0 entry 1 = update_feed(feed_id, min, max, decimals)
-        let _ = oracle.call(1u16, [
+        let _ = oracle.call(9u16, [
             proposal.feed_id,
             proposal.feed_min,
             proposal.feed_max,
@@ -618,37 +618,37 @@ entry execute_proposal(proposal_id: u64) -> u64 {
     } else if proposal.proposal_type == TYPE_REMOVE_FEED {
         // StakedOracle v5.0 entry 2 = set_feed_active(feed_id, active)
         // FIX #2: deactivate the feed instead of calling a non-existent remove entry.
-        let _ = oracle.call(2u16, [proposal.feed_id, false], {})
+        let _ = oracle.call(10u16, [proposal.feed_id, false], {})
     } else if proposal.proposal_type == TYPE_SET_PARAM {
         // FIX #2: corrected StakedOracle v5.0 entry IDs
         if proposal.param_key == PARAM_MAX_STALE {
             // entry 16 = set_max_stale_blocks
-            let _ = oracle.call(16u16, [proposal.param_value], {})
+            let _ = oracle.call(38u16, [proposal.param_value], {})
         } else if proposal.param_key == PARAM_HARD_STALE {
             // entry 17 = set_hard_stale_blocks
-            let _ = oracle.call(17u16, [proposal.param_value], {})
+            let _ = oracle.call(39u16, [proposal.param_value], {})
         } else if proposal.param_key == PARAM_MAX_DEV {
             // entry 13 = set_max_deviation_bps
-            let _ = oracle.call(13u16, [proposal.param_value], {})
+            let _ = oracle.call(35u16, [proposal.param_value], {})
         } else if proposal.param_key == PARAM_CB_THRESH {
             // entry 14 = set_cb_threshold_bps
-            let _ = oracle.call(14u16, [proposal.param_value], {})
+            let _ = oracle.call(36u16, [proposal.param_value], {})
         } else if proposal.param_key == PARAM_SUBMIT_WINDOW {
             // entry 15 = set_aggregation_blocks
-            let _ = oracle.call(15u16, [proposal.param_value], {})
+            let _ = oracle.call(37u16, [proposal.param_value], {})
         }
     } else if proposal.proposal_type == TYPE_SET_REWARD {
         // FIX #15: implemented — call XelisVaultMiner v5.0 entry 21
         // (set_base_reward_oracle) with proposal.reward_amount.
         let mc_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("mcnoset")
         let miner: Contract = Contract::new(mc_hash).expect("mcnf")
-        let _ = miner.call(21u16, [proposal.reward_amount], {})
+        let _ = miner.call(31u16, [proposal.reward_amount], {})
     } else if proposal.proposal_type == TYPE_EMERGENCY_CB {
         // StakedOracle v5.0 entry 3 = trigger_feed_cb(feed_id, reason)
-        let _ = oracle.call(3u16, [proposal.feed_id, "governance"], {})
+        let _ = oracle.call(11u16, [proposal.feed_id, "governance"], {})
     } else if proposal.proposal_type == TYPE_RESET_FEED {
         // StakedOracle v5.0 entry 4 = reset_feed_cb(feed_id)
-        let _ = oracle.call(4u16, [proposal.feed_id], {})
+        let _ = oracle.call(12u16, [proposal.feed_id], {})
     }
 
     return 0

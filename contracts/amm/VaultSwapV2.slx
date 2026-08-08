@@ -2,7 +2,7 @@
 // VaultSwapV2.slx — XELIS Vault v5.0 (AMM + PSM)
 // ----------------------------------------------------------------------------
 // FIX #3:  get_oracle() loads oracle hash from storage (ORACLE_KEY).
-// FIX #12: psm_mint / psm_redeem use oracle.call(4u16, [Hash::zero()], {})
+// FIX #12: psm_mint / psm_redeem use oracle.call(21u16, [Hash::zero()], {})
 //          (PriceOracle entry 4 = get_price(asset: Hash)).
 // FIX #14: Two-step emergency_withdraw at IDs 29/30 with 17280-block delay.
 //
@@ -476,7 +476,7 @@ entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     require(pool.is_psm, "notpsm")
 
     let oracle: Contract = get_oracle()
-    let xel_price: u64 = oracle.call(4u16, [Hash::zero()], {})
+    let xel_price: u64 = oracle.call(21u16, [Hash::zero()], {})
     require(xel_price > 0, "noprice")
 
     let gross_xusd: u64 = (xel_amount as u128 * xel_price as u128 / PRICE_DECIMALS as u128) as u64
@@ -528,7 +528,7 @@ entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     require(pool.is_psm, "notpsm")
 
     let oracle: Contract = get_oracle()
-    let xel_price: u64 = oracle.call(4u16, [Hash::zero()], {})
+    let xel_price: u64 = oracle.call(21u16, [Hash::zero()], {})
     require(xel_price > 0, "noprice")
 
     let gross_xel: u64 = (xusd_amount as u128 * PRICE_DECIMALS as u128 / xel_price as u128) as u64

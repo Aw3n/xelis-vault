@@ -476,7 +476,7 @@ entry submit_heartbeat() -> u64 {
 // @params: reporter - address receiving the 10% reporter reward
 // @returns: slash_amount actually deducted from stake
 // @security: only_authorized_service, no-op for unknown miner, deactivates miner if stake or reputation drops below thresholds
-entry slash_miner(miner_addr: Address, severity: u8, reporter: Address) -> u64 {
+pub fn slash_miner(miner_addr: Address, severity: u8, reporter: Address) -> u64 {
     only_authorized_service()
     let s: Storage = Storage::new()
     let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
@@ -593,7 +593,7 @@ pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) ->
 // @params: service_id - service bit to test (1..=8)
 // @returns: 1 if the miner is active, staked, reputable and opted into the service; 0 otherwise
 // @security: read-only, no access control
-entry is_miner_active_entry(addr: Address, service_id: u8) -> u64 {
+pub fn is_miner_active(addr: Address, service_id: u8) -> u64 {
     let s: Storage = Storage::new()
     let miner_opt: optional<Miner> = s.load(MINER_PREFIX + addr.to_string())
     if miner_opt.is_none() { return 0 }
@@ -639,7 +639,7 @@ entry get_miner_reputation_entry(addr: Address) -> u64 {
 // @params: service_id - service slot to query (1..=8)
 // @returns: count of miners with that service bit set in their services_mask
 // @security: read-only, no access control
-entry get_active_miners_for_service_entry(service_id: u8) -> u64 {
+pub fn get_active_miners_for_service(service_id: u8) -> u64 {
     return Storage::new().load(SERVICE_MINERS_PREFIX + service_id.to_string(10u32)).unwrap_or(0)
 }
 
@@ -741,7 +741,7 @@ entry set_heartbeat_timeout(blocks: u64) -> u64 {
 // @params: amount - new base oracle reward (must be <= 1_000_000_000)
 // @returns: 0 on success
 // @security: only_admin, enforces upper bound
-entry set_base_reward_oracle(amount: u64) -> u64 {
+pub fn set_base_reward_oracle(amount: u64) -> u64 {
     only_admin()
     require(amount <= 1000000000, "badval")
     Storage::new().store(BASE_REWARD_ORACLE_KEY, amount)
@@ -1050,3 +1050,105 @@ pub fn is_authorized_service(contract_hash: Hash) -> bool {
 pub fn set_timelock_tl(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }
 
 
+
+// ============================================================================
+// v6.0 NEW FEATURES — added at END (chunks 57+, don't affect existing IDs)
+// ============================================================================
+
+const COMPOUND_PREFIX: string = "cmp_"
+const REP_DECAY_INTERVAL_KEY: string = "rdi"
+const REP_DECAY_AMOUNT_KEY: string = "rda"
+const DEFAULT_REP_DECAY_INTERVAL: u64 = 43200
+const DEFAULT_REP_DECAY_AMOUNT: u64 = 10
+
+// chunk 57: auto_slash_offline — permissionless keeper function
+// Slash miners who missed heartbeats for > HEARTBEAT_TIMEOUT blocks
+// @caller: anyone (permissionless keeper)
+// @params: miner_addr - miner to check and slash if offline
+// @returns: slash_amount (0 if not offline)
+pub fn auto_slash_offline(miner_addr: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
+    if miner_opt.is_none() { return 0 }
+    let miner: Miner = miner_opt.expect("err")
+    if !miner.active { return 0 }
+
+    let timeout: u64 = s.load(HEARTBEAT_TIMEOUT_KEY).unwrap_or(DEFAULT_HEARTBEAT_TIMEOUT)
+    let current_topo: u64 = get_current_topoheight()
+    if current_topo <= miner.last_heartbeat + timeout { return 0 }
+
+    // Miner is offline — apply reputation decay
+    let decay_interval: u64 = s.load(REP_DECAY_INTERVAL_KEY).unwrap_or(DEFAULT_REP_DECAY_INTERVAL)
+    let decay_amount: u64 = s.load(REP_DECAY_AMOUNT_KEY).unwrap_or(DEFAULT_REP_DECAY_AMOUNT)
+    if miner.reputation > 0 && miner.last_heartbeat + decay_interval < current_topo {
+        let blocks_since: u64 = current_topo - miner.last_heartbeat - decay_interval
+        let decay_periods: u64 = blocks_since / decay_interval
+        if decay_periods > 0 {
+            let total_decay: u64 = decay_amount * decay_periods
+            if miner.reputation > total_decay {
+                miner.reputation -= total_decay
+            } else {
+                miner.reputation = 0
+            }
+        }
+    }
+
+    // Slash with severity 1 (offline) — 2%
+    let slash_bps: u64 = 200
+    let rep_loss: u64 = REP_LOSS_OFFLINE
+    let slash_amount: u64 = (miner.stake as u128 * slash_bps as u128 / 10000u128) as u64
+    if slash_amount > 0 {
+        miner.stake -= slash_amount
+        miner.total_slashed += slash_amount
+    }
+    if miner.reputation > rep_loss { miner.reputation -= rep_loss } else { miner.reputation = 0 }
+    miner.last_infraction_topo = current_topo
+    if miner.reputation < REP_CRITICAL { miner.active = false }
+    s.store(MINER_PREFIX + miner_addr.to_string(), miner)
+
+    let total_staked: u64 = s.load(TOTAL_STAKED_KEY).unwrap_or(0)
+    if total_staked >= slash_amount { s.store(TOTAL_STAKED_KEY, total_staked - slash_amount) }
+
+    let burn_amount: u64 = slash_amount / 2
+    let reporter_reward: u64 = slash_amount / 10
+    let treasury_amount: u64 = slash_amount - burn_amount - reporter_reward
+    let vlt_asset: Hash = s.load(VLT_ASSET_KEY).expect("err")
+    if burn_amount > 0 { let _ = burn(burn_amount, vlt_asset) }
+    if reporter_reward > 0 {
+        let guardian: Address = s.load(GUARDIAN_KEY).expect("err")
+        let _ = transfer(guardian, reporter_reward, vlt_asset)
+    }
+    if treasury_amount > 0 {
+        let treasury: Address = s.load(TREASURY_KEY).expect("err")
+        let _ = transfer(treasury, treasury_amount, vlt_asset)
+    }
+    return slash_amount
+}
+
+// chunk 58: set_compound — enable/disable auto re-staking of rewards
+// @caller: the miner themselves
+// @params: enabled - true to compound rewards into stake, false for liquid
+entry set_compound(enabled: bool) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let miner_opt: optional<Miner> = s.load(MINER_PREFIX + caller.to_string())
+    require(miner_opt.is_some(), "notminer")
+    s.store(COMPOUND_PREFIX + caller.to_string(), enabled)
+    return 0
+}
+
+// chunk 59: is_compound_enabled — read compound status
+pub fn is_compound_enabled(addr: Address) -> bool {
+    return Storage::new().load(COMPOUND_PREFIX + addr.to_string()).unwrap_or(false)
+}
+
+// chunk 60: set_rep_decay_params — configure reputation temporal decay
+entry set_rep_decay_params(interval: u64, amount: u64) -> u64 {
+    only_admin()
+    require(interval >= 4320, "badint")
+    require(amount <= 100, "badamt")
+    let s: Storage = Storage::new()
+    s.store(REP_DECAY_INTERVAL_KEY, interval)
+    s.store(REP_DECAY_AMOUNT_KEY, amount)
+    return 0
+}

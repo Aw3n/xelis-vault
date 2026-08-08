@@ -2,7 +2,7 @@
 // SyndicatePool.slx — XELIS Vault v5.0
 // ----------------------------------------------------------------------------
 // Replicates v4.2 logic with sequential entry IDs starting at 0.
-// Price lookups (if introduced) use oracle.call(9u16, [asset], {})
+// Price lookups (if introduced) use oracle.call(21u16, [asset], {})
 // (StakedOracle v5.0 entry 9 = get_price_for_asset_entry).
 // FIX #14: Two-step emergency_withdraw at IDs 19/20 with 17280-block delay.
 //
@@ -122,7 +122,7 @@ fn get_asset_price(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let oracle_hash: Hash = s.load(ORACLE_KEY).expect("ornoset")
     let oracle: Contract = Contract::new(oracle_hash).expect("ornf")
-    let price: u64 = oracle.call(9u16, [asset], {})
+    let price: u64 = oracle.call(21u16, [asset], {})
     require(price > 0, "noprice")
     return price
 }

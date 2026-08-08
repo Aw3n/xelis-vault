@@ -158,7 +158,7 @@ fn only_guardian_or_admin() {
 // ============================================================================
 // ID 0: submit_proposal
 // ============================================================================
-entry submit_proposal(
+pub fn submit_proposal(
     target: Hash,
     entry_id: u16,
     params: bytes,
@@ -244,7 +244,7 @@ entry cancel_proposal(proposal_id: u64) -> u64 {
 // ----------------------------------------------------------------------------
 // FIX #7: only_guardian() now accepts the GuardianMultisig contract caller.
 // ============================================================================
-entry submit_emergency_proposal(
+pub fn submit_emergency_proposal(
     target: Hash,
     entry_id: u16,
     params: bytes

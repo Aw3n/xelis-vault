@@ -19,15 +19,16 @@ except ImportError:
     sys.exit(1)
 
 # ── testnet defaults (2026-07-28) ──────────────────────────────────────
-PRICE_ORACLE_HASH = "764ad585c2f484e54ea9dd06a7fb8b81397ba2487d37298f27edce3747d836dd"
+# StakedOracle hash — UPDATE after deployment
+STAKED_ORACLE_HASH = ""
 MINER_HASH        = "21ed1297c7ed4001a4a7c9a4bb89b10da0b0f3ad0312545a5af4a761200af207"
 VLT_HASH          = "7275c55d711789b1b746cd4695b04c0e393a0db74ecf72360c5544b73368cfab"
 VLT_ASSET         = "2de72ed3ea2d8ff30e6df57ba3a4d993dedfa8636d207d43d09e33615bfde2c6"
 
 # entry IDs (chunk index = entry_id)
-ENTRY_PROPOSE_PRICE    = 2
-ENTRY_EXECUTE_PRICE    = 3
-ENTRY_GET_PRICE        = 4
+ENTRY_SUBMIT_PRICE     = 15  # StakedOracle chunk 15 = submit_price
+ENTRY_AGGREGATE_NOW    = 16  # StakedOracle chunk 16 = aggregate_now
+ENTRY_GET_PRICE        = 21  # StakedOracle chunk 21 = get_price_for_asset
 
 ENTRY_REGISTER_MINER   = 10
 ENTRY_SUBMIT_HEARTBEAT = 16
@@ -269,7 +270,7 @@ class PriceDaemon:
 
     def _read_price(self) -> Optional[int]:
         try:
-            r = self.d.read_contract_data(PRICE_ORACLE_HASH, {
+            r = self.d.read_contract_data(STAKED_ORACLE_HASH, {
                 "type": "primitive", "value": {"type": "string", "value": "p"}
             })
             if r.get("data"):
@@ -279,7 +280,7 @@ class PriceDaemon:
 
     def _read_pending(self) -> int:
         try:
-            r = self.d.read_contract_data(PRICE_ORACLE_HASH, {
+            r = self.d.read_contract_data(STAKED_ORACLE_HASH, {
                 "type": "primitive", "value": {"type": "string", "value": "pp"}
             })
             if r.get("data"):
@@ -289,7 +290,7 @@ class PriceDaemon:
 
     def _read_pending_topo(self) -> int:
         try:
-            r = self.d.read_contract_data(PRICE_ORACLE_HASH, {
+            r = self.d.read_contract_data(STAKED_ORACLE_HASH, {
                 "type": "primitive", "value": {"type": "string", "value": "pt"}
             })
             if r.get("data"):
@@ -299,12 +300,12 @@ class PriceDaemon:
 
     def _propose(self, p: int) -> bool:
         if self.dry: return True
-        return bool(self.w.invoke(PRICE_ORACLE_HASH, ENTRY_PROPOSE_PRICE,
+        return bool(self.w.invoke(STAKED_ORACLE_HASH, ENTRY_SUBMIT_PRICE,
                      [{"type":"primitive","value":{"type":"u64","value":str(p)}}]))
 
     def _execute(self) -> bool:
         if self.dry: return True
-        return bool(self.w.invoke(PRICE_ORACLE_HASH, ENTRY_EXECUTE_PRICE, []))
+        return bool(self.w.invoke(STAKED_ORACLE_HASH, ENTRY_AGGREGATE_NOW, []))
 
     def run(self, topo: int) -> None:
         if self.last_topo == 0:

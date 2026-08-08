@@ -286,3 +286,25 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // @returns: u
 // @security: only_admin
 pub fn set_timelock_tl(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }
+
+// ============================================================================
+// v6.0: Callback verification
+// ============================================================================
+
+const VERIFIED_CALLBACK_PREFIX: string = "vcb_"
+
+entry verify_callback(callback_contract: Hash) -> u64 {
+    only_admin()
+    Storage::new().store(VERIFIED_CALLBACK_PREFIX + callback_contract.to_hex(), true)
+    return 0
+}
+
+entry revoke_callback(callback_contract: Hash) -> u64 {
+    only_admin()
+    Storage::new().delete(VERIFIED_CALLBACK_PREFIX + callback_contract.to_hex())
+    return 0
+}
+
+pub fn is_callback_verified(callback_contract: Hash) -> bool {
+    return Storage::new().load(VERIFIED_CALLBACK_PREFIX + callback_contract.to_hex()).unwrap_or(false)
+}

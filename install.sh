@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# ============================================================================
+#  XELIS Vault v6.0 — One-Line Installer
+# ============================================================================
+#  Install:   curl -fsSL https://xelisvault.github.io/install | bash
+#  Uninstall: curl -fsSL https://xelisvault.github.io/install | bash -s -- --uninstall
+# ============================================================================
+set -euo pipefail
+
+if [[ -t 1 ]] && command -v tput &>/dev/null; then
+    BOLD=$(tput bold); DIM=$(tput dim); RESET=$(tput sgr0)
+    RED=$(tput setaf 1); GREEN=$(tput setaf 2); YELLOW=$(tput setaf 3)
+    BLUE=$(tput setaf 4); MAGENTA=$(tput setaf 5); CYAN=$(tput setaf 6)
+else
+    BOLD=""; DIM=""; RESET=""; RED=""; GREEN=""; YELLOW=""; BLUE=""; MAGENTA=""; CYAN=""
+fi
+
+BANNER="${CYAN}${BOLD}"
+BANNER+="\n ██████  ██      ██   ██ ██ ███████  ██████ ████████ ██  ██████  ███    ██"
+BANNER+="\n██    ██ ██      ██  ██  ██ ██      ██         ██    ██ ██    ██ ████   ██"
+BANNER+="\n██    ██ ██      █████   ██ █████   ██         ██    ██ ██    ██ ██ ██  ██"
+BANNER+="\n██    ██ ██      ██  ██  ██ ██      ██         ██    ██ ██    ██ ██  ██ ██"
+BANNER+="\n ██████  ███████ ██   ██ ██ ███████  ██████    ██    ██  ██████  ██   ████"
+BANNER+="${RESET}\n${DIM}              Privacy-First DeFi on XELIS BlockDAG${RESET}"
+
+info()    { printf "${BLUE}i${RESET}  %s\n" "$*"; }
+success() { printf "${GREEN}v${RESET}  %s\n" "$*"; }
+warn()    { printf "${YELLOW}!${RESET}  %s\n" "$*"; }
+error()   { printf "${RED}x${RESET}  %s\n" "$*" >&2; }
+step()    { printf "\n${MAGENTA}${BOLD}> %s${RESET}\n" "$*"; }
+
+REPO="XelisVault/xelis-vault"
+REPO_URL="https://github.com/${REPO}.git"
+INSTALL_DIR="${HOME}/.xelis-vault"
+BIN_DIR="${HOME}/.local/bin"
+VENV_DIR="${INSTALL_DIR}/venv"
+CONFIG_DIR="${INSTALL_DIR}/config"
+VERSION="6.0"
+
+UNINSTALL=0
+FORCE=0
+INTERACTIVE=1
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --uninstall) UNINSTALL=1; shift ;;
+        --force|-f) FORCE=1; shift ;;
+        --yes|-y) INTERACTIVE=0; shift ;;
+        --version) echo "xelis-vault ${VERSION}"; exit 0 ;;
+        --help|-h)
+            echo "XELIS Vault Installer v${VERSION}"
+            echo ""
+            echo "Usage: curl -fsSL https://xelisvault.github.io/install | bash"
+            echo ""
+            echo "Options:"
+            echo "  --uninstall  Remove XELIS Vault"
+            echo "  --force,-f   Reinstall"
+            echo "  --yes,-y     Skip prompts (CI)"
+            echo "  --version    Print version"
+            exit 0 ;;
+        *) error "Unknown: $1"; exit 1 ;;
+    esac
+done
+
+if [[ $UNINSTALL -eq 1 ]]; then
+    printf "\n${BANNER}\n"
+    step "Uninstalling XELIS Vault"
+    rm -rf "$INSTALL_DIR"
+    rm -f "${BIN_DIR}/xvault" "${BIN_DIR}/xvault-miner"
+    success "Removed"
+    exit 0
+fi
+
+printf "\n${BANNER}\n"
+printf "${DIM}  v${VERSION} Installer${RESET}\n\n"
+
+step "Pre-flight checks"
+command -v python3 >/dev/null || { error "Python 3 required"; exit 1; }
+PY=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+success "Python ${PY}"
+command -v git >/dev/null || { error "git required"; exit 1; }
+success "git available"
+OS=$(uname -s); ARCH=$(uname -m)
+success "Platform: ${OS}/${ARCH}"
+
+step "Installing XELIS Vault"
+mkdir -p "$INSTALL_DIR" "$CONFIG_DIR" "${INSTALL_DIR}/logs" "${INSTALL_DIR}/wallet"
+
+if [[ -d "$INSTALL_DIR/src/.git" ]] && [[ $FORCE -eq 0 ]]; then
+    cd "$INSTALL_DIR/src"
+    info "Updating existing installation..."
+    git pull --ff-only
+    success "Repository updated"
+else
+    cd "$INSTALL_DIR"
+    rm -rf src
+    info "Cloning ${REPO}..."
+    git clone --depth 1 "$REPO_URL" src 2>&1 | sed 's/^/    /'
+    success "Repository cloned"
+fi
+
+step "Setting up Python environment"
+if [[ ! -d "$VENV_DIR" ]]; then
+    python3 -m venv "$VENV_DIR"
+    success "Virtualenv created"
+fi
+source "$VENV_DIR/bin/activate"
+pip install --quiet --upgrade pip
+pip install --quiet requests python-dotenv
+success "Dependencies installed"
+deactivate 2>/dev/null || true
+
+step "Installing launchers"
+mkdir -p "$BIN_DIR"
+
+cat > "${BIN_DIR}/xvault-miner" <<EOF
+#!/usr/bin/env bash
+exec "${VENV_DIR}/bin/python" "${INSTALL_DIR}/src/scripts/xvault-miner.py" "\$@"
+EOF
+chmod +x "${BIN_DIR}/xvault-miner"
+
+cat > "${BIN_DIR}/xvault" <<EOF
+#!/usr/bin/env bash
+exec "${VENV_DIR}/bin/python" "${INSTALL_DIR}/src/scripts/xvault.py" "\$@"
+EOF
+chmod +x "${BIN_DIR}/xvault"
+
+success "Launchers installed: xvault-miner, xvault"
+
+if [[ ":${PATH}:" != *":${BIN_DIR}:"* ]]; then
+    warn "${BIN_DIR} not in PATH"
+    SHELL_NAME=$(basename "$SHELL")
+    case "$SHELL_NAME" in
+        bash) info "  echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.bashrc" ;;
+        zsh)  info "  echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.zshrc" ;;
+        *)    info "  export PATH=\"${BIN_DIR}:\$PATH\"" ;;
+    esac
+fi
+
+printf "\n${GREEN}${BOLD}================================================================${RESET}\n"
+printf "${GREEN}${BOLD}   XELIS Vault v${VERSION} installed!                             ${RESET}\n"
+printf "${GREEN}${BOLD}================================================================${RESET}\n\n"
+
+printf "${BOLD}For miners:${RESET}\n"
+printf "  ${DIM}\$${RESET} xvault-miner          ${DIM}# Interactive dashboard${RESET}\n\n"
+printf "${BOLD}For community:${RESET}\n"
+printf "  ${DIM}\$${RESET} xvault                ${DIM}# Wallet + all features${RESET}\n\n"
+printf "${DIM}Config: ${CONFIG_DIR}/config.json${RESET}\n"
+printf "${DIM}Source: ${INSTALL_DIR}/src${RESET}\n"
+printf "${DIM}Docs:   https://github.com/${REPO}${RESET}\n\n"
+printf "${MAGENTA}Happy mining!${RESET}\n\n"

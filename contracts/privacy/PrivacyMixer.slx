@@ -456,3 +456,38 @@ pub fn set_timelock_tl(tl: Hash) -> u64 {
     Storage::new().store(TIMELOCK_KEY, tl)
     return 0
 }
+
+// ============================================================================
+// v6.0: Dynamic denominations (governance-configurable)
+// ============================================================================
+
+const DENOM_AMOUNT_PREFIX: string = "damt_"
+const DENOM_COUNT_KEY: string = "dcnt"
+const MAX_DYNAMIC_DENOMS: u64 = 16
+
+entry set_denomination(denom_id: u8, amount: u64) -> u64 {
+    only_admin()
+    require(amount > 0, "badamt")
+    require(denom_id < MAX_DYNAMIC_DENOMS as u8, "baddenom")
+    Storage::new().store(DENOM_AMOUNT_PREFIX + denom_id.to_string(10u32), amount)
+    return 0
+}
+
+entry add_denomination(amount: u64) -> u64 {
+    only_admin()
+    require(amount > 0, "badamt")
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(DENOM_COUNT_KEY).unwrap_or(3)
+    require(count < MAX_DYNAMIC_DENOMS, "maxdenom")
+    s.store(DENOM_AMOUNT_PREFIX + count.to_string(10u32), amount)
+    s.store(DENOM_COUNT_KEY, count + 1)
+    return count
+}
+
+pub fn get_denomination_count() -> u64 {
+    return Storage::new().load(DENOM_COUNT_KEY).unwrap_or(3)
+}
+
+pub fn get_dynamic_denomination(denom_id: u64) -> u64 {
+    return Storage::new().load(DENOM_AMOUNT_PREFIX + denom_id.to_string(10u32)).unwrap_or(0)
+}

@@ -235,7 +235,7 @@ entry claim_rewards() -> u64 {
 // @returns: voting power in atomic units
 // @security: read-only, no access restrictions
 // ID 3: get_voting_power_entry
-entry get_voting_power_entry(addr: Address) -> u64 {
+pub fn get_voting_power(addr: Address) -> u64 {
     return Storage::new().load(USER_VP_PREFIX + addr.to_string()).unwrap_or(0)
 }
 
@@ -244,7 +244,7 @@ entry get_voting_power_entry(addr: Address) -> u64 {
 // @returns: total voting power in atomic units
 // @security: read-only, no access restrictions
 // ID 4: get_total_voting_power_entry
-entry get_total_voting_power_entry() -> u64 {
+pub fn get_total_voting_power() -> u64 {
     return Storage::new().load(TOTAL_VP_KEY).unwrap_or(0)
 }
 

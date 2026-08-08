@@ -6,154 +6,236 @@
 
 CDP stablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mixer · E2E chat
 
-[![Testnet](https://img.shields.io/badge/testnet-live-success)](https://testnet-explorer.xelis.io/)
-[![Contracts](https://img.shields.io/badge/contracts-36%20Silex-blue)](contracts/)
+[![Network](https://img.shields.io/badge/network-testnet-blue)](https://testnet-explorer.xelis.io/)
+[![Contracts](https://img.shields.io/badge/contracts-33%20Silex-blueviolet)](contracts/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-whitepaper-orange)](docs/WHITEPAPER.md)
 
 ---
 
-### Start mining in one line
+### Become a miner in one line
 
 ```bash
-curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash
+curl -fsSL https://xelisvault.github.io/install | bash
 ```
 
 Then:
 
 ```bash
-xvault --miner
+xvault-miner
 ```
 
+### Or use the community CLI
+
+```bash
+xvault
+```
+
+Interactive menu: wallet setup, vaults, swaps, governance, mixer, chat — all in one beautiful TUI.
+
 ---
-
-[Getting Started](#getting-started) · [Contracts](#contracts) · [Docs](#documentation) · [Guide FR](docs/GUIDE_FR.md) · [Community](#community)
-
-> 🇫🇷 **Version française :** [`docs/GUIDE_FR.md`](docs/GUIDE_FR.md) — Installation, minage, oracle et dépannage en français.
 
 </div>
 
 ---
 
-## Getting Started
+## Quick Start
 
-### 1. Install
+### For Miners
 
 ```bash
-curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash
+# 1. Install (one line — detects OS, sets up everything)
+curl -fsSL https://xelisvault.github.io/install | bash
+
+# 2. Start the miner dashboard (interactive TUI)
+xvault-miner
+
+# 3. Choose your services (oracle, chat, or both)
+# 4. Watch your reputation and rewards in real-time
 ```
 
-That's it. The installer:
-- Checks Python 3.10+ and git
-- Clones the repo to `~/.xelis-vault/src`
-- Creates a venv and installs dependencies
-- Generates `~/.xelis-vault/config/config.json` with testnet defaults
-- Installs an `xvault` launcher in `~/.local/bin`
+The miner dashboard shows:
+- **Real-time reputation** (Excellent / Good / Warning / Critical / Banned)
+- **Stake & rewards** (VLT balance, total earned, total slashed)
+- **Submission stats** (valid / total, success rate)
+- **Protocol stats** (budget, distribution, budget factor, active miners)
+- **Price feeds** (XEL/USD, deviation, sources count, staleness)
+- **Service selection** (oracle only, chat only, or both)
 
-**No telemetry. No phone-home. No wallet data leaves your machine.**
-
-### 2. Run
+### For Community Members
 
 ```bash
-# Interactive guided setup (first run)
-xvault --miner -y
-
-# Or start as a miner with prompts
-xvault --miner
-
-# With custom RPC / wallet / endpoint
-xvault \
-  --rpc http://127.0.0.1:18081 \
-  --wallet-url http://127.0.0.1:18082 \
-  --endpoint https://my-miner.example.com:8080 \
-  --miner
+# One command for everything
+xvault
 ```
 
-### 3. Earn
+The community CLI lets you:
+- **Create or import** a XELIS wallet (auto-downloads official wallet binary)
+- **View your balance** (XEL, VLT, xUSD)
+- **Manage vaults** (deposit XEL, borrow xUSD, repay, withdraw, liquidate)
+- **Swap** (XEL ↔ xUSD via PSM, XEL ↔ VLT via AMM)
+- **Govern** (stake VLT, vote on proposals, create proposals)
+- **Mix** (private transfers via PrivacyMixer with ZK proofs)
+- **Chat** (E2E encrypted messaging anchored on-chain)
+- **View stats** (protocol-wide statistics, all public on-chain data)
 
-The daemon handles everything:
-- **Price oracle** — fetches XEL/USD from CoinGecko + MEXC, proposes via `propose_price`, executes after 3-block timelock
-- **Miner registration** — stakes 100 VLT, registers on `XelisVaultMiner`
-- **Heartbeat** — calls `submit_heartbeat` every 100 blocks to stay active
-- **Reputation** — monitors your tier (Excellent / Good / Warning / Critical / Banned)
-- **Rewards** — VLT minted to your wallet on every valid price execution
+---
 
-First reward on testnet: **0.71 VLT** minted per valid submission at Excellent tier.
+## Architecture
 
-### Uninstall
+```
+XELIS Vault v6.0 — 33 Silex contracts
 
-```bash
-curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash -s -- --uninstall
+┌─────────────────────────────────────────────────────────────┐
+│                    CONTRACT REGISTRY                         │
+│            (name → hash resolution, upgradeable)              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────────┐    ┌──────────────────┐                │
+│  │  StakedOracle    │───▶│  XelisVaultMiner  │              │
+│  │  (decentralized  │    │  (stake, reput.,  │              │
+│  │   median oracle) │    │   rewards, slash) │              │
+│  └────┬────────────┘    └───────┬──────────┘                │
+│       │                         │                            │
+│       │ price                   │ mint VLT                   │
+│       ▼                         ▼                            │
+│  ┌─────────────┐    ┌──────────────────┐                    │
+│  │ VaultEngine  │    │    VLTToken       │                   │
+│  │ (CDP, XEL →  │    │  (10M fixed supply)│                   │
+│  │  xUSD, stab. │    └──────────────────┘                    │
+│  │  fee)        │                                            │
+│  └──────┬───────┘    ┌──────────────────┐                    │
+│         │            │      xUSD          │                   │
+│         │ mint/burn  │  (elastic supply)  │                   │
+│         └───────────▶│                    │                   │
+│                      └────────┬───────────┘                   │
+│                               │                               │
+│  ┌─────────────┐    ┌────────┴───────────┐                   │
+│  │     PSM      │◀──▶│   VaultSwapV2      │                   │
+│  │ (peg stability│   │ (AMM + PSM, TWAP)  │                   │
+│  │  xUSD ↔ XEL) │    │  VLT/XEL pool      │                   │
+│  └─────────────┘    └────────────────────┘                   │
+│                                                              │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │                    GOVERNANCE                           │  │
+│  │  GovernanceVault → Governor → Timelock → GuardianMultisig│  │
+│  │  OracleGovernance (oracle params)                       │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                              │
+│  ┌────────┐ ┌──────────┐ ┌─────────┐ ┌────────┐ ┌────────┐ │
+│  │FlashLoan│ │SealedBid│ │Privacy  │ │Vault   │ │Insurance││
+│  │         │ │Auction  │ │Mixer    │ │Chat    │ │Pool     ││
+│  └────────┘ └──────────┘ └─────────┘ └────────┘ └────────┘ │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Contracts
+## Oracle: Decentralized & Graceful
 
-36 Silex contracts deployed on XELIS testnet:
+XELIS Vault uses **StakedOracle** — a fully decentralized oracle with:
 
-| Contract | Address | Role |
-|----------|---------|------|
-| **PriceOracle v2.1** | `764ad585...` | XEL/USD price feed with propose-execute timelock |
-| **VaultEngine** | `667b165c...` | CDP engine — deposit XEL, borrow xUSD |
-| **xUSD** | `909576c1...` | xUSD stablecoin token |
-| **PSM v5.1** | `9f266744...` | Peg stability module — mint/redeem xUSD 1:1 |
-| **VaultSwapV2** | `1b669939...` | AMM with TWAP fees + integrated PSM |
-| **XelisVaultMiner v2.1** | `21ed1297...` | Miner registration, heartbeat, reward distribution |
-| **VLTToken v5.1** | `7275c55d...` | Governance token — 10M fixed supply |
-| **GovernanceVault** | `830ddfd8...` | VLT staking + voting power |
-| **Governor** | `f8a5880d...` | Proposals + voting |
-| **Timelock** | `bf6c0004...` | Governance timelock |
-| **GuardianMultisig** | `4c5783d3...` | Emergency multisig |
+- **Median aggregation** (robust to outliers)
+- **Multi-feed support** (XEL/USD, XEL/BTC, etc.)
+- **Reputation-weighted rewards** (1.5× Excellent → 0× Banned)
+- **Progressive slashing** (1% outlier → 50% malicious)
+- **Circuit breaker** (pauses on >20% price movement)
+- **Bootstrap mode** (works with 3 miners, scales to 100+)
 
-Full entry ID table: [`docs/ENTRY_IDS.md`](docs/ENTRY_IDS.md)
+### Graceful Degradation
+
+The protocol **never stops working**, even if miners leave:
+
+| Active miners | Mode | Behavior |
+|--------------|------|----------|
+| 0 | Emergency | Last known price used (marked stale) |
+| 1–2 | Degraded | Price updates from single miner (no slashing) |
+| 3–9 | Bootstrap | Median aggregation, no slashing |
+| 10+ | Full | Median + slashing + circuit breaker |
+
+This means: even if the project loses popularity and miners drop, the protocol **continues to function**. DeFi operations (vaults, swaps, PSM) keep using the last known price.
 
 ---
 
-## Reward Flow
+## Miner Rewards
 
 ```
-PriceOracle v2.1
-├─ propose_price(price)              # entry 2
-├─ execute_price()                   # entry 3 (after 3-block timelock)
-└──► XelisVaultMiner v2.1
-    └─ distribute_reward()           # pub fn, chunk 18
-        ├─ Validate miner registered + active
-        ├─ Calculate dynamic reward
-        │   (base × reputation × budget_factor)
-        ├─ Check budget cap
-        └──► VLTToken v5.1
-            └─ mint_to()             # pub fn, chunk 4
-                └─ VLT minted to miner
+reward = BASE_REWARD_ORACLE (0.4756 VLT)
+       × reputation_multiplier  (1.5× Excellent, 1.0× Good, 0.5× Warning, 0.25× Critical, 0× Banned)
+       × budget_factor / 10000  (auto-adjusts every 2 weeks, 0.5×–2× range)
 ```
 
-**Reward formula:**
+| Miners | Est. reward/miner/day | ROI on 100 VLT stake |
+|--------|----------------------|---------------------|
+| 10 | ~55 VLT | < 2 days |
+| 50 | ~11 VLT | ~9 days |
+| 100 | ~5.5 VLT | ~18 days |
 
-```
-dynamic_reward = BASE_REWARD_ORACLE
-               × reputation_multiplier   (1.5x Excellent, 1.0x Good, 0.5x Warning, 0.25x Critical, 0x Banned)
-               × budget_factor / 10000   (auto-adjusts every 2 weeks, clamped 0.5x - 2x)
-```
+**Budget: 6,000,000 VLT over 10 years** (60% of total supply).
 
-Default at Excellent tier: **~0.71 VLT per valid price submission**.
+### New Features in v6.0
 
-Full economics: [`docs/REWARD_SYSTEM.md`](docs/REWARD_SYSTEM.md)
+- **Auto-slash offline miners** — keepers slash miners who miss heartbeats
+- **Reputation temporal decay** — inactive miners slowly lose reputation
+- **Compound rewards** — auto re-stake rewards for compound growth
+- **Contract events** — frontend indexing support
+- **Graceful degradation** — protocol works with 1 to 100+ miners
+
+---
+
+## Tokenomics
+
+### VLT Token (10,000,000 fixed supply)
+
+| Allocation | Amount | % | Purpose |
+|------------|--------|---|---------|
+| Oracle rewards | 6,000,000 | 60% | Distributed to miners over 10 years |
+| Team | 1,000,000 | 10% | 4-year vesting, 1-year cliff |
+| Treasury | 1,000,000 | 10% | Governance-controlled |
+| DEX liquidity | 1,200,000 | 12% | VLT/XEL pool seeding |
+| Seed investors | 500,000 | 5% | 2-year vesting, 6-month cliff |
+| Airdrop | 200,000 | 2% | Community distribution |
+| Bug bounty | 100,000 | 1% | Perpetual |
+
+### xUSD Stablecoin
+
+- **Peg mechanism**: PSM (Peg Stability Module) — mint/redeem xUSD 1:1 with XEL at oracle price
+- **Collateral**: VaultEngine CDPs — deposit XEL, borrow xUSD (200% min collateral ratio)
+- **Stability fee**: 2% APR on borrows (accrues continuously via global index)
+- **Burn mechanisms**: 50% of all slashes burned + 50% of protocol fees burned
+
+### VLT/XEL Liquidity Pool
+
+The AMM pool (`VaultSwapV2`) includes a VLT/XEL pool where:
+- Price varies with supply and demand (constant-product formula)
+- LPs earn swap fees (30 bps base + 5 bps treasury)
+- **Liquidity incentives**: Treasury distributes VLT to LPs proportionally
+- Pool strengthens over time as more LPs join and fees compound
 
 ---
 
 ## CLI Reference
 
+### Miner Dashboard (`xvault-miner`)
+
 | Flag | Description |
 |------|-------------|
-| `--rpc <url>` | Daemon JSON-RPC URL (default: `http://127.0.0.1:18081`) |
-| `--wallet-url <url>` | Wallet JSON-RPC URL (default: `http://127.0.0.1:18082`) |
-| `--wallet-user <user>` | Wallet RPC username (default: `wallet`) |
-| `--wallet-pass <pass>` | Wallet RPC password (default: `testpass`) |
-| `--endpoint <url>` | Public endpoint URL (required for miner registration) |
-| `--miner` | Enable miner mode (registration + heartbeats) |
-| `--no-oracle` | Disable price oracle updates |
-| `--dry-run` | Log actions without submitting transactions |
-| `-y` | Skip interactive prompts |
+| `--rpc <url>` | Daemon RPC URL |
+| `--wallet-url <url>` | Wallet RPC URL |
+| `--miner` | Start mining immediately |
+| `--services <choice>` | oracle, chat, or both |
+| `--dry-run` | Simulate without submitting |
+| `--setup` | Run interactive setup |
+| `-y` | Skip prompts |
+
+### Community CLI (`xvault`)
+
+| Flag | Description |
+|------|-------------|
+| `--setup` | Wallet setup only |
+| `--balance` | Quick balance check |
+| `--swap` | Quick swap menu |
+| `--vault` | Vault management |
+| `--governance` | Governance menu |
 
 ---
 
@@ -161,60 +243,26 @@ Full economics: [`docs/REWARD_SYSTEM.md`](docs/REWARD_SYSTEM.md)
 
 | Document | Description |
 |----------|-------------|
-| [Whitepaper](docs/WHITEPAPER.md) | Full technical whitepaper (8,600+ words) |
-| [Guide FR](docs/GUIDE_FR.md) | Guide complet en français (installation, minage, oracle) |
-| [Miner Guide](docs/MINER_GUIDE.md) | How to become a miner and earn VLT |
+| [Whitepaper](docs/WHITEPAPER.md) | Full technical whitepaper |
+| [Miner Guide](docs/MINER_GUIDE.md) | How to become a miner |
 | [Provider Guide](docs/PROVIDER_GUIDE.md) | Price data provider setup |
-| [User Guide](docs/USER_GUIDE.md) | End-user guide (lending, swap, governance) |
+| [User Guide](docs/USER_GUIDE.md) | End-user guide |
 | [Reward System](docs/REWARD_SYSTEM.md) | Reward + reputation mechanics |
-| [Roadmap](docs/ROADMAP.md) | Development roadmap (Q3 2026 → 2028+) |
+| [Roadmap](docs/ROADMAP.md) | Development roadmap |
 | [Audit Report](docs/AUDIT_v5.0_REMEDIATION.md) | Security audit + remediation |
 | [Entry IDs](docs/ENTRY_IDS.md) | Auto-generated entry ID table |
 
 ---
 
-## Architecture
-
-```
-xelis-vault/
-├── contracts/              # 36 Silex smart contracts
-│   ├── amm/                # PSM, VaultSwapV2
-│   ├── oracle/             # PriceOracle, StakedOracle
-│   ├── miner/              # XelisVaultMiner, MinerPool
-│   ├── token/              # VLTToken
-│   ├── usd/                # xUSD
-│   ├── vault/              # VaultEngine, VaultEngineV3
-│   ├── governance/         # GovernanceVault, Governor, Timelock, GuardianMultisig
-│   ├── lending/            # LendingMarket, PeerLoan, SyndicatePool
-│   ├── flashloan/          # FlashLoan, FlashCallback
-│   ├── auction/            # SealedBidAuction
-│   ├── privacy/            # PrivacyMixer
-│   ├── chat/               # VaultChat
-│   └── ...
-├── scripts/
-│   ├── xelis_vault_miner.py    # All-in-one daemon
-│   ├── price_provider.py       # Price data provider
-│   ├── aggregation_keeper.py   # Aggregation trigger
-│   └── custom_sources.example.json
-├── deploy/                 # Deployment scripts
-├── tests/                  # Integration tests
-├── docs/                   # Documentation
-├── install                 # One-line installer (bash)
-└── install.py              # Legacy Python installer
-```
-
----
-
 ## Security
 
-- **Cross-contract calls require `pub fn`** — `Contract::call()` validates `Access::All`. Calling `entry` functions fails with "Chunk is not public".
-- **`get_caller()` returns the original wallet source** even during nested cross-contract calls. Use `get_contract_caller()` for the immediate calling contract.
-- **`transfer_contract` before `burn_tokens`** — deposited xUSD must be forwarded to the xUSD contract before burning.
-- **Hash parameters require `opaque` type** — using `string` causes type mismatch on storage retrieval.
-- **2-step emergency withdraw** — 24h delay on all fund-holding contracts.
-- **ReentrancyGuard** — `non_reentrant()` on all state-changing entries that hold funds.
-
-Full audit: [`docs/AUDIT_v5.0_REMEDIATION.md`](docs/AUDIT_v5.0_REMEDIATION.md)
+- **`pub fn` for cross-contract** — Silex requires `pub fn` for `Contract::call()`. Entry functions fail with "Chunk is not public".
+- **2-step emergency withdraw** — 24h delay on all fund-holding contracts
+- **ReentrancyGuard** — `non_reentrant()` on all state-changing entries
+- **Progressive slashing** — 1% to 50% based on severity
+- **Reputation system** — 5-tier multiplier prevents bad actors from earning
+- **Circuit breaker** — oracle pauses on >20% price movement
+- **Graceful degradation** — protocol works with 1 to 100+ miners
 
 ---
 

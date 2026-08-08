@@ -148,7 +148,7 @@ fn get_oracle() -> Contract {
     let reg_hash: Hash = s.load(REGISTRY_KEY).expect("err")
     let reg: Contract = Contract::new(reg_hash).expect("err")
     // ContractRegistry v5.0 entry 0 = get_entry(name) -> Hash
-    let oracle_hash: Hash = reg.call(0u16, ["StakedOracle"], {})
+    let oracle_hash: Hash = reg.call(16u16, ["StakedOracle"], {})
     require(oracle_hash != Hash::zero(), "oraclenotfound")
     return Contract::new(oracle_hash).expect("err")
 }
@@ -156,7 +156,7 @@ fn get_oracle() -> Contract {
 fn get_xel_price() -> u64 {
     let oracle: Contract = get_oracle()
     // StakedOracle v5.0 entry 9 = get_price_for_asset_entry(asset) -> u64
-    let price: u64 = oracle.call(9u16, [Hash::zero()], {})
+    let price: u64 = oracle.call(21u16, [Hash::zero()], {})
     require(price > 0, "noprice")
     return price
 }
@@ -314,7 +314,7 @@ entry borrow(vault_id: u64, amount: u64) -> u64 {
     let xusd: Contract = Contract::new(xusd_hash).expect("err")
     let treasury: Address = rs.load(TREASURY_KEY).expect("err")
     // xUSD v5.0 entry 2 = mint_split(to, amount, treasury, fee)
-    let _ = xusd.call(2u16, [get_caller().expect("err"), net, treasury, fee], {})
+    let _ = xusd.call(4u16, [get_caller().expect("err"), net, treasury, fee], {})
     let current_index: u64 = rs.load(STABILITY_FEE_INDEX_KEY).unwrap_or(STABILITY_FEE_SCALE)
     // Save new principal + index snapshot
     vault.borrow_amount = new_bp
@@ -348,7 +348,7 @@ entry repay(vault_id: u64, amount: u64) -> u64 {
     let xusd_hash: Hash = rs.load(XUSD_CONTRACT_KEY).expect("err")
     let xusd: Contract = Contract::new(xusd_hash).expect("err")
     // xUSD v5.0 entry 3 = burn_tokens(amount)
-    let _ = xusd.call(3u16, [repay_amount], {})
+    let _ = xusd.call(5u16, [repay_amount], {})
     // The interest portion (accrued - principal) is the stability fee earned by treasury
     let interest_portion: u64 = 0
     if accrued_bp > vault.borrow_amount { interest_portion = accrued_bp - vault.borrow_amount }
@@ -434,7 +434,7 @@ entry liquidate(vault_id: u64, max_borrow_to_repay: u64) -> u64 {
     require(collateral_to_seize <= cp, "seizeovf")
     let xusd_hash: Hash = rs.load(XUSD_CONTRACT_KEY).expect("err")
     let xusd: Contract = Contract::new(xusd_hash).expect("err")
-    let _ = xusd.call(3u16, [repay_amount], {})
+    let _ = xusd.call(5u16, [repay_amount], {})
     let caller: Address = get_caller().expect("err")
     let ok: bool = transfer(caller, collateral_to_seize, vault.collateral_asset)
     require(ok, "txfail")
@@ -488,7 +488,7 @@ entry redeem(xusd_amount: u64) -> u64 {
     require(accrued_bp >= xusd_amount, "insdebt")
     let xusd_hash: Hash = rs.load(XUSD_CONTRACT_KEY).expect("err")
     let xusd: Contract = Contract::new(xusd_hash).expect("err")
-    let _ = xusd.call(3u16, [xusd_amount], {})
+    let _ = xusd.call(5u16, [xusd_amount], {})
     let price: u64 = get_xel_price()
     let redemption_fee_bps: u64 = rs.load(REDEMPTION_FEE_KEY).unwrap_or(DEFAULT_REDEMPTION_FEE)
     let xel_to_send: u64 = (xusd_amount as u128 * (10000u128 - redemption_fee_bps as u128) / 10000u128 * PRICE_DECIMALS as u128 / price as u128) as u64

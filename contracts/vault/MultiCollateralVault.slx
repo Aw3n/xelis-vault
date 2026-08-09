@@ -1,6 +1,17 @@
 // ============================================================================
 // MultiCollateralVault.slx — XELIS Vault v10.2 (Brainstorming Feature #6)
+// ============================================================================
+// ⚠️  DEPLOYMENT STATUS: PENDING — DO NOT DEPLOY YET
 // ----------------------------------------------------------------------------
+// This contract is a v10.2 brainstorming feature. It is NOT part of the
+// initial testnet deployment. Deploy ONLY if time remains after the 33 core
+// contracts (v5.0) are deployed, audited, and stable on testnet.
+//
+// Priority: LOWEST (Phase 5+ — post-mainnet)
+// Dependencies: requires ContractRegistry + core contracts already deployed
+// Audit: NOT YET AUDITED — external audit required before any deployment
+// ============================================================================
+
 // Vault multi-collateral : accepte plusieurs types de collateral simultanément.
 //
 // RÔLE : Une vault qui accepte XEL + VLT + RWA Gold + xUSD dans la même vault.

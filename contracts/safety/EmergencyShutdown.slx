@@ -1,6 +1,17 @@
 // ============================================================================
 // EmergencyShutdown.slx — XELIS Vault v10.2 (Brainstorming Feature #13)
+// ============================================================================
+// ⚠️  DEPLOYMENT STATUS: PENDING — DO NOT DEPLOY YET
 // ----------------------------------------------------------------------------
+// This contract is a v10.2 brainstorming feature. It is NOT part of the
+// initial testnet deployment. Deploy ONLY if time remains after the 33 core
+// contracts (v5.0) are deployed, audited, and stable on testnet.
+//
+// Priority: LOWEST (Phase 5+ — post-mainnet)
+// Dependencies: requires ContractRegistry + core contracts already deployed
+// Audit: NOT YET AUDITED — external audit required before any deployment
+// ============================================================================
+
 // Circuit breaker global pour tout le protocole XELIS Vault.
 //
 // RÔLE : En cas d'attaque ou de bug critique, un guardian peut déclencher un

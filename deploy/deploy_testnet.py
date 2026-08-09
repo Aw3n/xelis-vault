@@ -114,7 +114,7 @@ VLT_ALLOCATION = {
 
 XEL_ZERO_HASH = "0x" + "0" * 64
 
-# Canonical list of 33 contracts in deployment order.
+# Canonical list of 35 contracts in deployment order (v10.3).
 # (logical_name, subdir, filename_stem)
 CONTRACTS_IN_ORDER = [
     ("ContractRegistry",  "proxy",       "ContractRegistry"),
@@ -150,6 +150,9 @@ CONTRACTS_IN_ORDER = [
     ("ComplianceModule",  "compliance",  "ComplianceModule"),
     ("MinerPool",         "miner",       "MinerPool"),
     ("Upgradeable",       "proxy",       "Upgradeable"),
+    # v10.3 additions — Founder & Fee Distribution
+    ("FounderVesting",    "founder",     "FounderVesting"),
+    ("FeeDistributor",    "founder",     "FeeDistributor"),
 ]
 
 # ============================================================================

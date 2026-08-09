@@ -100,3 +100,4 @@ core_deploy.py
 # Agent notes (local only — contains seeds)
 AGENTS.md
 AI_WEBSITE_PROMPT.md
+test_report.md

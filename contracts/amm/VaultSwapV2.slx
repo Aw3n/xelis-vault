@@ -1,5 +1,5 @@
 // ============================================================================
-// VaultSwapV2.slx — XELIS Vault v5.0 (AMM + PSM)
+// VaultSwapV2.slx — XELIS Vault v9.0 (AMM + PSM)
 // ----------------------------------------------------------------------------
 // FIX #3:  get_oracle() loads oracle hash from storage (ORACLE_KEY).
 // FIX #12: psm_mint / psm_redeem use oracle.call(21u16, [Hash::zero()], {})
@@ -40,7 +40,7 @@
 //   30 : execute_emergency_withdraw
 // ============================================================================
 
-const VERSION: string = "VaultSwapV2.5"
+const VERSION: string = "VaultSwapV2 v9.0"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

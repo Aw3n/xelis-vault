@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ============================================================================
- XELIS Vault v7.0 — Miner Dashboard (xvault-miner)
+ XELIS Vault v9.0 — Miner Dashboard (xvault-miner)
 ============================================================================
 Live auto-refreshing TUI dashboard. Beautiful, real-time, interactive.
 Works on Linux, macOS, and Windows.

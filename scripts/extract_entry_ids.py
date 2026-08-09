@@ -10,8 +10,8 @@ import re
 import sys
 from pathlib import Path
 
-CONTRACTS_DIR = Path("/home/z/my-project/download/xelis-vault-v5/contracts")
-OUTPUT_FILE = Path("/home/z/my-project/download/xelis-vault-v5/docs/ENTRY_IDS.md")
+CONTRACTS_DIR = Path(__file__).resolve().parent.parent / "contracts"
+OUTPUT_FILE = Path(__file__).resolve().parent.parent / "docs" / "ENTRY_IDS.md"
 
 # Regex to match `entry function_name(...)` declarations
 ENTRY_RE = re.compile(

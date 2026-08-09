@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ============================================================================
- XELIS Vault v7.0 — Community CLI (xvault)
+ XELIS Vault v9.0 — Community CLI (xvault)
 ============================================================================
 Interactive CLI with arrow-key navigation. No typing numbers.
 Works on Linux, macOS, and Windows.

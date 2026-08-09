@@ -7,7 +7,7 @@
 CDP stablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mixer · E2E chat
 
 [![Network](https://img.shields.io/badge/network-testnet-blue)](https://testnet-explorer.xelis.io/)
-[![Contracts](https://img.shields.io/badge/contracts-33%20Silex-blueviolet)](contracts/)
+[![Contracts](https://img.shields.io/badge/contracts-46%20Silex-blueviolet)](contracts/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -148,7 +148,7 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex -Args "--uninstal
 ## Architecture
 
 ```
-XELIS Vault v7.0 — 33 Silex contracts
+XELIS Vault v10.2 — 46 Silex contracts
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    CONTRACT REGISTRY                         │
@@ -190,6 +190,15 @@ XELIS Vault v7.0 — 33 Silex contracts
 │  │FlashLoan│ │SealedBid│ │Privacy  │ │Vault   │ │Insurance││
 │  │         │ │Auction  │ │Mixer    │ │Chat    │ │Pool     ││
 │  └────────┘ └──────────┘ └─────────┘ └────────┘ └────────┘ │
+│                                                              │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │           BRAINSTORMING FEATURES (v10.2)               │  │
+│  │  NotificationCenter · CreditScore · EmergencyShutdown  │  │
+│  │  GovernanceDelegation · VaultInsurance · Analytics     │  │
+│  │  LiquidationMarket · VaultBounties · SocialTrading     │  │
+│  │  YieldOptimizer · VaultTemplates · MultiCollateralVault│  │
+│  │  VaultNFT (tokenized positions)                        │  │
+│  └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 

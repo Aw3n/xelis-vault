@@ -2086,3 +2086,235 @@ entry update_free_tier(free_daily_limit: u64, free_wallet_slots: u64) -> u64 {
     
     return 0
 }
+
+// ============================================================================
+// v10.0: PHASE 1 RELAYER IMPROVEMENTS (from external audit)
+// ============================================================================
+
+// ── R3: Relayer Bonding (caution) ────────────────────────────────────────
+// Relayers must stake a bond to become relayers
+// Bond can be slashed if they misbehave
+const RELAYER_BOND_PREFIX: string = "rbond_"
+const MIN_RELAYER_BOND: u64 = 5000000000  // 50 VLT
+
+// Relayer stakes a bond (required to become relayer)
+entry stake_relayer_bond(bond_amount: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    require(bond_amount >= MIN_RELAYER_BOND, "bondtoolow")
+    
+    // Receive VLT bond
+    let vlt_asset: Hash = s.load(VLT_ASSET_KEY).unwrap_or(Hash::zero())
+    let dep: u64 = get_deposit_for_asset(vlt_asset).expect("err")
+    require(dep >= bond_amount, "insdep")
+    if dep > bond_amount {
+        let ok: bool = transfer(caller, dep - bond_amount, vlt_asset)
+        require(ok, "rfail")
+    }
+    
+    // Store bond
+    s.store(RELAYER_BOND_PREFIX + caller.to_string(), bond_amount)
+    return 0
+}
+
+// Get relayer bond amount
+pub fn get_relayer_bond(relayer: Address) -> u64 {
+    return Storage::new().load(RELAYER_BOND_PREFIX + relayer.to_string()).unwrap_or(0)
+}
+
+// Slash relayer bond (guardian/admin only)
+entry slash_relayer_bond(relayer: Address, slash_bps: u64, reason: string) -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    require(slash_bps <= 10000, "badbps")
+    
+    let bond: u64 = s.load(RELAYER_BOND_PREFIX + relayer.to_string()).unwrap_or(0)
+    if bond == 0 { return 0 }
+    
+    let slash_amount: u64 = (bond as u128 * slash_bps as u128 / 10000u128) as u64
+    let new_bond: u64 = bond - slash_amount
+    s.store(RELAYER_BOND_PREFIX + relayer.to_string(), new_bond)
+    
+    // Burn 50% of slash, 50% to treasury
+    let burn_amount: u64 = slash_amount / 2
+    let treasury_amount: u64 = slash_amount - burn_amount
+    let vlt_asset: Hash = s.load(VLT_ASSET_KEY).unwrap_or(Hash::zero())
+    if vlt_asset != Hash::zero() {
+        if burn_amount > 0 { let _ = burn(burn_amount, vlt_asset) }
+        if treasury_amount > 0 {
+            let treasury: Address = s.load(TREASURY_KEY).expect("notset")
+            let _ = transfer(treasury, treasury_amount, vlt_asset)
+        }
+    }
+    
+    return slash_amount
+}
+
+// Relayer withdraws bond (must not be active relayer)
+entry withdraw_relayer_bond() -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    // Must not be an active relayer
+    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(!is_relayer, "stillrelayer")
+    
+    let bond: u64 = s.load(RELAYER_BOND_PREFIX + caller.to_string()).unwrap_or(0)
+    require(bond > 0, "nobond")
+    
+    // Return bond
+    let vlt_asset: Hash = s.load(VLT_ASSET_KEY).unwrap_or(Hash::zero())
+    if vlt_asset != Hash::zero() {
+        let ok: bool = transfer(caller, bond, vlt_asset)
+        require(ok, "txfail")
+    }
+    
+    s.delete(RELAYER_BOND_PREFIX + caller.to_string())
+    return 0
+}
+
+// ── R1: Improved Reliability Score ────────────────────────────────────────
+// Score based on: messages relayed + batches + uptime - empty batches penalty
+const RELAY_MSG_COUNT_PREFIX: string = "rmc_"
+const RELAY_EMPTY_BATCH_PREFIX: string = "reb_"
+
+// Relayer reports messages relayed (called during anchor_batch)
+fn update_relayer_msg_count(relayer: Address, count: u64) {
+    let s: Storage = Storage::new()
+    let key: string = RELAY_MSG_COUNT_PREFIX + relayer.to_string()
+    let current: u64 = s.load(key).unwrap_or(0)
+    s.store(key, current + count)
+}
+
+pub fn get_relayer_msg_count(relayer: Address) -> u64 {
+    return Storage::new().load(RELAY_MSG_COUNT_PREFIX + relayer.to_string()).unwrap_or(0)
+}
+
+// Get comprehensive reliability score
+pub fn get_reliability_score(relayer: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let msg_count: u64 = s.load(RELAY_MSG_COUNT_PREFIX + relayer.to_string()).unwrap_or(0)
+    let batch_count: u64 = s.load(RELAY_BATCH_COUNT_PREFIX + relayer.to_string()).unwrap_or(0)
+    let empty_batches: u64 = s.load(RELAY_EMPTY_BATCH_PREFIX + relayer.to_string()).unwrap_or(0)
+    
+    let msg_score: u64 = msg_count
+    let batch_score: u64 = batch_count * 10
+    let penalty: u64 = empty_batches * 20
+    
+    let score: u64 = msg_score + batch_score
+    if score > penalty { return score - penalty }
+    return 0
+}
+
+// ── R4: Weighted Ratings (anti-Sybil) ────────────────────────────────────
+// Ratings weighted by user activity (more messages = more weight)
+const RELAY_RATING_SUM_PREFIX: string = "rrs_"
+const RELAY_RATING_WEIGHT_PREFIX: string = "rrw_"
+const RELAY_RATING_COUNT_PREFIX: string = "rrc_"
+
+// Rate a relayer (weight based on user's message count)
+entry rate_relayer_weighted(relayer: Address, score: u8) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    require(score >= 1 && score <= 5, "badscore")
+    
+    // Check if already rated
+    let rated_key: string = "rrated_" + relayer.to_string() + "_" + caller.to_string()
+    let already: bool = s.load(rated_key).unwrap_or(false)
+    require(!already, "alreadyrated")
+    s.store(rated_key, true)
+    
+    // Get user activity (message count)
+    let user_msgs: u64 = s.load(MSG_COUNT_PREFIX + caller.to_string()).unwrap_or(0)
+    
+    // Weight: 1x for <100 msgs, 2x for <500, 3x for <1000, 5x for >1000
+    let weight: u64 = 1
+    if user_msgs > 1000 { weight = 5 }
+    else if user_msgs > 500 { weight = 3 }
+    else if user_msgs > 100 { weight = 2 }
+    
+    // Update weighted sum
+    let sum_key: string = RELAY_RATING_SUM_PREFIX + relayer.to_string()
+    let current_sum: u64 = s.load(sum_key).unwrap_or(0)
+    s.store(sum_key, current_sum + (score as u64 * weight))
+    
+    // Update total weight
+    let weight_key: string = RELAY_RATING_WEIGHT_PREFIX + relayer.to_string()
+    let current_weight: u64 = s.load(weight_key).unwrap_or(0)
+    s.store(weight_key, current_weight + weight)
+    
+    // Update count
+    let count_key: string = RELAY_RATING_COUNT_PREFIX + relayer.to_string()
+    let current_count: u64 = s.load(count_key).unwrap_or(0)
+    s.store(count_key, current_count + 1)
+    
+    return 0
+}
+
+// Get weighted average rating (returns score * 100, e.g. 450 = 4.50)
+pub fn get_weighted_rating(relayer: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let sum: u64 = s.load(RELAY_RATING_SUM_PREFIX + relayer.to_string()).unwrap_or(0)
+    let weight: u64 = s.load(RELAY_RATING_WEIGHT_PREFIX + relayer.to_string()).unwrap_or(0)
+    if weight == 0 { return 0 }
+    return (sum * 100) / weight
+}
+
+// Get rating count
+pub fn get_rating_count(relayer: Address) -> u64 {
+    return Storage::new().load(RELAY_RATING_COUNT_PREFIX + relayer.to_string()).unwrap_or(0)
+}
+
+// ── C2: Group Role Hierarchy ──────────────────────────────────────────────
+const ROLE_MEMBER: u8 = 0
+const ROLE_MODERATOR: u8 = 1
+const ROLE_ADMIN: u8 = 2
+const ROLE_CREATOR: u8 = 3
+const MEMBER_ROLE_PREFIX: string = "mrole_"
+const MEMBER_MUTE_PREFIX: string = "mmute_"
+
+// Set member role (admin or creator only)
+entry set_member_role(group_id: u64, member: Address, new_role: u8) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    
+    // Get caller's role
+    let caller_role: u8 = s.load(MEMBER_ROLE_PREFIX + group_id.to_string(10u32) + "_" + caller.to_string()).unwrap_or(ROLE_MEMBER)
+    let group: Group = s.load(GROUP_PREFIX + group_id.to_string(10u32)).expect("gnf")
+    if caller == group.creator { caller_role = ROLE_CREATOR }
+    
+    require(caller_role >= ROLE_ADMIN, "insufficient")
+    require(new_role < caller_role, "cannot_promote_equal")
+    
+    let key: string = MEMBER_ROLE_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    s.store(key, new_role)
+    return 0
+}
+
+// Get member role
+pub fn get_member_role(group_id: u64, member: Address) -> u8 {
+    let s: Storage = Storage::new()
+    let role: u8 = s.load(MEMBER_ROLE_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()).unwrap_or(ROLE_MEMBER)
+    let group: Group = s.load(GROUP_PREFIX + group_id.to_string(10u32)).expect("gnf")
+    if member == group.creator { return ROLE_CREATOR }
+    return role
+}
+
+// Mute a member (moderator or above)
+entry mute_member(group_id: u64, member: Address, duration_blocks: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let caller_role: u8 = get_member_role(group_id, caller)
+    require(caller_role >= ROLE_MODERATOR, "insufficient")
+    
+    let key: string = MEMBER_MUTE_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    s.store(key, get_current_topoheight() + duration_blocks)
+    return 0
+}
+
+// Check if member is muted
+pub fn is_muted(group_id: u64, member: Address) -> bool {
+    let s: Storage = Storage::new()
+    let mute_until: u64 = s.load(MEMBER_MUTE_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()).unwrap_or(0)
+    return get_current_topoheight() < mute_until
+}

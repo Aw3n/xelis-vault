@@ -103,15 +103,28 @@ VLT is the governance and reward token of the protocol. It has a fixed total sup
 
 | Allocation | Amount (VLT) | Share | Vesting |
 |------------|--------------|-------|---------|
-| Oracle provider rewards (XelisVaultMiner budget) | 6,000,000 | 60% | Distributed over 10 years via dynamic budget factor |
-| DEX liquidity (VaultSwapV2 seed) | 1,200,000 | 12% | 6-month linear unlock |
-| Founding team | 1,000,000 | 10% | 4-year vesting, 1-year cliff |
-| Protocol treasury | 1,000,000 | 10% | Governance-controlled, no vesting |
+| Oracle provider rewards (XelisVaultMiner budget) | 5,500,000 | 55% | Distributed over 10 years via dynamic budget factor |
+| Chat relayer rewards (VaultChat budget) | 1,000,000 | 10% | NEW v10.3 — distributed over 10 years, 100k VLT/year for relayer network |
+| DEX liquidity (VaultSwapV2 seed) | 1,000,000 | 10% | 6-month linear unlock |
+| Founding team / founder vesting | 500,000 | 5% | 4-year vesting, 1-year cliff (FounderVesting contract) |
+| Protocol treasury | 500,000 | 5% | Governance-controlled, no vesting |
 | Community airdrop | 500,000 | 5% | Contributors & helpers |
 | Community airdrop (launch) | 200,000 | 2% | Launch community distribution |
 | Bug bounty | 100,000 | 1% | Perpetual, never unlocked as team funds |
+| Protocol reserve | 200,000 | 2% | Buffer for unforeseen protocol needs |
+| Founder ongoing revenue (10-year vest) | 500,000 | 5% | NEW v10.3 — 50k VLT/year for 10 years, 1-year cliff |
+| **TOTAL** | **10,000,000** | **100%** | Fixed supply, no inflation possible |
 
-Three independent burn mechanisms apply deflationary pressure to VLT. First, **50% of every slash is burned**: when `StakedOracle` detects an outlier and calls `XelisVaultMiner.slash_miner(addr, severity, reporter)`, half of the slashed stake is sent to `burn(amount/2, VLT_asset)` and permanently removed from supply; 10% goes to the reporter as a whistleblower bounty and 40% to the treasury. Second, **50% of protocol fees are burned**: VaultEngine borrow fees, PSM mint/redeem fees, and VaultSwap swap fees each split 50/50 between treasury and burn. Third, **governance burns**: the community may pass a proposal to burn treasury-held VLT, reducing circulating supply. At an outlier rate of roughly 5% of oracle submissions, slash burns alone remove an estimated 100–500 VLT per day.
+**v10.3 Fee Distribution Model (replaces the old 50/50 treasury/burn split):**
+
+All protocol fees (VaultSwap 0.3%, PSM 0.5%, VaultEngine 2% APR, FlashLoan 0.1%, VaultChat 5% commission) are routed to the `FeeDistributor` contract, which splits them as follows:
+- **50% burned** (deflationary pressure, unchanged from v5.0)
+- **40% to treasury** (governance-controlled, reduced from 50%)
+- **10% to founder** (NEW v10.3 — ongoing XEL revenue for protocol creator)
+
+This model has three key advantages over a per-transaction founder fee: (1) it does not add any cost to users — the fees already exist and the split is internal; (2) it is transparent and auditable on-chain via `FeeDistributor.get_founder_balance()`; (3) it scales naturally with protocol success, aligning the founder's incentives with protocol growth rather than transaction volume. At an estimated $1M daily protocol volume, the founder share generates approximately $300/day in XEL revenue.
+
+Three independent burn mechanisms apply deflationary pressure to VLT. First, **50% of every slash is burned**: when `StakedOracle` detects an outlier and calls `XelisVaultMiner.slash_miner(addr, severity, reporter)`, half of the slashed stake is sent to `burn(amount/2, VLT_asset)` and permanently removed from supply; 10% goes to the reporter as a whistleblower bounty and 40% to the treasury. Second, **50% of protocol fees are burned** via FeeDistributor. Third, **governance burns**: the community may pass a proposal to burn treasury-held VLT, reducing circulating supply.
 
 ### 4.2 xUSD Stablecoin
 

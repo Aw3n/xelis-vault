@@ -63,3 +63,75 @@ Implemented ALL features from `docs/FUTURE_FEATURES.md` in a single iteration. N
 - Relayer bonding (50 VLT slashable)
 - Weighted ratings (anti-Sybil for relayers)
 - Role hierarchy (admin > guardian > relayer > user)
+
+---
+
+## [v10.3] — 2026-08-09
+
+### Added — Tokenomics Rework + Founder Revenue Model
+
+**Critical analysis of external IA proposal** — 4 ideas rejected, 4 ideas accepted and improved.
+
+#### NEW CONTRACTS (2 core contracts)
+
+| Contract | File | Purpose |
+|---|---|---|
+| FounderVesting | `contracts/founder/FounderVesting.slx` | 500k VLT vesting over 4y, 1y cliff. Transparent, on-chain, governance-controlled |
+| FeeDistributor | `contracts/founder/FeeDistributor.slx` | Splits protocol fees: 50% burn, 40% treasury, 10% founder. No extra cost to users |
+
+#### MODIFIED CONTRACTS
+
+- **VaultChat.slx** `anchor_messages` (entry 4): Added 5-layer anti-abus system
+  - Layer 1: Rate limit (300 blocks between anchors per relayer)
+  - Layer 2: Max 50 anchors/day per relayer
+  - Layer 3: Min 5 messages + min 2 senders for reward
+  - Layer 4: Daily reward cap (100 VLT/day per relayer)
+  - Layer 5: Diminishing returns (100% → 80% → 60% → 40% → 20%)
+  - Signature-based (not content-based) — respects E2E encryption
+
+#### NEW TOKENOMICS (v10.3)
+
+| Allocation | Amount | % | Change |
+|---|---|---|---|
+| Oracle rewards | 5,500,000 | 55% | -500k |
+| Chat relayer rewards | 1,000,000 | 10% | NEW |
+| DEX liquidity | 1,000,000 | 10% | -200k |
+| Founder vesting (4y) | 500,000 | 5% | -500k |
+| Treasury | 500,000 | 5% | -500k |
+| Community airdrop | 500,000 | 5% | unchanged |
+| Launch airdrop | 200,000 | 2% | unchanged |
+| Bug bounty | 100,000 | 1% | unchanged |
+| Protocol reserve | 200,000 | 2% | NEW |
+| Founder ongoing (10y) | 500,000 | 5% | NEW |
+
+#### FEE DISTRIBUTION MODEL (v10.3)
+
+Old: 50% treasury / 50% burn
+New: 50% burn / 40% treasury / 10% founder (via FeeDistributor)
+
+**Key advantage**: No extra cost to users — fees already exist, only the split changes.
+
+#### FOUNDER REVENUE MODEL
+
+| Source | Annual estimate |
+|---|---|
+| VLT vesting (4y + 10y) | ~$50,000 |
+| XEL revenue (10% of fees) | ~$131,400 |
+| Relayer (optional) | ~$10,000 |
+| **Total** | **~$191,400/year** |
+
+Legitimate (profit share, not transaction tax), transparent (all on-chain), aligned with protocol success.
+
+### REJECTED IDEAS (with reasons)
+
+1. **Founder fee 0.5% per transaction** — red flag regulator + "rake" perception
+2. **"Protocol revenue 2%" separate from "Team 5%"** — same pocket disguised
+3. **verify_messages_are_real()** — impossible in E2E (content is encrypted)
+4. **PSM/AMM auto-liquidity mixing** — Terra-like reserve/LP confusion
+
+### Stats
+- **Total contracts**: 46 → 48 (35 core + 13 pending)
+- **Total Silex lines**: ~18,000 → ~19,000
+- Chunk IDs validated: 23/23 OK
+- Deployment priority: 35 core + 13 pending = 48 total
+

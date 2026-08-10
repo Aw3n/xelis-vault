@@ -339,6 +339,7 @@ def screen_airdrop_dashboard(client: XelisClient, airdrop: AirdropClient):
             ("📈  Category stats        — Points by category", "categories"),
             ("🔍  Lookup user           — Search by address", "lookup"),
             ("ℹ️   How to earn points    — Guide", "guide"),
+            ("🔐  Admin panel           — Manage airdrop (admin only)", "admin"),
             ("Back", None),
         ])
 
@@ -352,6 +353,8 @@ def screen_airdrop_dashboard(client: XelisClient, airdrop: AirdropClient):
             _airdrop_register_mainnet(airdrop, user_addr)
         elif choice == "categories":
             _airdrop_categories(airdrop)
+        elif choice == "admin":
+            screen_airdrop_admin(client, airdrop)
         elif choice == "lookup":
             _airdrop_lookup(airdrop)
         elif choice == "guide":
@@ -715,4 +718,571 @@ def _airdrop_guide():
     print(f"  {C.DIM}• +25% if active in 3+ categories (multi-role){C.RESET}\n")
 
     print(f"  {C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+# ============================================================================
+# Admin functions — for the protocol admin to manage the airdrop
+# ============================================================================
+
+# Admin entry IDs
+ENTRY_RECORD_MANUAL_ATTRIBUTION = 8
+ENTRY_RECORD_MANUAL_ATTRIBUTION_BATCH = 32
+ENTRY_DEDUCT_POINTS = 33
+ENTRY_DISQUALIFY_USER = 34
+ENTRY_REVOKE_DISQUALIFICATION = 35
+ENTRY_FORCE_QUALIFY_USER = 36
+ENTRY_REVOKE_FORCE_QUALIFICATION = 37
+ENTRY_SET_USER_BONUS_MULTIPLIER = 38
+ENTRY_SET_MANUAL_ATTRIBUTION_CAP = 39
+
+# Admin log action types
+ACTION_NAMES = {
+    1: "Add points",
+    2: "Deduct points",
+    3: "Disqualify/Revoke",
+    4: "Force-qualify/Revoke",
+    5: "Set multiplier",
+    6: "Batch add",
+}
+
+
+def is_admin(airdrop: AirdropClient, user_addr: str) -> bool:
+    """Check if the user is the admin (simplified — in production, query the contract)."""
+    # The admin check is done on-chain by only_admin()
+    # Here we just return True if user has an address
+    return bool(user_addr and user_addr != "(not set)")
+
+
+def screen_airdrop_admin(client: XelisClient, airdrop: AirdropClient):
+    """Admin panel for managing the airdrop."""
+    user_addr = client.cfg.get("miner_address") or ""
+
+    if not is_admin(airdrop, user_addr):
+        clear()
+        print(BANNER)
+        print(f"\n{C.RED}{C.BOLD}  ⚠  Admin access required{C.RESET}")
+        print(f"{C.DIM}  Only the protocol admin can access this panel.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter to continue...{C.RESET}", end="")
+        input()
+        return
+
+    while True:
+        clear()
+        print(BANNER)
+        print(f"\n{C.RED}{C.BOLD}  🔐 AIRDROP ADMIN PANEL{C.RESET}")
+        print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+        # Show current state
+        stats = airdrop.get_protocol_stats()
+        if stats and len(stats) >= 6:
+            frozen = stats[4]
+            finalized = stats[5]
+            if finalized:
+                status = f"{C.GREEN}Finalized{C.RESET}"
+            elif frozen:
+                status = f"{C.YELLOW}Frozen{C.RESET}"
+            else:
+                status = f"{C.GREEN}Active{C.RESET}"
+            print(f"  Status:            {status}")
+            print(f"  Participants:      {stats[0]:,}")
+            print(f"  Qualified:         {stats[1]:,}")
+            print(f"  Total points:      {stats[2]:,}")
+
+        cap = airdrop.call_getter("get_manual_attribution_cap") or 50000
+        print(f"  Manual cap:        {cap:,} pts/call")
+        log_count = airdrop.call_getter("get_admin_log_count") or 0
+        print(f"  Admin actions:     {log_count:,}")
+        print()
+
+        choice = menu("Admin Menu", [
+            ("➕  Add points (single user)     — Manual attribution", "add_single"),
+            ("➕➕ Add points (batch)           — Multiple users at once", "add_batch"),
+            ("➖  Deduct points                — Remove from user", "deduct"),
+            ("🔨  Disqualify user              — Ban a cheater", "disqualify"),
+            ("✅  Force-qualify user           — Override thresholds", "force_qualify"),
+            ("🎁  Set bonus multiplier         — Custom bonus for user", "multiplier"),
+            ("📊  View admin log               — Audit trail", "log"),
+            ("⚙️  Set manual cap               — Change max per call", "set_cap"),
+            ("Back", None),
+        ])
+
+        if choice is None:
+            break
+        elif choice == "add_single":
+            _admin_add_single(airdrop, user_addr)
+        elif choice == "add_batch":
+            _admin_add_batch(airdrop, user_addr)
+        elif choice == "deduct":
+            _admin_deduct(airdrop, user_addr)
+        elif choice == "disqualify":
+            _admin_disqualify(airdrop, user_addr)
+        elif choice == "force_qualify":
+            _admin_force_qualify(airdrop, user_addr)
+        elif choice == "multiplier":
+            _admin_multiplier(airdrop, user_addr)
+        elif choice == "log":
+            _admin_view_log(airdrop)
+        elif choice == "set_cap":
+            _admin_set_cap(airdrop, user_addr)
+
+
+def _admin_add_single(airdrop: AirdropClient, admin_addr: str):
+    """Add points to a single user."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  ➕ ADD POINTS (SINGLE USER){C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    user_addr = text_input("  User testnet address: ")
+    if not user_addr or len(user_addr) < 10:
+        print(f"\n  {C.RED}Invalid address.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    # Check if disqualified
+    is_disq = airdrop.call_getter("is_disqualified", [user_addr])
+    if is_disq:
+        print(f"\n  {C.RED}⚠ This user is disqualified. Revoke disqualification first.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    # Select category
+    cat_choice = menu("Select category", [
+        ("⛏  Mining", "1"),
+        ("📡 Relayer", "2"),
+        ("🗳  Governance", "3"),
+        ("💬 Chat", "4"),
+        ("💧 Liquidity", "5"),
+        ("🐛 Bounty", "6"),
+        ("👥 Community", "7"),
+        ("Cancel", None),
+    ])
+    if cat_choice is None:
+        return
+    category = int(cat_choice)
+
+    # Enter points
+    points_str = text_input("  Points to add: ")
+    try:
+        points = int(points_str)
+        if points <= 0:
+            raise ValueError()
+    except ValueError:
+        print(f"\n  {C.RED}Invalid points amount.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    # Enter reason
+    reason = text_input("  Reason (e.g. 'Discord help'): ")
+    if not reason:
+        reason = "Manual attribution"
+
+    # Confirm
+    clear()
+    print(BANNER)
+    print(f"\n{C.YELLOW}{C.BOLD}  ⚠ CONFIRM ATTRIBUTION{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  User:     {C.DIM}{user_addr}{C.RESET}")
+    print(f"  Category: {CATEGORY_NAMES.get(category, 'Unknown')}")
+    print(f"  Points:   {C.BOLD}{points:,}{C.RESET}")
+    print(f"  Reason:   {reason}")
+
+    if confirm("  Confirm?"):
+        print(f"\n  {C.DIM}Submitting transaction...{C.RESET}")
+        tx = airdrop.submit_tx(ENTRY_RECORD_MANUAL_ATTRIBUTION, [user_addr, category, points, reason])
+        if tx:
+            print(f"\n  {C.GREEN}✓ Points added!{C.RESET}")
+            print(f"  {C.DIM}TX: {tx[:30]}...{C.RESET}")
+        else:
+            print(f"\n  {C.RED}✗ Failed to submit.{C.RESET}")
+    else:
+        print(f"\n  {C.DIM}Cancelled.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _admin_add_batch(airdrop: AirdropClient, admin_addr: str):
+    """Add points to multiple users at once (max 50)."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  ➕➕ ADD POINTS (BATCH — up to 50 users){C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  {C.DIM}Enter one address per line. Empty line to finish.{C.RESET}\n")
+
+    users = []
+    while len(users) < 50:
+        addr = text_input(f"  Address {len(users)+1} (or empty to finish): ")
+        if not addr:
+            break
+        if len(addr) >= 10:
+            users.append(addr)
+        else:
+            print(f"  {C.RED}Invalid address, skipped.{C.RESET}")
+
+    if not users:
+        print(f"\n  {C.DIM}No addresses entered.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    # Select category
+    cat_choice = menu(f"Select category for {len(users)} users", [
+        ("⛏  Mining", "1"),
+        ("📡 Relayer", "2"),
+        ("🗳  Governance", "3"),
+        ("💬 Chat", "4"),
+        ("💧 Liquidity", "5"),
+        ("🐛 Bounty", "6"),
+        ("👥 Community", "7"),
+        ("Cancel", None),
+    ])
+    if cat_choice is None:
+        return
+    category = int(cat_choice)
+
+    # Enter points (same for all)
+    points_str = text_input(f"  Points per user ({len(users)} users): ")
+    try:
+        points = int(points_str)
+        if points <= 0:
+            raise ValueError()
+    except ValueError:
+        print(f"\n  {C.RED}Invalid points.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    total = points * len(users)
+    reason = text_input("  Reason (e.g. 'Discord moderator rewards'): ")
+    if not reason:
+        reason = "Batch attribution"
+
+    # Confirm
+    clear()
+    print(BANNER)
+    print(f"\n{C.YELLOW}{C.BOLD}  ⚠ CONFIRM BATCH ATTRIBUTION{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  Users:    {C.BOLD}{len(users)}{C.RESET}")
+    print(f"  Category: {CATEGORY_NAMES.get(category, 'Unknown')}")
+    print(f"  Per user: {C.BOLD}{points:,}{C.RESET}")
+    print(f"  Total:    {C.YELLOW}{total:,}{C.RESET}")
+    print(f"  Reason:   {reason}")
+    print(f"\n  {C.DIM}Addresses:{C.RESET}")
+    for u in users[:5]:
+        print(f"    {C.DIM}{u[:30]}...{C.RESET}")
+    if len(users) > 5:
+        print(f"    {C.DIM}... and {len(users)-5} more{C.RESET}")
+
+    if confirm("  Confirm batch?"):
+        print(f"\n  {C.DIM}Submitting transaction...{C.RESET}")
+        tx = airdrop.submit_tx(ENTRY_RECORD_MANUAL_ATTRIBUTION_BATCH, [users, category, points, reason])
+        if tx:
+            print(f"\n  {C.GREEN}✓ Batch attribution submitted!{C.RESET}")
+            print(f"  {C.DIM}TX: {tx[:30]}...{C.RESET}")
+        else:
+            print(f"\n  {C.RED}✗ Failed to submit.{C.RESET}")
+    else:
+        print(f"\n  {C.DIM}Cancelled.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _admin_deduct(airdrop: AirdropClient, admin_addr: str):
+    """Deduct points from a user."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  ➖ DEDUCT POINTS{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    user_addr = text_input("  User testnet address: ")
+    if not user_addr or len(user_addr) < 10:
+        print(f"\n  {C.RED}Invalid address.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    cat_choice = menu("Select category", [
+        ("⛏  Mining", "1"),
+        ("📡 Relayer", "2"),
+        ("🗳  Governance", "3"),
+        ("💬 Chat", "4"),
+        ("💧 Liquidity", "5"),
+        ("🐛 Bounty", "6"),
+        ("👥 Community", "7"),
+        ("Cancel", None),
+    ])
+    if cat_choice is None:
+        return
+    category = int(cat_choice)
+
+    points_str = text_input("  Points to deduct: ")
+    try:
+        points = int(points_str)
+        if points <= 0:
+            raise ValueError()
+    except ValueError:
+        print(f"\n  {C.RED}Invalid points.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    reason = text_input("  Reason (e.g. 'Mistake correction'): ")
+    if not reason:
+        reason = "Manual deduction"
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.RED}{C.BOLD}  ⚠ CONFIRM DEDUCTION{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  User:     {C.DIM}{user_addr}{C.RESET}")
+    print(f"  Category: {CATEGORY_NAMES.get(category, 'Unknown')}")
+    print(f"  Points:   {C.RED}-{points:,}{C.RESET}")
+    print(f"  Reason:   {reason}")
+
+    if confirm("  Confirm deduction?"):
+        print(f"\n  {C.DIM}Submitting...{C.RESET}")
+        tx = airdrop.submit_tx(ENTRY_DEDUCT_POINTS, [user_addr, category, points, reason])
+        if tx:
+            print(f"\n  {C.GREEN}✓ Points deducted!{C.RESET}")
+        else:
+            print(f"\n  {C.RED}✗ Failed.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _admin_disqualify(airdrop: AirdropClient, admin_addr: str):
+    """Disqualify a user."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.RED}{C.BOLD}  🔨 DISQUALIFY USER{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  {C.YELLOW}Banned users get 0 VLT even if they have points.{C.RESET}")
+    print(f"  {C.DIM}Use for: cheaters, Sybil attackers, bot farmers.{C.RESET}\n")
+
+    user_addr = text_input("  User testnet address: ")
+    if not user_addr or len(user_addr) < 10:
+        print(f"\n  {C.RED}Invalid address.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    reason = text_input("  Reason (e.g. 'Sybil attack detected'): ")
+    if not reason:
+        reason = "Rule violation"
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.RED}{C.BOLD}  ⚠ CONFIRM DISQUALIFICATION{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  User:   {C.DIM}{user_addr}{C.RESET}")
+    print(f"  Reason: {reason}")
+    print(f"\n  {C.RED}This user will receive 0 VLT even if they have points.{C.RESET}")
+
+    if confirm("  Confirm disqualification?"):
+        print(f"\n  {C.DIM}Submitting...{C.RESET}")
+        tx = airdrop.submit_tx(ENTRY_DISQUALIFY_USER, [user_addr, reason])
+        if tx:
+            print(f"\n  {C.GREEN}✓ User disqualified!{C.RESET}")
+        else:
+            print(f"\n  {C.RED}✗ Failed.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _admin_force_qualify(airdrop: AirdropClient, admin_addr: str):
+    """Force-qualify a user."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.GREEN}{C.BOLD}  ✅ FORCE-QUALIFY USER{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  {C.DIM}Manually qualify a user who doesn't meet standard thresholds.{C.RESET}")
+    print(f"  {C.DIM}Use for: Discord mods, doc writers, valuable contributors.{C.RESET}\n")
+
+    user_addr = text_input("  User testnet address: ")
+    if not user_addr or len(user_addr) < 10:
+        print(f"\n  {C.RED}Invalid address.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    reason = text_input("  Reason (e.g. 'Discord moderator, valuable contributor'): ")
+    if not reason:
+        reason = "Valuable contributor"
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.YELLOW}{C.BOLD}  ⚠ CONFIRM FORCE-QUALIFICATION{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  User:   {C.DIM}{user_addr}{C.RESET}")
+    print(f"  Reason: {reason}")
+    print(f"\n  {C.GREEN}This user will qualify even without 7 days or 1000 points.{C.RESET}")
+
+    if confirm("  Confirm force-qualification?"):
+        print(f"\n  {C.DIM}Submitting...{C.RESET}")
+        tx = airdrop.submit_tx(ENTRY_FORCE_QUALIFY_USER, [user_addr, reason])
+        if tx:
+            print(f"\n  {C.GREEN}✓ User force-qualified!{C.RESET}")
+        else:
+            print(f"\n  {C.RED}✗ Failed.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _admin_multiplier(airdrop: AirdropClient, admin_addr: str):
+    """Set custom bonus multiplier for a user."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  🎁 SET BONUS MULTIPLIER{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  {C.DIM}Give a user a custom bonus multiplier.{C.RESET}")
+    print(f"  {C.DIM}10000 = 1x (no bonus), 15000 = +50%, 20000 = +100%{C.RESET}")
+    print(f"  {C.DIM}0 = remove custom multiplier{C.RESET}\n")
+
+    user_addr = text_input("  User testnet address: ")
+    if not user_addr or len(user_addr) < 10:
+        print(f"\n  {C.RED}Invalid address.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    mult_choice = menu("Select multiplier", [
+        ("15000  (+50%)  — Discord moderator", "15000"),
+        ("20000  (+100%) — Community leader", "20000"),
+        ("13000  (+30%)  — Active helper", "13000"),
+        ("12500  (+25%)  — Minor contributor", "12500"),
+        ("0      Remove custom multiplier", "0"),
+        ("Custom value", "custom"),
+        ("Cancel", None),
+    ])
+    if mult_choice is None:
+        return
+    elif mult_choice == "custom":
+        mult_str = text_input("  Multiplier (in bps, e.g. 15000 for +50%): ")
+        try:
+            multiplier = int(mult_str)
+            if multiplier < 0 or multiplier > 30000:
+                raise ValueError()
+        except ValueError:
+            print(f"\n  {C.RED}Invalid multiplier (0-30000).{C.RESET}")
+            print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+            input()
+            return
+    else:
+        multiplier = int(mult_choice)
+
+    reason = text_input("  Reason (e.g. 'Discord mod reward'): ")
+    if not reason:
+        reason = "Custom multiplier"
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.YELLOW}{C.BOLD}  ⚠ CONFIRM MULTIPLIER{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  User:       {C.DIM}{user_addr}{C.RESET}")
+    print(f"  Multiplier: {C.BOLD}{multiplier} bps{C.RESET}", end="")
+    if multiplier == 0:
+        print(f" {C.DIM}(removed){C.RESET}")
+    elif multiplier >= 10000:
+        print(f" {C.GREEN}(+{(multiplier-10000)/100:.0f}%){C.RESET}")
+    else:
+        print(f" {C.RED}({(multiplier-10000)/100:.0f}%){C.RESET}")
+    print(f"  Reason:     {reason}")
+
+    if confirm("  Confirm?"):
+        print(f"\n  {C.DIM}Submitting...{C.RESET}")
+        tx = airdrop.submit_tx(ENTRY_SET_USER_BONUS_MULTIPLIER, [user_addr, multiplier, reason])
+        if tx:
+            print(f"\n  {C.GREEN}✓ Multiplier set!{C.RESET}")
+        else:
+            print(f"\n  {C.RED}✗ Failed.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _admin_view_log(airdrop: AirdropClient):
+    """View admin action log (audit trail)."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  📊 ADMIN LOG — Audit Trail{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    count = airdrop.call_getter("get_admin_log_count") or 0
+    if not count:
+        print(f"  {C.DIM}No admin actions logged yet.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    # Show last 20 actions (most recent first)
+    show_count = min(20, count)
+    print(f"  Showing last {show_count} of {count} total actions:\n")
+    print(f"  {'#':<6} {'Action':<18} {'Target':<20} {'Amount':>10} {'Reason':<20}")
+    print(f"  {C.GRAY}{'─' * 76}{C.RESET}")
+
+    for i in range(show_count):
+        # Ring buffer: most recent is at (count-1) % MAX
+        idx = (count - 1 - i) % 1000
+        entry = airdrop.call_getter("get_admin_log_entry", [idx])
+        if not entry or len(entry) < 8:
+            continue
+
+        admin, action_type, target, category, amount, mult, reason, topo = entry
+
+        action_name = ACTION_NAMES.get(action_type, f"Type {action_type}")
+        target_str = fmt_addr(target) if target else "(batch)"
+        amount_str = ""
+        if amount > 0:
+            amount_str = f"{amount:,}"
+        elif mult > 0:
+            amount_str = f"{mult} bps"
+
+        reason_short = reason[:20] + "..." if len(reason) > 20 else reason
+
+        print(f"  {C.DIM}{i+1:<6}{C.RESET} {action_name:<18} {target_str:<20} {C.BOLD}{amount_str:>10}{C.RESET} {C.DIM}{reason_short:<20}{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _admin_set_cap(airdrop: AirdropClient, admin_addr: str):
+    """Set manual attribution cap."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  ⚙️  SET MANUAL ATTRIBUTION CAP{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    current = airdrop.call_getter("get_manual_attribution_cap") or 50000
+    print(f"  Current cap: {C.BOLD}{current:,}{C.RESET} points per call")
+    print(f"  {C.DIM}Range: 100 - 500,000{C.RESET}\n")
+
+    cap_str = text_input("  New cap: ")
+    try:
+        new_cap = int(cap_str)
+        if new_cap < 100 or new_cap > 500000:
+            raise ValueError()
+    except ValueError:
+        print(f"\n  {C.RED}Invalid cap (100-500000).{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    if confirm(f"  Set cap to {new_cap:,}?"):
+        print(f"\n  {C.DIM}Submitting...{C.RESET}")
+        tx = airdrop.submit_tx(ENTRY_SET_MANUAL_ATTRIBUTION_CAP, [new_cap])
+        if tx:
+            print(f"\n  {C.GREEN}✓ Cap updated!{C.RESET}")
+        else:
+            print(f"\n  {C.RED}✗ Failed.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
     input()

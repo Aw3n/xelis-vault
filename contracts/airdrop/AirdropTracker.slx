@@ -110,6 +110,16 @@ const MAINNET_TO_TESTNET_PREFIX: string = "m2t_"
 // v10.4.1: Category totals (for stats dashboard)
 const CAT_TOTAL_PREFIX: string = "ct_"        // category → total points across all users
 
+// v10.4.2: Admin features — manual attribution, audit log, custom multipliers
+const MANUAL_CAP_KEY: string = "mcap"                  // configurable cap for manual attribution
+const DEFAULT_MANUAL_CAP: u64 = 50000                  // 50,000 points per call (was 10,000)
+const USER_BONUS_PREFIX: string = "ubon_"              // user → custom bonus multiplier (bps, 0 = none)
+const DISQUALIFIED_PREFIX: string = "disq_"            // user → bool (banned)
+const FORCE_QUALIFIED_PREFIX: string = "fqual_"        // user → bool (manually qualified)
+const ADMIN_LOG_PREFIX: string = "alog_"               // index → AdminLogEntry
+const ADMIN_LOG_COUNT_KEY: string = "alc"
+const ADMIN_LOG_MAX: u64 = 1000                        // keep last 1000 admin actions
+
 // Categories
 const CAT_MINING: u8 = 1
 const CAT_RELAYER: u8 = 2
@@ -170,6 +180,18 @@ struct UserPoints {
     registered: bool
 }
 
+// v10.4.2: Admin log entry — audit trail for all admin actions
+struct AdminLogEntry {
+    admin: Address,            // who performed the action
+    action_type: u8,           // 1=add, 2=deduct, 3=disqualify, 4=force_qualify, 5=multiplier, 6=batch_add
+    target_user: Address,      // who was affected
+    category: u8,              // category (for add/deduct, 0 otherwise)
+    amount: u64,               // points (for add/deduct, 0 otherwise)
+    multiplier_bps: u64,       // multiplier (for set_multiplier, 0 otherwise)
+    reason: string,            // human-readable reason
+    topo: u64                  // when it happened
+}
+
 hook constructor() -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -185,6 +207,8 @@ hook constructor() -> u64 {
     s.store(START_TOPO_KEY, get_current_topoheight())
     s.store(FREEZE_TOPO_KEY, 0u64)
     s.store(FINALIZE_TOPO_KEY, 0u64)
+    s.store(MANUAL_CAP_KEY, DEFAULT_MANUAL_CAP)
+    s.store(ADMIN_LOG_COUNT_KEY, 0u64)
     return 0
 }
 
@@ -289,6 +313,75 @@ fn check_daily_cap(user: Address, category: u8, points_to_add: u64, cap: u64) ->
     }
     s.store(key, current + points_to_add)
     return points_to_add
+}
+
+// v10.4.2: Log admin actions for audit trail
+fn log_admin_action(action_type: u8, target: Address, category: u8, amount: u64, multiplier_bps: u64, reason: string) {
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(ADMIN_LOG_COUNT_KEY).unwrap_or(0)
+    let idx: u64 = count % ADMIN_LOG_MAX  // ring buffer
+
+    let entry: AdminLogEntry = AdminLogEntry {
+        admin: get_caller().expect("err"),
+        action_type: action_type,
+        target_user: target,
+        category: category,
+        amount: amount,
+        multiplier_bps: multiplier_bps,
+        reason: reason,
+        topo: get_current_topoheight()
+    }
+    s.store(ADMIN_LOG_PREFIX + idx.to_string(), entry)
+    s.store(ADMIN_LOG_COUNT_KEY, count + 1)
+}
+
+// v10.4.2: Deduct points from a user (internal helper)
+fn deduct_points_internal(user: Address, category: u8, points: u64) {
+    if points == 0 { return }
+    let s: Storage = Storage::new()
+    let up_opt: optional<UserPoints> = s.load(USER_PREFIX + user.to_string())
+    if up_opt.is_none() { return }  // user doesn't exist, nothing to deduct
+    let up: UserPoints = up_opt.expect("err")
+
+    if category == CAT_MINING {
+        if up.mining >= points { up.mining -= points } else { up.mining = 0 }
+    } else if category == CAT_RELAYER {
+        if up.relayer >= points { up.relayer -= points } else { up.relayer = 0 }
+    } else if category == CAT_GOVERNANCE {
+        if up.governance >= points { up.governance -= points } else { up.governance = 0 }
+    } else if category == CAT_CHAT {
+        if up.chat >= points { up.chat -= points } else { up.chat = 0 }
+    } else if category == CAT_LIQUIDITY {
+        if up.liquidity >= points { up.liquidity -= points } else { up.liquidity = 0 }
+    } else if category == CAT_BOUNTY {
+        if up.bounty >= points { up.bounty -= points } else { up.bounty = 0 }
+    } else if category == CAT_COMMUNITY {
+        if up.community >= points { up.community -= points } else { up.community = 0 }
+    }
+
+    if up.total_raw >= points {
+        up.total_raw -= points
+    } else {
+        up.total_raw = 0
+    }
+    s.store(USER_PREFIX + user.to_string(), up)
+
+    // Update global total
+    let total: u64 = s.load(TOTAL_POINTS_KEY).unwrap_or(0)
+    if total >= points {
+        s.store(TOTAL_POINTS_KEY, total - points)
+    } else {
+        s.store(TOTAL_POINTS_KEY, 0u64)
+    }
+
+    // Update category total
+    let cat_key: string = CAT_TOTAL_PREFIX + category.to_string()
+    let cat_total: u64 = s.load(cat_key).unwrap_or(0)
+    if cat_total >= points {
+        s.store(cat_key, cat_total - points)
+    } else {
+        s.store(cat_key, 0u64)
+    }
 }
 
 fn add_points(user: Address, category: u8, points: u64) {
@@ -433,13 +526,23 @@ entry record_bug_bounty(reporter: Address, severity: u8) -> u64 {
 }
 
 // Entry 8: Record manual attribution (admin only, for community contributions)
-entry record_manual_attribution(user: Address, category: u8, points: u64, _reason: string) -> u64 {
+// Stores the reason and logs to admin audit trail
+entry record_manual_attribution(user: Address, category: u8, points: u64, reason: string) -> u64 {
     when_not_paused()
     when_not_frozen()
     only_admin()
     require(category >= 1 && category <= 7, "badcat")
-    require(points <= 10000, "toomuch")  // cap manual attribution
+    let s: Storage = Storage::new()
+    let cap: u64 = s.load(MANUAL_CAP_KEY).unwrap_or(DEFAULT_MANUAL_CAP)
+    require(points <= cap, "toomuch")
+
+    // Check user is not disqualified
+    let is_disq: bool = s.load(DISQUALIFIED_PREFIX + user.to_string()).unwrap_or(false)
+    require(!is_disq, "disqualified")
+
     add_points(user, category, points)
+    log_admin_action(1u8, user, category, points, 0u64, reason)
+    emit_event("ManualAttribution", user.to_string() + "_" + points.to_string() + "_" + reason)
     return 0
 }
 
@@ -503,15 +606,37 @@ entry finalize_distribution() -> u64 {
             let user: Address = user_opt.expect("err")
             let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("err")
 
-            // Check qualification
+            // v10.4.2: Check disqualification (banned users get 0)
+            let is_disqualified: bool = s.load(DISQUALIFIED_PREFIX + user.to_string()).unwrap_or(false)
+            if is_disqualified {
+                up.qualified = false
+                up.total_with_bonus = 0
+                s.store(USER_PREFIX + user.to_string(), up)
+                i += 1
+                continue
+            }
+
+            // v10.4.2: Check force-qualification (admin override)
+            let is_force_qualified: bool = s.load(FORCE_QUALIFIED_PREFIX + user.to_string()).unwrap_or(false)
+
+            // Check standard qualification
             let has_mainnet: bool = up.mainnet_address != Address::zero()
             let has_min_points: bool = up.total_raw >= MIN_POINTS_TO_QUALIFY
             let has_min_days: bool = up.days_active >= MIN_DAYS_ACTIVE
-            up.qualified = has_mainnet && has_min_points && has_min_days
+            let standard_qualified: bool = has_mainnet && has_min_points && has_min_days
+
+            // Qualified if standard OR force-qualified
+            up.qualified = standard_qualified || is_force_qualified
 
             if up.qualified {
                 // Apply bonuses
                 let bonus_mult: u64 = 10000  // 1x base
+
+                // v10.4.2: Custom user bonus multiplier (e.g. +50% for Discord mods)
+                let custom_mult: u64 = s.load(USER_BONUS_PREFIX + user.to_string()).unwrap_or(0)
+                if custom_mult > 0 {
+                    bonus_mult = (bonus_mult * custom_mult) / 10000
+                }
 
                 // Multi-role bonus (3+ categories with > 0 points)
                 let active_categories: u64 = 0
@@ -899,6 +1024,176 @@ pub fn get_user_full_info(user: Address) -> (u64, u64, u64, u64, u64, u64, u64, 
         up.total_raw, up.total_with_bonus,
         up.days_active, up.mainnet_address, up.qualified, rank
     )
+}
+
+// ============================================================================
+// v10.4.2: Admin power features — batch, deduct, disqualify, force-qualify, multiplier
+// ============================================================================
+
+// Entry 32: Batch manual attribution — add points to multiple users at once
+// Efficient for rewarding Discord helpers, community contributors, etc.
+// users: array of testnet addresses (max 50 per call)
+// category: 1-7
+// points: same amount for all users in this batch
+// reason: human-readable reason (stored in audit log)
+entry record_manual_attribution_batch(
+    users: Address[],
+    category: u8,
+    points: u64,
+    reason: string
+) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_admin()
+    require(users.len() > 0 && users.len() <= 50, "badbatch")
+    require(category >= 1 && category <= 7, "badcat")
+    require(points > 0, "zero")
+    let s: Storage = Storage::new()
+    let cap: u64 = s.load(MANUAL_CAP_KEY).unwrap_or(DEFAULT_MANUAL_CAP)
+    require(points <= cap, "toomuch")
+
+    let i: u64 = 0
+    while i < users.len() {
+        let user: Address = users[i]
+        let is_disq: bool = s.load(DISQUALIFIED_PREFIX + user.to_string()).unwrap_or(false)
+        if !is_disq {
+            add_points(user, category, points)
+        }
+        i += 1
+    }
+
+    log_admin_action(6u8, Address::zero(), category, points, 0u64, reason + " (batch " + users.len().to_string() + " users)")
+    emit_event("BatchAttribution", users.len().to_string() + "_" + points.to_string() + "_" + reason)
+    return users.len()
+}
+
+// Entry 33: Deduct points from a user (admin, with reason)
+// Used to correct mistakes or penalize users for rule violations
+entry deduct_points(user: Address, category: u8, points: u64, reason: string) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_admin()
+    require(category >= 1 && category <= 7, "badcat")
+    require(points > 0, "zero")
+    deduct_points_internal(user, category, points)
+    log_admin_action(2u8, user, category, points, 0u64, reason)
+    emit_event("PointsDeducted", user.to_string() + "_" + points.to_string() + "_" + reason)
+    return 0
+}
+
+// Entry 34: Disqualify a user (admin, with reason)
+// Banned users get 0 VLT even if they have points
+// Used for cheaters, Sybil attackers, bot farmers
+entry disqualify_user(user: Address, reason: string) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(DISQUALIFIED_PREFIX + user.to_string(), true)
+    log_admin_action(3u8, user, 0u8, 0u64, 0u64, reason)
+    emit_event("UserDisqualified", user.to_string() + "_" + reason)
+    return 0
+}
+
+// Entry 35: Revoke disqualification (admin, with reason)
+// Undo a disqualification if it was made by mistake
+entry revoke_disqualification(user: Address, reason: string) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(DISQUALIFIED_PREFIX + user.to_string(), false)
+    log_admin_action(3u8, user, 0u8, 0u64, 0u64, "REVOKE: " + reason)
+    emit_event("DisqualificationRevoked", user.to_string())
+    return 0
+}
+
+// Entry 36: Force-qualify a user (admin, with reason)
+// Manually qualify a user who doesn't meet standard thresholds
+// Used for valuable contributors (Discord mods, doc writers) who don't have 7 days
+entry force_qualify_user(user: Address, reason: string) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(FORCE_QUALIFIED_PREFIX + user.to_string(), true)
+    log_admin_action(4u8, user, 0u8, 0u64, 0u64, reason)
+    emit_event("UserForceQualified", user.to_string() + "_" + reason)
+    return 0
+}
+
+// Entry 37: Revoke force-qualification (admin, with reason)
+entry revoke_force_qualification(user: Address, reason: string) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(FORCE_QUALIFIED_PREFIX + user.to_string(), false)
+    log_admin_action(4u8, user, 0u8, 0u64, 0u64, "REVOKE: " + reason)
+    emit_event("ForceQualificationRevoked", user.to_string())
+    return 0
+}
+
+// Entry 38: Set custom bonus multiplier for a user (admin, with reason)
+// multiplier_bps: 10000 = 1x (no bonus), 15000 = +50%, 20000 = +100%, 0 = remove
+// Used to reward Discord moderators, community leaders, etc.
+entry set_user_bonus_multiplier(user: Address, multiplier_bps: u64, reason: string) -> u64 {
+    only_admin()
+    require(multiplier_bps <= 30000, "toohigh")  // max 3x
+    let s: Storage = Storage::new()
+    s.store(USER_BONUS_PREFIX + user.to_string(), multiplier_bps)
+    log_admin_action(5u8, user, 0u8, 0u64, multiplier_bps, reason)
+    emit_event("BonusMultiplierSet", user.to_string() + "_" + multiplier_bps.to_string() + "_" + reason)
+    return 0
+}
+
+// Entry 39: Set manual attribution cap (admin)
+// Change the max points per record_manual_attribution call
+entry set_manual_attribution_cap(new_cap: u64) -> u64 {
+    only_admin()
+    require(new_cap >= 100 && new_cap <= 500000, "badcap")
+    let s: Storage = Storage::new()
+    s.store(MANUAL_CAP_KEY, new_cap)
+    return 0
+}
+
+// Pub fn 38: Get user's custom bonus multiplier (0 = no custom multiplier)
+pub fn get_user_bonus_multiplier(user: Address) -> u64 {
+    let s: Storage = Storage::new()
+    return s.load(USER_BONUS_PREFIX + user.to_string()).unwrap_or(0)
+}
+
+// Pub fn 39: Check if user is disqualified
+pub fn is_disqualified(user: Address) -> bool {
+    let s: Storage = Storage::new()
+    return s.load(DISQUALIFIED_PREFIX + user.to_string()).unwrap_or(false)
+}
+
+// Pub fn 40: Check if user is force-qualified
+pub fn is_force_qualified(user: Address) -> bool {
+    let s: Storage = Storage::new()
+    return s.load(FORCE_QUALIFIED_PREFIX + user.to_string()).unwrap_or(false)
+}
+
+// Pub fn 41: Get admin log count (total actions ever, may exceed ADMIN_LOG_MAX)
+pub fn get_admin_log_count() -> u64 {
+    let s: Storage = Storage::new()
+    return s.load(ADMIN_LOG_COUNT_KEY).unwrap_or(0)
+}
+
+// Pub fn 42: Get admin log entry at index (ring buffer, use index % ADMIN_LOG_MAX)
+// Returns (admin, action_type, target_user, category, amount, multiplier_bps, reason, topo)
+pub fn get_admin_log_entry(index: u64) -> (Address, u8, Address, u8, u64, u64, string, u64) {
+    let s: Storage = Storage::new()
+    let entry: AdminLogEntry = s.load(ADMIN_LOG_PREFIX + index.to_string()).expect("oob")
+    return (
+        entry.admin,
+        entry.action_type,
+        entry.target_user,
+        entry.category,
+        entry.amount,
+        entry.multiplier_bps,
+        entry.reason,
+        entry.topo
+    )
+}
+
+// Pub fn 43: Get manual attribution cap
+pub fn get_manual_attribution_cap() -> u64 {
+    let s: Storage = Storage::new()
+    return s.load(MANUAL_CAP_KEY).unwrap_or(DEFAULT_MANUAL_CAP)
 }
 
 // Entry 23: Set authorized recorder (contract that can call record_*)

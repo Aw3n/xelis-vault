@@ -207,3 +207,70 @@ Complete airdrop infrastructure: track contributions on testnet, distribute VLT 
 - Deployment priority: 37 core + 13 pending = 50 total
 - Tests: 26/26 PASS (100%)
 
+
+---
+
+## [v10.4.1] — 2026-08-09
+
+### Added — Airdrop CLI module + dashboard getters
+
+#### NEW: `scripts/airdrop_cli.py` (550+ lines)
+
+Complete interactive CLI module for the airdrop campaign. Integrates into `xvault` main menu as a new "🪂 Airdrop" option.
+
+**Features:**
+- **Dashboard** — real-time stats (participants, qualified, total points, distributable, status, timeline)
+- **My Stats** — user's points, rank, percentage, estimated VLT, days active, qualification status
+- **Leaderboard** — top 20 contributors with rank, points, VLT, qualification badge
+- **My Breakdown** — points per category with visual bars + how to earn more
+- **Register Mainnet Address** — interactive flow to record mainnet address (with anti-double-use check)
+- **Category Stats** — all 7 categories with percentages, visual bars, and how to earn
+- **Lookup User** — search any testnet address to see their profile
+- **How to Earn Guide** — complete guide with all point values and qualification requirements
+
+**Integration in `xvault.py`:**
+- New "🪂 Airdrop" menu entry in main menu
+- Dashboard now shows airdrop mini-stats (status, participants, my points, my rank)
+- All 25 AirdropTracker pub fn accessible via the CLI
+
+#### MODIFIED: `contracts/airdrop/AirdropTracker.slx`
+
+Added 15 new pub fn for dashboard/website integration:
+- `get_protocol_stats()` — all key metrics in 1 call
+- `get_user_full_info(user)` — all 13 fields in 1 call (gas-efficient)
+- `get_leaderboard_at_rank(rank)` — address at position N
+- `get_leaderboard_entry(rank)` — full entry (addr, points, qualified, mainnet, distribution)
+- `get_user_rank(user)` — position in leaderboard
+- `get_estimated_distribution(user)` — VLT estimate before finalize
+- `get_user_percentage(user)` — % of total (bps)
+- `get_category_total(cat)` / `get_all_category_totals()` — category stats
+- `get_testnet_address(mainnet_addr)` — reverse lookup
+- `get_snapshot_info()` — deploy/freeze/finalize timestamps
+- `get_user_activity_summary(user)` — days_active, qualified, has_mainnet
+- `get_user_at_index(index)` — for iteration
+- `is_qualified(user)` — bool
+- `get_total_distributable()` — constant
+
+**New storage keys:**
+- `START_TOPO_KEY`, `FREEZE_TOPO_KEY`, `FINALIZE_TOPO_KEY` (timestamps)
+- `MAINNET_TO_TESTNET_PREFIX` (reverse lookup with anti-double-use)
+- `CAT_TOTAL_PREFIX` (category totals)
+
+**Modified functions:**
+- `add_points()` now tracks category totals
+- `record_mainnet_address()` now maintains reverse lookup + prevents double-registration
+- `freeze_points()` stores FREEZE_TOPO
+- `finalize_distribution()` stores FINALIZE_TOPO
+
+#### UPDATED: `docs/AIRDROP_PLAN.md`
+
+New section 10 "Getters pour le site web (dashboard)" with:
+- 4 subsections: Stats globales, Profil user, Leaderboard, Reverse lookup
+- Detailed tables for each function (return type, usage)
+- JavaScript integration example for website
+
+### Stats
+- AirdropTracker: 10 → 25 pub fn (+15)
+- New script: airdrop_cli.py (550+ lines, 6 screens)
+- All validators pass: 23/23 chunk IDs, 26/26 tests, 0 forbidden patterns
+

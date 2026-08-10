@@ -29,6 +29,7 @@ except ImportError:
 # Import TUI library
 sys.path.insert(0, str(Path(__file__).parent))
 from tui import *
+from airdrop_cli import AirdropClient, screen_airdrop_dashboard
 
 VAULT_DIR = Path.home() / ".xelis-vault"
 CONFIG_PATH = VAULT_DIR / "config" / "config.json"
@@ -170,6 +171,36 @@ def screen_dashboard(client):
     else:
         print(f"    {C.DIM}(wallet not connected){C.RESET}")
     print()
+
+    # Airdrop mini-stats
+    airdrop = AirdropClient(client.cfg, client)
+    if airdrop.is_configured():
+        stats = airdrop.get_protocol_stats()
+        if stats and len(stats) >= 6:
+            user_count = stats[0]
+            qualified = stats[1]
+            total_pts = stats[2]
+            frozen = stats[4]
+            finalized = stats[5]
+            print(f"  {C.BOLD}🪂 Airdrop Campaign:{C.RESET}")
+            if finalized:
+                status = f"{C.GREEN}Finalized{C.RESET}"
+            elif frozen:
+                status = f"{C.YELLOW}Frozen{C.RESET}"
+            else:
+                status = f"{C.GREEN}Active{C.RESET}"
+            print(f"    {C.CYAN}Status:{C.RESET}            {status}")
+            print(f"    {C.CYAN}Participants:{C.RESET}      {user_count:,}")
+            print(f"    {C.CYAN}Qualified:{C.RESET}          {qualified:,}")
+            print(f"    {C.CYAN}Total points:{C.RESET}      {total_pts:,}")
+            # My points
+            if addr and addr != "(not set)":
+                my_pts = airdrop.get_user_points(addr)
+                my_rank = airdrop.get_user_rank(addr)
+                if my_pts:
+                    print(f"    {C.YELLOW}My points:{C.RESET}          {my_pts:,} (rank #{my_rank or '—'})")
+            print()
+
     print(f"  {C.BOLD}Protocol Stats:{C.RESET}")
     print(f"    {C.CYAN}Active miners:{C.RESET}     --")
     print(f"    {C.CYAN}XEL/USD price:{C.RESET}     --")
@@ -618,6 +649,7 @@ def main():
             ("Governance         — Stake, vote, propose", "governance"),
             ("Mixer              — Private transfers", "mixer"),
             ("Chat               — Encrypted messaging", "chat"),
+            ("🪂 Airdrop          — Points, leaderboard, claim", "airdrop"),
             ("Stats              — Protocol statistics", "stats"),
             ("Settings           — Configure", "settings"),
             ("Exit", None),
@@ -639,6 +671,9 @@ def main():
             screen_mixer(client)
         elif choice == "chat":
             screen_chat(client)
+        elif choice == "airdrop":
+            airdrop = AirdropClient(cfg, client)
+            screen_airdrop_dashboard(client, airdrop)
         elif choice == "stats":
             screen_stats(client)
         elif choice == "settings":

@@ -99,6 +99,17 @@ const MERKLE_ROOT_KEY: string = "mr"
 const TOTAL_POINTS_KEY: string = "tp"
 const QUALIFIED_COUNT_KEY: string = "qc"
 
+// v10.4.1: Timestamps for transparency
+const START_TOPO_KEY: string = "stt"        // when contract was deployed
+const FREEZE_TOPO_KEY: string = "fzt"        // when points were frozen
+const FINALIZE_TOPO_KEY: string = "flt"       // when distribution was finalized
+
+// v10.4.1: Reverse lookup — mainnet_addr → testnet_addr
+const MAINNET_TO_TESTNET_PREFIX: string = "m2t_"
+
+// v10.4.1: Category totals (for stats dashboard)
+const CAT_TOTAL_PREFIX: string = "ct_"        // category → total points across all users
+
 // Categories
 const CAT_MINING: u8 = 1
 const CAT_RELAYER: u8 = 2
@@ -171,6 +182,9 @@ hook constructor() -> u64 {
     s.store(TOTAL_POINTS_KEY, 0u64)
     s.store(QUALIFIED_COUNT_KEY, 0u64)
     s.store(MERKLE_ROOT_KEY, Hash::zero())
+    s.store(START_TOPO_KEY, get_current_topoheight())
+    s.store(FREEZE_TOPO_KEY, 0u64)
+    s.store(FINALIZE_TOPO_KEY, 0u64)
     return 0
 }
 
@@ -305,6 +319,11 @@ fn add_points(user: Address, category: u8, points: u64) {
     // Update global total
     let total: u64 = s.load(TOTAL_POINTS_KEY).unwrap_or(0)
     s.store(TOTAL_POINTS_KEY, total + points)
+
+    // Update category total (for stats dashboard)
+    let cat_key: string = CAT_TOTAL_PREFIX + category.to_string()
+    let cat_total: u64 = s.load(cat_key).unwrap_or(0)
+    s.store(cat_key, cat_total + points)
 }
 
 // Entry 0: Record mining activity (called by XelisVaultMiner or StakedOracle)
@@ -432,9 +451,21 @@ entry record_mainnet_address(mainnet_addr: Address) -> u64 {
     require(mainnet_addr != Address::zero(), "badaddr")
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
+
+    // Check if mainnet_addr is already used by another testnet address
+    let existing_opt: optional<Address> = s.load(MAINNET_TO_TESTNET_PREFIX + mainnet_addr.to_string())
+    require(existing_opt.is_none() || existing_opt.expect("err") == caller, "mainnetused")
+
+    // If user had a previous mainnet address, clear the old reverse lookup
     let up: UserPoints = get_or_init_user(caller)
+    if up.mainnet_address != Address::zero() && up.mainnet_address != mainnet_addr {
+        s.delete(MAINNET_TO_TESTNET_PREFIX + up.mainnet_address.to_string())
+    }
+
+    // Set new mainnet address + reverse lookup
     up.mainnet_address = mainnet_addr
     s.store(USER_PREFIX + caller.to_string(), up)
+    s.store(MAINNET_TO_TESTNET_PREFIX + mainnet_addr.to_string(), caller)
     emit_event("MainnetAddressRecorded", caller.to_string())
     return 0
 }
@@ -447,6 +478,7 @@ entry freeze_points() -> u64 {
     let frozen: bool = s.load(FROZEN_KEY).unwrap_or(false)
     require(!frozen, "alreadyfrozen")
     s.store(FROZEN_KEY, true)
+    s.store(FREEZE_TOPO_KEY, get_current_topoheight())
     emit_event("PointsFrozen", "")
     return 0
 }
@@ -509,6 +541,7 @@ entry finalize_distribution() -> u64 {
     s.store(TOTAL_POINTS_KEY, total_with_bonus)
     s.store(QUALIFIED_COUNT_KEY, qualified_count)
     s.store(FINALIZED_KEY, true)
+    s.store(FINALIZE_TOPO_KEY, get_current_topoheight())
     emit_event("DistributionFinalized", qualified_count.to_string())
     return qualified_count
 }
@@ -602,6 +635,270 @@ pub fn get_merkle_root() -> Hash {
 pub fn get_qualified_users() -> u64 {
     let s: Storage = Storage::new()
     return s.load(QUALIFIED_COUNT_KEY).unwrap_or(0)
+}
+
+// ============================================================================
+// v10.4.1: Dashboard getters — for website / leaderboard / stats
+// ============================================================================
+
+// Pub fn 23: Get user at index (for website iteration)
+// Returns the testnet address of the user at position `index` in the user list
+pub fn get_user_at_index(index: u64) -> Address {
+    let s: Storage = Storage::new()
+    return s.load(USER_LIST_PREFIX + index.to_string()).expect("oob")
+}
+
+// Pub fn 24: Get user rank (position in leaderboard by total points)
+// Returns 0 if user not found, otherwise 1-indexed rank
+// Note: This is O(N) — for large user counts, prefer off-chain indexing
+pub fn get_user_rank(user: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let user_opt: optional<UserPoints> = s.load(USER_PREFIX + user.to_string())
+    if user_opt.is_none() { return 0 }
+    let target: UserPoints = user_opt.expect("err")
+
+    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
+    let target_points: u64 = 0
+    if finalized {
+        target_points = target.total_with_bonus
+    } else {
+        target_points = target.total_raw
+    }
+
+    let count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
+    let rank: u64 = 1
+    let i: u64 = 0
+    while i < count {
+        let addr_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string())
+        if addr_opt.is_some() {
+            let addr: Address = addr_opt.expect("err")
+            if addr != user {
+                let other: UserPoints = s.load(USER_PREFIX + addr.to_string()).expect("err")
+                let other_points: u64 = 0
+                if finalized {
+                    other_points = other.total_with_bonus
+                } else {
+                    other_points = other.total_raw
+                }
+                if other_points > target_points {
+                    rank += 1
+                }
+            }
+        }
+        i += 1
+    }
+    return rank
+}
+
+// Pub fn 25: Get estimated distribution (works BEFORE finalize)
+// Returns the VLT the user would receive if finalized now
+// Formula: (user_total_raw × 500,000 VLT) / sum(all_users_total_raw)
+pub fn get_estimated_distribution(user: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
+    if finalized {
+        return get_user_distribution(user)
+    }
+
+    let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
+    let total: u64 = s.load(TOTAL_POINTS_KEY).unwrap_or(0)
+    if total == 0 { return 0 }
+    return (up.total_raw * TOTAL_DISTRIBUTABLE) / total
+}
+
+// Pub fn 26: Get user percentage (user_points / total_points × 10000 = bps)
+pub fn get_user_percentage(user: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
+    let total: u64 = s.load(TOTAL_POINTS_KEY).unwrap_or(0)
+    if total == 0 { return 0 }
+
+    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
+    let user_points: u64 = 0
+    if finalized {
+        user_points = up.total_with_bonus
+    } else {
+        user_points = up.total_raw
+    }
+
+    return (user_points * 10000) / total
+}
+
+// Pub fn 27: Get category total (total points across all users for a category)
+// category: 1=mining, 2=relayer, 3=governance, 4=chat, 5=liquidity, 6=bounty, 7=community
+pub fn get_category_total(category: u8) -> u64 {
+    let s: Storage = Storage::new()
+    return s.load(CAT_TOTAL_PREFIX + category.to_string()).unwrap_or(0)
+}
+
+// Pub fn 28: Get all category totals in one call
+// Returns (mining, relayer, governance, chat, liquidity, bounty, community)
+pub fn get_all_category_totals() -> (u64, u64, u64, u64, u64, u64, u64) {
+    let s: Storage = Storage::new()
+    return (
+        s.load(CAT_TOTAL_PREFIX + "1").unwrap_or(0),
+        s.load(CAT_TOTAL_PREFIX + "2").unwrap_or(0),
+        s.load(CAT_TOTAL_PREFIX + "3").unwrap_or(0),
+        s.load(CAT_TOTAL_PREFIX + "4").unwrap_or(0),
+        s.load(CAT_TOTAL_PREFIX + "5").unwrap_or(0),
+        s.load(CAT_TOTAL_PREFIX + "6").unwrap_or(0),
+        s.load(CAT_TOTAL_PREFIX + "7").unwrap_or(0)
+    )
+}
+
+// Pub fn 29: Reverse lookup — get testnet address from mainnet address
+// Returns Address::zero() if not found
+pub fn get_testnet_address(mainnet_addr: Address) -> Address {
+    let s: Storage = Storage::new()
+    let opt: optional<Address> = s.load(MAINNET_TO_TESTNET_PREFIX + mainnet_addr.to_string())
+    if opt.is_none() { return Address::zero() }
+    return opt.expect("err")
+}
+
+// Pub fn 30: Get snapshot info (timestamps)
+// Returns (deploy_topo, freeze_topo, finalize_topo, current_topo)
+pub fn get_snapshot_info() -> (u64, u64, u64, u64) {
+    let s: Storage = Storage::new()
+    return (
+        s.load(START_TOPO_KEY).expect("err"),
+        s.load(FREEZE_TOPO_KEY).unwrap_or(0),
+        s.load(FINALIZE_TOPO_KEY).unwrap_or(0),
+        get_current_topoheight()
+    )
+}
+
+// Pub fn 31: Get user activity summary (days_active, last_active_day, qualified, has_mainnet)
+pub fn get_user_activity_summary(user: Address) -> (u64, u64, bool, bool) {
+    let s: Storage = Storage::new()
+    let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
+    let has_mainnet: bool = up.mainnet_address != Address::zero()
+    return (up.days_active, up.last_active_day, up.qualified, has_mainnet)
+}
+
+// Pub fn 32: Get protocol stats (all key metrics in one call)
+// Returns (user_count, qualified_count, total_points, total_distributable, frozen, finalized)
+pub fn get_protocol_stats() -> (u64, u64, u64, u64, bool, bool) {
+    let s: Storage = Storage::new()
+    return (
+        s.load(USER_COUNT_KEY).unwrap_or(0),
+        s.load(QUALIFIED_COUNT_KEY).unwrap_or(0),
+        s.load(TOTAL_POINTS_KEY).unwrap_or(0),
+        TOTAL_DISTRIBUTABLE,
+        s.load(FROZEN_KEY).unwrap_or(false),
+        s.load(FINALIZED_KEY).unwrap_or(false)
+    )
+}
+
+// Pub fn 33: Get leaderboard top N (returns addresses sorted by points desc)
+// offset: skip first N users (for pagination)
+// Returns 1 address per call — call multiple times with different rank values
+// Note: For large leaderboards, prefer off-chain indexing
+pub fn get_leaderboard_at_rank(rank: u64) -> Address {
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
+    require(rank > 0 && rank <= count, "badrank")
+
+    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
+
+    // Find the user at the given rank (N-th highest points)
+    // Simple approach: scan all users, count how many have more points
+    let i: u64 = 0
+    while i < count {
+        let addr_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string())
+        if addr_opt.is_some() {
+            let addr: Address = addr_opt.expect("err")
+            let up: UserPoints = s.load(USER_PREFIX + addr.to_string()).expect("err")
+            let user_points: u64 = 0
+            if finalized {
+                user_points = up.total_with_bonus
+            } else {
+                user_points = up.total_raw
+            }
+
+            // Count how many users have MORE points than this user
+            let higher_count: u64 = 0
+            let j: u64 = 0
+            while j < count {
+                if j != i {
+                    let other_opt: optional<Address> = s.load(USER_LIST_PREFIX + j.to_string())
+                    if other_opt.is_some() {
+                        let other_addr: Address = other_opt.expect("err")
+                        let other: UserPoints = s.load(USER_PREFIX + other_addr.to_string()).expect("err")
+                        let other_points: u64 = 0
+                        if finalized {
+                            other_points = other.total_with_bonus
+                        } else {
+                            other_points = other.total_raw
+                        }
+                        if other_points > user_points {
+                            higher_count += 1
+                        }
+                    }
+                }
+                j += 1
+            }
+
+            // If exactly (rank-1) users have more points, this is the user at this rank
+            if higher_count == rank - 1 {
+                return addr
+            }
+        }
+        i += 1
+    }
+    return Address::zero()
+}
+
+// Pub fn 34: Get leaderboard entry (full info for a rank)
+// Returns (testnet_addr, points, qualified, mainnet_addr, distribution)
+pub fn get_leaderboard_entry(rank: u64) -> (Address, u64, bool, Address, u64) {
+    let addr: Address = get_leaderboard_at_rank(rank)
+    if addr == Address::zero() {
+        return (Address::zero(), 0, false, Address::zero(), 0)
+    }
+    let s: Storage = Storage::new()
+    let up: UserPoints = s.load(USER_PREFIX + addr.to_string()).expect("err")
+    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
+    let points: u64 = 0
+    if finalized {
+        points = up.total_with_bonus
+    } else {
+        points = up.total_raw
+    }
+    let distribution: u64 = 0
+    if finalized && up.qualified {
+        let total: u64 = s.load(TOTAL_POINTS_KEY).unwrap_or(0)
+        if total > 0 {
+            distribution = (up.total_with_bonus * TOTAL_DISTRIBUTABLE) / total
+        }
+    }
+    return (addr, points, up.qualified, up.mainnet_address, distribution)
+}
+
+// Pub fn 35: Check if user is qualified
+pub fn is_qualified(user: Address) -> bool {
+    let s: Storage = Storage::new()
+    let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
+    return up.qualified
+}
+
+// Pub fn 36: Get total distributable VLT (constant, for display)
+pub fn get_total_distributable() -> u64 {
+    return TOTAL_DISTRIBUTABLE
+}
+
+// Pub fn 37: Get user full info (all fields, for profile page)
+// Returns (mining, relayer, governance, chat, liquidity, bounty, community,
+//          total_raw, total_with_bonus, days_active, mainnet_addr, qualified, rank)
+pub fn get_user_full_info(user: Address) -> (u64, u64, u64, u64, u64, u64, u64, u64, u64, u64, Address, bool, u64) {
+    let s: Storage = Storage::new()
+    let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
+    let rank: u64 = get_user_rank(user)
+    return (
+        up.mining, up.relayer, up.governance, up.chat,
+        up.liquidity, up.bounty, up.community,
+        up.total_raw, up.total_with_bonus,
+        up.days_active, up.mainnet_address, up.qualified, rank
+    )
 }
 
 // Entry 23: Set authorized recorder (contract that can call record_*)

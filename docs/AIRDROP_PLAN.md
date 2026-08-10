@@ -326,7 +326,89 @@ Implémentation : simple contrat `LaunchAirdrop.slx` (à créer si besoin) qui d
 
 ---
 
-## 10. Scripts fournis
+## 10. Getters pour le site web (dashboard)
+
+Le contrat `AirdropTracker` expose **25 pub fn** pour permettre à un site web d'afficher toutes les infos en temps réel.
+
+### Stats globales (page d'accueil)
+
+| Fonction | Retourne | Usage |
+|----------|----------|-------|
+| `get_protocol_stats()` | `(user_count, qualified_count, total_points, total_distributable, frozen, finalized)` | Header stats bar |
+| `get_total_points()` | `u64` | Total points accumulés |
+| `get_user_count()` | `u64` | Nombre de participants |
+| `get_qualified_users()` | `u64` | Nombre d'utilisateurs qualifiés |
+| `get_total_distributable()` | `u64` | 500 000 VLT (constant) |
+| `get_all_category_totals()` | `(mining, relayer, gov, chat, liq, bounty, community)` | Pie chart par catégorie |
+| `get_category_total(cat)` | `u64` | Total pour une catégorie |
+| `is_frozen()` | `bool` | État de la collecte |
+| `is_finalized()` | `bool` | État de la distribution |
+| `get_snapshot_info()` | `(deploy_topo, freeze_topo, finalize_topo, current_topo)` | Timeline |
+
+### Profil utilisateur (page user)
+
+| Fonction | Retourne | Usage |
+|----------|----------|-------|
+| `get_user_full_info(user)` | `(mining, relayer, gov, chat, liq, bounty, community, total_raw, total_with_bonus, days_active, mainnet_addr, qualified, rank)` | Profil complet |
+| `get_user_points(user)` | `u64` | Points totaux |
+| `get_user_breakdown(user)` | `(mining, relayer, gov, chat, liq, bounty, community, total_raw, total_with_bonus, qualified, registered)` | Bar chart par catégorie |
+| `get_user_distribution(user)` | `u64` | VLT à recevoir (après finalize) |
+| `get_estimated_distribution(user)` | `u64` | VLT estimé (avant finalize) |
+| `get_user_percentage(user)` | `u64` | % du total (en bps) |
+| `get_user_rank(user)` | `u64` | Position dans le classement (1-indexed) |
+| `get_user_activity_summary(user)` | `(days_active, last_active_day, qualified, has_mainnet)` | Stats d'activité |
+| `get_mainnet_address(user)` | `Address` | Adresse mainnet enregistrée |
+| `is_qualified(user)` | `bool` | Si l'utilisateur est qualifié |
+
+### Leaderboard (page classement)
+
+| Fonction | Retourne | Usage |
+|----------|----------|-------|
+| `get_leaderboard_at_rank(rank)` | `Address` | Adresse à la position `rank` |
+| `get_leaderboard_entry(rank)` | `(addr, points, qualified, mainnet_addr, distribution)` | Entrée complète à la position `rank` |
+| `get_user_at_index(index)` | `Address` | N-ième user (pour itération) |
+
+### Reverse lookup (recherche)
+
+| Fonction | Retourne | Usage |
+|----------|----------|-------|
+| `get_testnet_address(mainnet_addr)` | `Address` | Trouve le user testnet depuis son addr mainnet |
+
+### Merkle & claim (page mainnet)
+
+| Fonction | Retourne | Usage |
+|----------|----------|-------|
+| `get_merkle_root()` | `Hash` | Root publié pour vérification |
+
+### Exemple d'intégration site web
+
+```javascript
+// Page d'accueil — stats bar
+const stats = await tracker.call("get_protocol_stats", []);
+// stats = [userCount, qualifiedCount, totalPoints, totalDistributable, frozen, finalized]
+
+// Pie chart — répartition par catégorie
+const totals = await tracker.call("get_all_category_totals", []);
+// totals = [mining, relayer, governance, chat, liquidity, bounty, community]
+
+// Profil user — toutes les infos en 1 call
+const userInfo = await tracker.call("get_user_full_info", [userAddr]);
+// userInfo = [mining, relayer, gov, chat, liq, bounty, community,
+//             totalRaw, totalWithBonus, daysActive, mainnetAddr, qualified, rank]
+
+// Leaderboard top 10
+for (let rank = 1; rank <= 10; rank++) {
+    const entry = await tracker.call("get_leaderboard_entry", [rank]);
+    // entry = [testnetAddr, points, qualified, mainnetAddr, distribution]
+}
+
+// Distribution estimée (avant finalize)
+const estAmount = await tracker.call("get_estimated_distribution", [userAddr]);
+```
+
+---
+
+## 11. Scripts fournis
 
 | Script | Rôle |
 |--------|------|
@@ -335,7 +417,7 @@ Implémentation : simple contrat `LaunchAirdrop.slx` (à créer si besoin) qui d
 
 ---
 
-## 11. Estimations
+## 12. Estimations
 
 ### Scenario 1 : Testnet modeste (100 users actifs)
 

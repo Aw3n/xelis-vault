@@ -1280,3 +1280,19 @@ pub fn get_leaderboard() -> (Address, u64, Address, u64, Address, u64, Address, 
     
     return (top1, top1_rep, top2, top2_rep, top3, top3_rep, top4, top4_rep, top5, top5_rep)
 }
+
+// ============================================================================
+// v10.5: Entry wrappers for cross-contract getters (called by MinerPool, etc.)
+// ============================================================================
+
+// ID 36: get_miner_stake_entry
+entry get_miner_stake_entry(addr: Address) -> u64 { return get_miner_stake(addr) }
+
+// ID 37: get_miner_reputation_entry
+entry get_miner_reputation_entry(addr: Address) -> u64 { return get_miner_reputation(addr) }
+
+// ID 38: get_active_miners_count_entry
+entry get_active_miners_count_entry() -> u64 { return get_active_miners_count() }
+
+// ID 39: get_miner_at_entry
+entry get_miner_at_entry(index: u64) -> Address { return get_miner_at(index) }

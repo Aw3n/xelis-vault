@@ -1,7 +1,7 @@
 // ============================================================================
 // PSM.slx — XELIS Vault v5.0 (Peg Stability Module)
 // ----------------------------------------------------------------------------
-// FIX #12: get_xel_price() calls oracle.call(21u16, [Hash::zero()], {})
+// FIX #12: get_xel_price() calls oracle.call(4u16, [Hash::zero()], {})
 //          (PriceOracle entry 4 = get_price(asset: Hash)).
 // FIX #14: Two-step emergency_withdraw at IDs 11/12 with 17280-block delay.
 //
@@ -132,7 +132,7 @@ fn get_xel_price() -> u64 {
     let s: Storage = Storage::new()
     let oracle_hash: Hash = s.load(ORACLE_KEY).expect("err")
     let oracle: Contract = Contract::new(oracle_hash).expect("err")
-    let price: u64 = oracle.call(21u16, [Hash::zero()], {})
+    let price: u64 = oracle.call(4u16, [Hash::zero()], {})
     require(price > 0, "noprice")
     return price
 }

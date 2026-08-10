@@ -148,7 +148,7 @@ fn get_oracle() -> Contract {
     let reg_hash: Hash = s.load(REGISTRY_KEY).expect("err")
     let reg: Contract = Contract::new(reg_hash).expect("err")
     // ContractRegistry v5.0 entry 0 = get_entry(name) -> Hash
-    let oracle_hash: Hash = reg.call(16u16, ["StakedOracle"], {})
+    let oracle_hash: Hash = reg.call(0u16, ["StakedOracle"], {})
     require(oracle_hash != Hash::zero(), "oraclenotfound")
     return Contract::new(oracle_hash).expect("err")
 }
@@ -156,7 +156,7 @@ fn get_oracle() -> Contract {
 fn get_xel_price() -> u64 {
     let oracle: Contract = get_oracle()
     // StakedOracle v5.0 entry 9 = get_price_for_asset_entry(asset) -> u64
-    let price: u64 = oracle.call(21u16, [Hash::zero()], {})
+    let price: u64 = oracle.call(4u16, [Hash::zero()], {})
     require(price > 0, "noprice")
     return price
 }

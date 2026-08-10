@@ -400,6 +400,10 @@ entry submit_price(feed_id: u64, price: u64) -> u64 {
     require(price > 0, "zero")
     require(price >= feed.min_price && price <= feed.max_price, "oorange")
 
+    // v10.5: Circuit breaker check — reject submissions when feed is CB-paused
+    let cb_paused: bool = s.load(FEED_CB_PAUSED_PREFIX + feed_id.to_string(10u32)).unwrap_or(false)
+    require(!cb_paused, "cbpaused")
+
     let cycle: u64 = s.load(CYCLE_PREFIX + feed_id.to_string(10u32)).unwrap_or(0)
     let provided_key: string = SUB_PROVIDED_PREFIX + feed_id.to_string(10u32) + "_" + cycle.to_string(10u32) + "_" + caller.to_string()
     require(s.load(provided_key).is_none(), "alreadysub")
@@ -810,3 +814,79 @@ entry get_version() -> string { return VERSION }
 // pub fn (read-only) — usable internally and via entry wrappers above
 // ============================================================================
 
+
+// ============================================================================
+// v10.5: Entry wrappers for parameter setters (called by OracleGovernance)
+// These are entry versions of the pub fn above, so they get entry IDs
+// and can be called cross-contract via Contract::call.
+// ============================================================================
+
+// ID 16: set_max_deviation_bps_entry
+entry set_max_deviation_bps_entry(bps: u64) -> u64 { return set_max_deviation_bps(bps) }
+
+// ID 17: set_cb_threshold_bps_entry
+entry set_cb_threshold_bps_entry(bps: u64) -> u64 { return set_cb_threshold_bps(bps) }
+
+// ID 18: set_aggregation_blocks_entry
+entry set_aggregation_blocks_entry(n: u64) -> u64 { return set_aggregation_blocks(n) }
+
+// ID 19: set_max_stale_blocks_entry
+entry set_max_stale_blocks_entry(n: u64) -> u64 { return set_max_stale_blocks(n) }
+
+// ID 20: set_hard_stale_blocks_entry
+entry set_hard_stale_blocks_entry(n: u64) -> u64 { return set_hard_stale_blocks(n) }
+
+// ID 21: pause_entry (entry wrapper for pub fn pause)
+entry pause_entry(reason: string) -> u64 { return pause(reason) }
+
+// ID 22: unpause_entry (entry wrapper for pub fn unpause)
+entry unpause_entry() -> u64 { return unpause() }
+
+// ============================================================================
+// v10.5: force_update_price — escape hatch for stuck feeds
+// ----------------------------------------------------------------------------
+// If a feed is permanently stuck due to circuit breaker or rapid price movement
+// beyond the deviation threshold, admin can force-update the price.
+// This unblocks the feed without needing to wait for new submissions.
+//
+// Audit fix: "no exit door" — previously a feed could be stuck forever
+// ============================================================================
+
+// ID 23: force_update_price (admin/guardian only)
+// Force-update a feed's aggregated price, bypassing deviation check.
+// Resets the circuit breaker for this feed.
+// @caller: admin or guardian
+// @params: feed_id - id of the feed to update
+// @params: new_price - the new price to set
+// @returns: 0 on success
+// @security: only_guardian_or_admin, emits event, resets CB flag
+entry force_update_price(feed_id: u64, new_price: u64) -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    let feed: Feed = s.load(FEED_PREFIX + feed_id.to_string(10u32)).expect("fnf")
+    require(new_price > 0, "zero")
+    require(new_price >= feed.min_price && new_price <= feed.max_price, "oorange")
+
+    // Build a new AggregatedPrice with current topoheight
+    let agg: AggregatedPrice = AggregatedPrice {
+        price: new_price,
+        topo: get_current_topoheight(),
+        deviation_bps: 0,
+        sources_count: 1,
+        cycle: s.load(CYCLE_PREFIX + feed_id.to_string(10u32)).unwrap_or(0)
+    }
+    s.store(FEED_AGG_PREFIX + feed_id.to_string(10u32), agg)
+
+    // Reset circuit breaker
+    s.store(FEED_CB_PAUSED_PREFIX + feed_id.to_string(10u32), false)
+
+    // Advance cycle to allow fresh submissions
+    let cycle: u64 = s.load(CYCLE_PREFIX + feed_id.to_string(10u32)).unwrap_or(0)
+    s.store(CYCLE_PREFIX + feed_id.to_string(10u32), cycle + 1)
+
+    // Reset submission tracking
+    s.store(SUB_COUNT_PREFIX + feed_id.to_string(10u32) + "_" + cycle.to_string(10u32), 0u64)
+
+    emit_event("ForceUpdatePrice", feed_id.to_string(10u32) + "_" + new_price.to_string(10u32))
+    return 0
+}

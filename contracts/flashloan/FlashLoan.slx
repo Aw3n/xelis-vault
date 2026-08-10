@@ -101,6 +101,10 @@ entry flash_loan(
     non_reentrant()
     require(amount > 0, "amtgt0")
 
+    // v10.5: Verify callback contract is whitelisted (audit fix)
+    let cb_verified: bool = s.load(VERIFIED_CALLBACK_PREFIX + callback_contract.to_hex()).unwrap_or(false)
+    require(cb_verified, "cbnotverified")
+
     let balance_before: u64 = get_balance_for_asset(asset).unwrap_or(0)
     require(balance_before >= amount, "insliquidity")
 

@@ -3,7 +3,7 @@
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
 
 Each `entry` function gets a sequential ID starting at 0 in declaration order.
-**Total entry functions across 50 contracts:** 899
+**Total entry functions across 51 contracts:** 935
 
 `pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.
 
@@ -36,20 +36,28 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 5 | `record_chat_group_created` | `creator: Address` | `u` |
 | 6 | `record_liquidity_provided` | `user: Address, xel_amount: u64` | `u` |
 | 7 | `record_bug_bounty` | `reporter: Address, severity: u8` | `u` |
-| 8 | `record_manual_attribution` | `user: Address, category: u8, points: u64, _reason: string` | `u` |
+| 8 | `record_manual_attribution` | `user: Address, category: u8, points: u64, reason: string` | `u` |
 | 9 | `record_mainnet_address` | `mainnet_addr: Address` | `u` |
 | 10 | `freeze_points` | `—` | `u` |
 | 11 | `finalize_distribution` | `—` | `u` |
 | 12 | `set_merkle_root` | `root: Hash` | `u` |
-| 13 | `set_authorized_recorder` | `addr: Address, authorized: bool` | `u` |
-| 14 | `set_vlt_contract` | `vc: Hash` | `u` |
-| 15 | `set_registry` | `registry: Hash` | `u` |
-| 16 | `set_timelock` | `tl: Hash` | `u` |
-| 17 | `set_guardian` | `g: Address` | `u` |
-| 18 | `pause` | `—` | `u` |
-| 19 | `unpause` | `—` | `u` |
-| 20 | `transfer_admin` | `new_admin: Address` | `u` |
-| 21 | `get_version` | `—` | `s` |
+| 13 | `record_manual_attribution_batch` | `users: Address[], category: u8, points: u64, reason: string` | `u` |
+| 14 | `deduct_points` | `user: Address, category: u8, points: u64, reason: string` | `u` |
+| 15 | `disqualify_user` | `user: Address, reason: string` | `u` |
+| 16 | `revoke_disqualification` | `user: Address, reason: string` | `u` |
+| 17 | `force_qualify_user` | `user: Address, reason: string` | `u` |
+| 18 | `revoke_force_qualification` | `user: Address, reason: string` | `u` |
+| 19 | `set_user_bonus_multiplier` | `user: Address, multiplier_bps: u64, reason: string` | `u` |
+| 20 | `set_manual_attribution_cap` | `new_cap: u64` | `u` |
+| 21 | `set_authorized_recorder` | `addr: Address, authorized: bool` | `u` |
+| 22 | `set_vlt_contract` | `vc: Hash` | `u` |
+| 23 | `set_registry` | `registry: Hash` | `u` |
+| 24 | `set_timelock` | `tl: Hash` | `u` |
+| 25 | `set_guardian` | `g: Address` | `u` |
+| 26 | `pause` | `—` | `u` |
+| 27 | `unpause` | `—` | `u` |
+| 28 | `transfer_admin` | `new_admin: Address` | `u` |
+| 29 | `get_version` | `—` | `s` |
 
 ## `amm/PSM.slx`
 
@@ -362,6 +370,27 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 8 | `unpause` | `—` | `u` |
 | 9 | `transfer_admin` | `new_admin: Address` | `u` |
 | 10 | `get_version` | `—` | `s` |
+
+## `founder/RevenueShareDelegation.slx`
+
+| ID | Name | Parameters | Return |
+|----|------|------------|--------|
+| 0 | `set_share` | `contributor: Address, percentage_bps: u64, duration_blocks: u64` | `u` |
+| 1 | `revoke_share` | `contributor: Address` | `u` |
+| 2 | `update_share_percentage` | `contributor: Address, new_percentage_bps: u64` | `u` |
+| 3 | `extend_share_duration` | `contributor: Address, additional_blocks: u64` | `u` |
+| 4 | `claim_founder_revenue` | `—` | `u` |
+| 5 | `claim_contributor_revenue` | `—` | `u` |
+| 6 | `receive_fee` | `asset: Hash, amount: u64` | `u` |
+| 7 | `set_vlt_contract` | `vc: Hash` | `u` |
+| 8 | `set_xel_asset` | `xa: Hash` | `u` |
+| 9 | `set_registry` | `registry: Hash` | `u` |
+| 10 | `set_timelock` | `tl: Hash` | `u` |
+| 11 | `set_guardian` | `g: Address` | `u` |
+| 12 | `pause` | `—` | `u` |
+| 13 | `unpause` | `—` | `u` |
+| 14 | `transfer_admin` | `new_admin: Address` | `u` |
+| 15 | `get_version` | `—` | `s` |
 
 ## `governance/GovernanceDelegation.slx`
 
@@ -744,6 +773,10 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 33 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
 | 34 | `set_compound` | `enabled: bool` | `u` |
 | 35 | `set_rep_decay_params` | `interval: u64, amount: u64` | `u` |
+| 36 | `get_miner_stake_entry` | `addr: Address` | `u` |
+| 37 | `get_miner_reputation_entry` | `addr: Address` | `u` |
+| 38 | `get_active_miners_count_entry` | `—` | `u` |
+| 39 | `get_miner_at_entry` | `index: u64` | `A` |
 
 ## `nft/VaultNFT.slx`
 
@@ -805,6 +838,14 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 13 | `set_emergency` | `e: Address` | `u` |
 | 14 | `transfer_admin` | `new_admin: Address` | `u` |
 | 15 | `get_version` | `—` | `s` |
+| 16 | `set_max_deviation_bps_entry` | `bps: u64` | `u` |
+| 17 | `set_cb_threshold_bps_entry` | `bps: u64` | `u` |
+| 18 | `set_aggregation_blocks_entry` | `n: u64` | `u` |
+| 19 | `set_max_stale_blocks_entry` | `n: u64` | `u` |
+| 20 | `set_hard_stale_blocks_entry` | `n: u64` | `u` |
+| 21 | `pause_entry` | `reason: string` | `u` |
+| 22 | `unpause_entry` | `—` | `u` |
+| 23 | `force_update_price` | `feed_id: u64, new_price: u64` | `u` |
 
 ## `payroll/Payroll.slx`
 

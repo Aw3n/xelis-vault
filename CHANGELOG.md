@@ -274,3 +274,96 @@ New section 10 "Getters pour le site web (dashboard)" with:
 - New script: airdrop_cli.py (550+ lines, 6 screens)
 - All validators pass: 23/23 chunk IDs, 26/26 tests, 0 forbidden patterns
 
+
+---
+
+## [v10.5] — 2026-08-09
+
+### Fixed — 9 critical bugs from external audit
+
+An external IA cloned the repo and found 9 critical bugs. All have been verified and fixed.
+
+#### 🔴 CRITICAL FIXES (would have broken the protocol at deployment)
+
+1. **Oracle entry ID wrong everywhere** (Bug #1)
+   - `oracle.call(21u16, ...)` used in 5 contracts (10 occurrences)
+   - Entry 21 does NOT exist in StakedOracle (max = 15)
+   - Correct entry: `4` (`get_price_for_asset_entry`)
+   - Fixed in: PSM, VaultSwapV2, LendingMarket, SyndicatePool, VaultEngineV3
+
+2. **ContractRegistry entry ID wrong** (Bug #2)
+   - `reg.call(16u16, ...)` in VaultEngineV3
+   - Entry 16 does NOT exist (max = 13)
+   - Correct entry: `0` (`get_entry`)
+
+3. **InterestRateModel entry IDs wrong** (Bug #3)
+   - `irm.call(11u16)` and `irm.call(12u16)` in LendingMarket
+   - These IDs do NOT exist (max = 8)
+   - Correct entries: `0` (`get_borrow_rate_entry`) and `1` (`get_supply_rate_entry`)
+
+4. **OracleGovernance entry IDs wrong** (Bug #4)
+   - `oracle.call(35-39u16)` — IDs don't exist
+   - Root cause: `pub fn` not exposed as `entry`
+   - Fix: added 7 entry wrappers to StakedOracle (IDs 16-22)
+
+5. **MinerPool entry IDs wrong** (Bug #5)
+   - `miner.call(61-62u16)` — IDs don't exist
+   - Fix: added 4 entry wrappers to XelisVaultMiner (IDs 36-39)
+
+6. **Chunk ID validator was broken** (Bug #6)
+   - Old validator only checked string existence, not actual entry IDs
+   - Reported "23/23 OK" while 25 bugs existed
+   - Fix: complete rewrite of `scripts/validate_chunk_ids.py`
+   - Now parses contracts, resolves target contracts, verifies entry IDs
+   - **73/73 real OK**
+
+#### 🟠 HIGH FIXES
+
+7. **Circuit breaker never checked** (Bug #7)
+   - `FEED_CB_PAUSED_PREFIX` was stored but never verified
+   - Fix: added `require(!cb_paused, "cbpaused")` in `submit_price`
+   - Added `force_update_price()` escape hatch (entry 23) for stuck feeds
+
+8. **FlashLoan callback whitelist never checked** (Bug #8)
+   - `verify_callback` / `is_callback_verified` existed but unused
+   - Fix: added `require(cb_verified, "cbnotverified")` in `flash_loan()`
+
+#### 🟡 MEDIUM
+
+9. **Ciphertext code may not compile** (Bug #9)
+   - v10.1 confidential functions use `Ciphertext`, `RangeProof`, `Transcript`
+   - These types may not exist in the public Silex ABI
+   - Fix: documented as experimental, recommendation to test compilation
+
+### NEW FEATURES (audit fixes)
+
+- `force_update_price(feed_id, new_price)` — StakedOracle entry 23
+  - Admin/guardian escape hatch for stuck feeds
+  - Resets circuit breaker, advances cycle
+
+- 7 entry wrappers in StakedOracle (IDs 16-22):
+  - `set_max_deviation_bps_entry`
+  - `set_cb_threshold_bps_entry`
+  - `set_aggregation_blocks_entry`
+  - `set_max_stale_blocks_entry`
+  - `set_hard_stale_blocks_entry`
+  - `pause_entry`
+  - `unpause_entry`
+
+- 4 entry wrappers in XelisVaultMiner (IDs 36-39):
+  - `get_miner_stake_entry`
+  - `get_miner_reputation_entry`
+  - `get_active_miners_count_entry`
+  - `get_miner_at_entry`
+
+### NEW DOCUMENTATION
+
+- `docs/AUDIT_v10.5.md` — complete audit report with all 9 bugs, fixes, and remaining recommendations
+
+### Stats
+- Bugs fixed: 9 (5 critical, 2 high, 1 medium, 1 validator)
+- Entry wrappers added: 11
+- Chunk IDs validated: 73/73 OK (real validator)
+- Total contracts: 51 (38 core + 13 pending)
+- Total entries: 935
+

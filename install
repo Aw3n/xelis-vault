@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-#  XELIS Vault v10.3 — One-Line Installer (Linux & macOS)
+#  XELIS Vault v10.4 — One-Line Installer (Linux & macOS)
 # ============================================================================
 #  Install:   curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash
 #  Uninstall: curl -fsSL https://xelisvault.github.io/xelis-vault/install | bash -s -- --uninstall

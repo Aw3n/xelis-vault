@@ -16,7 +16,7 @@
 │                                                                  │
 │  LES CONTRATS DE PHASE 5+ (v10.2 BRAINSTORMING) NE SONT PAS      │
 │  PRIORITAIRES — NE PAS LES DÉPLOYER TANT QUE :                   │
-│    1. Les 35 contrats core ne sont pas déployés                  │
+│    1. Les 37 contrats core ne sont pas déployés                  │
 │    2. Le testnet n'est pas stable                                │
 │    3. L'audit externe n'est pas fait                             │
 │    4. Il reste du temps à la toute fin                           │
@@ -25,9 +25,9 @@
 
 ---
 
-## ✅ Phase 1 — CORE (35 contrats, à déployer en premier)
+## ✅ Phase 1 — CORE (37 contrats, à déployer en premier)
 
-Ces 35 contrats sont le cœur du protocole. **Ils doivent être déployés dans l'ordre ci-dessous** (voir `deploy/deploy_testnet.py`).
+Ces 37 contrats sont le cœur du protocole. **Ils doivent être déployés dans l'ordre ci-dessous** (voir `deploy/deploy_testnet.py`).
 
 ### 1. Infrastructure (3 contrats)
 | # | Contract | File | Notes |
@@ -112,6 +112,12 @@ Ces 35 contrats sont le cœur du protocole. **Ils doivent être déployés dans 
 | 34 | FounderVesting | `contracts/founder/FounderVesting.slx` | Vesting 4y + 10y pour le founder |
 | 35 | FeeDistributor | `contracts/founder/FeeDistributor.slx` | Répartit fees : 50% burn, 40% treasury, 10% founder |
 
+### 13. Airdrop (2 contrats, v10.4)
+| # | Contract | File | Notes |
+|---|----------|------|-------|
+| 36 | AirdropTracker | `contracts/airdrop/AirdropTracker.slx` | TESTNET — accumule points contribution |
+| 37 | AirdropClaim | `contracts/airdrop/AirdropClaim.slx` | MAINNET — distribution Merkle proof |
+
 ---
 
 ## ⛔ Phase 5+ — BRAINSTORMING (13 contrats, NE PAS DÉPLOYER MAINTENANT)
@@ -119,7 +125,7 @@ Ces 35 contrats sont le cœur du protocole. **Ils doivent être déployés dans 
 Ces 13 contrats sont des **features brainstorming v10.2**. Ils sont marqués `⚠️ DEPLOYMENT STATUS: PENDING` dans leur en-tête.
 
 **Conditions de déploiement (toutes doivent être vraies) :**
-1. ✅ Les 35 contrats core sont déployés et fonctionnels
+1. ✅ Les 37 contrats core sont déployés et fonctionnels
 2. ✅ Le testnet est stable depuis ≥ 4 semaines
 3. ✅ L'audit externe est terminé
 4. ✅ La governance a voté pour activer la feature
@@ -127,19 +133,19 @@ Ces 13 contrats sont des **features brainstorming v10.2**. Ils sont marqués `�
 
 | # | Contract | File | Feature | Priority |
 |---|----------|------|---------|----------|
-| 36 | NotificationCenter | `contracts/notifications/NotificationCenter.slx` | Encrypted notifications | P5 |
-| 37 | CreditScore | `contracts/credit/CreditScore.slx` | On-chain credit reputation | P5 |
-| 38 | EmergencyShutdown | `contracts/safety/EmergencyShutdown.slx` | Global circuit breaker | P5 |
-| 39 | GovernanceDelegation | `contracts/governance/GovernanceDelegation.slx` | Liquid democracy | P5 |
-| 40 | VaultInsurance | `contracts/insurance/VaultInsurance.slx` | Auto-insurance vs liquidation | P5 |
-| 41 | AnalyticsCollector | `contracts/analytics/AnalyticsCollector.slx` | On-chain metrics | P5 |
-| 42 | LiquidationMarket | `contracts/liquidation/LiquidationMarket.slx` | Liquidator marketplace | P5 |
-| 43 | VaultBounties | `contracts/liquidation/VaultBounties.slx` | Watcher bounties | P5 |
-| 44 | SocialTrading | `contracts/social/SocialTrading.slx` | Copy trading | P5 |
-| 45 | YieldOptimizer | `contracts/vault/YieldOptimizer.slx` | Auto yield optimization | P5 |
-| 46 | VaultTemplates | `contracts/vault/VaultTemplates.slx` | One-click strategies | P5 |
-| 47 | MultiCollateralVault | `contracts/vault/MultiCollateralVault.slx` | Multi-asset collateral | P5 |
-| 48 | VaultNFT | `contracts/nft/VaultNFT.slx` | Tokenized positions | P5 |
+| 38 | NotificationCenter | `contracts/notifications/NotificationCenter.slx` | Encrypted notifications | P5 |
+| 39 | CreditScore | `contracts/credit/CreditScore.slx` | On-chain credit reputation | P5 |
+| 40 | EmergencyShutdown | `contracts/safety/EmergencyShutdown.slx` | Global circuit breaker | P5 |
+| 41 | GovernanceDelegation | `contracts/governance/GovernanceDelegation.slx` | Liquid democracy | P5 |
+| 42 | VaultInsurance | `contracts/insurance/VaultInsurance.slx` | Auto-insurance vs liquidation | P5 |
+| 43 | AnalyticsCollector | `contracts/analytics/AnalyticsCollector.slx` | On-chain metrics | P5 |
+| 44 | LiquidationMarket | `contracts/liquidation/LiquidationMarket.slx` | Liquidator marketplace | P5 |
+| 45 | VaultBounties | `contracts/liquidation/VaultBounties.slx` | Watcher bounties | P5 |
+| 46 | SocialTrading | `contracts/social/SocialTrading.slx` | Copy trading | P5 |
+| 47 | YieldOptimizer | `contracts/vault/YieldOptimizer.slx` | Auto yield optimization | P5 |
+| 48 | VaultTemplates | `contracts/vault/VaultTemplates.slx` | One-click strategies | P5 |
+| 49 | MultiCollateralVault | `contracts/vault/MultiCollateralVault.slx` | Multi-asset collateral | P5 |
+| 50 | VaultNFT | `contracts/nft/VaultNFT.slx` | Tokenized positions | P5 |
 
 ---
 

@@ -1,12 +1,55 @@
-# ENTRY IDs — XELIS Vault v10.3
+# ENTRY IDs — XELIS Vault v10.4
 
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
 
 Each `entry` function gets a sequential ID starting at 0 in declaration order.
-**Total entry functions across 48 contracts:** 866
+**Total entry functions across 50 contracts:** 899
 
 `pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.
 
+
+## `airdrop/AirdropClaim.slx`
+
+| ID | Name | Parameters | Return |
+|----|------|------------|--------|
+| 0 | `claim` | `testnet_addr: Address, mainnet_addr: Address, amount: u64, proof: Hash[]` | `u` |
+| 1 | `emergency_withdraw_unclaimed` | `to: Address` | `u` |
+| 2 | `set_vlt_contract` | `vc: Hash` | `u` |
+| 3 | `set_merkle_root` | `root: Hash` | `u` |
+| 4 | `set_registry` | `registry: Hash` | `u` |
+| 5 | `set_timelock` | `tl: Hash` | `u` |
+| 6 | `set_guardian` | `g: Address` | `u` |
+| 7 | `pause` | `—` | `u` |
+| 8 | `unpause` | `—` | `u` |
+| 9 | `transfer_admin` | `new_admin: Address` | `u` |
+| 10 | `get_version` | `—` | `s` |
+
+## `airdrop/AirdropTracker.slx`
+
+| ID | Name | Parameters | Return |
+|----|------|------------|--------|
+| 0 | `record_mining_activity` | `miner: Address, valid_submissions: u64, runtime_blocks: u64` | `u` |
+| 1 | `record_relayer_activity` | `relayer: Address, valid_anchors: u64, uptime_blocks: u64` | `u` |
+| 2 | `record_governance_vote` | `voter: Address, _proposal_id: u64` | `u` |
+| 3 | `record_governance_proposal` | `proposer: Address, _proposal_id: u64` | `u` |
+| 4 | `record_chat_message` | `sender: Address` | `u` |
+| 5 | `record_chat_group_created` | `creator: Address` | `u` |
+| 6 | `record_liquidity_provided` | `user: Address, xel_amount: u64` | `u` |
+| 7 | `record_bug_bounty` | `reporter: Address, severity: u8` | `u` |
+| 8 | `record_manual_attribution` | `user: Address, category: u8, points: u64, _reason: string` | `u` |
+| 9 | `record_mainnet_address` | `mainnet_addr: Address` | `u` |
+| 10 | `freeze_points` | `—` | `u` |
+| 11 | `finalize_distribution` | `—` | `u` |
+| 12 | `set_merkle_root` | `root: Hash` | `u` |
+| 13 | `set_authorized_recorder` | `addr: Address, authorized: bool` | `u` |
+| 14 | `set_vlt_contract` | `vc: Hash` | `u` |
+| 15 | `set_registry` | `registry: Hash` | `u` |
+| 16 | `set_timelock` | `tl: Hash` | `u` |
+| 17 | `set_guardian` | `g: Address` | `u` |
+| 18 | `pause` | `—` | `u` |
+| 19 | `unpause` | `—` | `u` |
+| 20 | `transfer_admin` | `new_admin: Address` | `u` |
+| 21 | `get_version` | `—` | `s` |
 
 ## `amm/PSM.slx`
 

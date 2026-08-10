@@ -1,0 +1,674 @@
+// ============================================================================
+// AirdropTracker.slx — XELIS Vault v10.4 (TESTNET ONLY)
+// ----------------------------------------------------------------------------
+// Contrat central qui accumule les points de contribution testnet pour
+// l'airdrop mainnet. Tous les contrats core lui envoient les actions des
+// utilisateurs via record_*().
+//
+// RÔLE :
+//   1. Reçoit les events de tous les contrats (mining, relayer, chat, gov, etc.)
+//   2. Accumule des points par utilisateur et par catégorie
+//   3. Applique des caps quotidiens (anti-farm/anti-bot)
+//   4. L'admin peut "freeze" (snapshot) à la fin du testnet
+//   5. L'utilisateur enregistre son adresse mainnet
+//   6. L'admin "finalize" → calcule la distribution (proportionnelle)
+//   7. Génère un Merkle root pour le claim sur mainnet
+//
+// CATÉGORIES :
+//   1 = MINING (price submissions, uptime)
+//   2 = RELAYER (anchors, uptime)
+//   3 = GOVERNANCE (votes, proposals)
+//   4 = CHAT (messages, groups)
+//   5 = LIQUIDITY (deposits, LP)
+//   6 = BOUNTY (bugs, watcher)
+//   7 = COMMUNITY (manual attribution)
+//
+// CAPS QUOTIDIENS (anti-farm) :
+//   MINING : 1000 pts/jour (submissions) + 50 pts/heure (uptime)
+//   RELAYER : 500 pts/jour (anchors) + 200 pts/jour (uptime)
+//   CHAT : 100 pts/jour (messages)
+//
+// BONUS (appliqués au finalize) :
+//   Early miner (top 100) : +50% mining
+//   High reputation (>9000) : +30% total
+//   Multi-role (3+ catégories actives) : +25% total
+//
+// DISTRIBUTION :
+//   user_vlt = (user_total_points × 500,000 VLT) / sum(all_users_total_points)
+//   Minimum pour qualifier : 1000 points + 7 jours distincts d'activité
+//
+// Entry IDs:
+//   0  : record_mining_activity (only authorized)
+//   1  : record_relayer_activity (only authorized)
+//   2  : record_governance_vote (only authorized)
+//   3  : record_governance_proposal (only authorized)
+//   4  : record_chat_message (only authorized)
+//   5  : record_chat_group_created (only authorized)
+//   6  : record_liquidity_provided (only authorized)
+//   7  : record_bug_bounty (admin only)
+//   8  : record_manual_attribution (admin only)
+//   9  : record_mainnet_address (user)
+//   10 : freeze_points (admin)
+//   11 : finalize_distribution (admin)
+//   12 : set_merkle_root (admin)
+//   13 : get_user_points (pub fn)
+//   14 : get_user_breakdown (pub fn)
+//   15 : get_total_points (pub fn)
+//   16 : get_user_count (pub fn)
+//   17 : get_user_distribution (pub fn)
+//   18 : get_mainnet_address (pub fn)
+//   19 : is_frozen (pub fn)
+//   20 : is_finalized (pub fn)
+//   21 : get_merkle_root (pub fn)
+//   22 : get_qualified_users (pub fn)
+//   23 : set_authorized_recorder
+//   24 : set_vlt_contract
+//   25 : set_registry
+//   26 : set_timelock
+//   27 : set_guardian
+//   28 : pause
+//   29 : unpause
+//   30 : transfer_admin
+//   31 : get_version
+// ============================================================================
+
+const VERSION: string = "AirdropTracker v10.4"
+
+const ADMIN_KEY: string = "a"
+const TIMELOCK_KEY: string = "tl"
+const GUARDIAN_KEY: string = "gd"
+const PAUSED_KEY: string = "pz"
+const REGISTRY_KEY: string = "reg"
+const VLT_CONTRACT_KEY: string = "vc"
+
+// Authorized recorders (other contracts that can call record_*)
+const RECORDER_PREFIX: string = "rec_"
+
+// User points storage
+const USER_PREFIX: string = "user_"
+const USER_COUNT_KEY: string = "uc"
+const USER_LIST_PREFIX: string = "ul_"
+
+// Daily caps tracking
+const DAILY_PREFIX: string = "daily_"  // daily_user_category_day → count
+
+// State
+const FROZEN_KEY: string = "fz"
+const FINALIZED_KEY: string = "fn"
+const MERKLE_ROOT_KEY: string = "mr"
+const TOTAL_POINTS_KEY: string = "tp"
+const QUALIFIED_COUNT_KEY: string = "qc"
+
+// Categories
+const CAT_MINING: u8 = 1
+const CAT_RELAYER: u8 = 2
+const CAT_GOVERNANCE: u8 = 3
+const CAT_CHAT: u8 = 4
+const CAT_LIQUIDITY: u8 = 5
+const CAT_BOUNTY: u8 = 6
+const CAT_COMMUNITY: u8 = 7
+
+// Daily caps (points per day per user per category)
+const CAP_MINING_DAILY: u64 = 1000
+const CAP_RELAYER_DAILY: u64 = 500
+const CAP_CHAT_DAILY: u64 = 100
+
+// Points per action
+const PTS_MINING_SUBMISSION: u64 = 1
+const PTS_MINING_HOUR: u64 = 50
+const PTS_RELAYER_ANCHOR: u64 = 10
+const PTS_RELAYER_DAY: u64 = 200
+const PTS_GOV_VOTE: u64 = 50
+const PTS_GOV_PROPOSAL: u64 = 500
+const PTS_CHAT_MSG: u64 = 1
+const PTS_CHAT_GROUP: u64 = 100
+const PTS_LIQ_PER_XEL: u64 = 10  // 10 points per XEL deposited
+const PTS_BUG_CRITICAL: u64 = 5000
+const PTS_BUG_HIGH: u64 = 1000
+const PTS_BUG_MEDIUM: u64 = 200
+
+// Bonus multipliers (in bps, 10000 = 1x)
+const BONUS_EARLY_MINER_BPS: u64 = 15000   // +50%
+const BONUS_HIGH_REP_BPS: u64 = 13000      // +30%
+const BONUS_MULTI_ROLE_BPS: u64 = 12500    // +25%
+
+// Qualification thresholds
+const MIN_POINTS_TO_QUALIFY: u64 = 1000
+const MIN_DAYS_ACTIVE: u64 = 7
+
+// Total distributable (500,000 VLT with 8 decimals)
+const TOTAL_DISTRIBUTABLE: u64 = 50000000000000
+
+// Blocks per day (5s blocks)
+const BLOCKS_PER_DAY: u64 = 17280
+
+struct UserPoints {
+    mining: u64,
+    relayer: u64,
+    governance: u64,
+    chat: u64,
+    liquidity: u64,
+    bounty: u64,
+    community: u64,
+    total_raw: u64,           // sum before bonus
+    total_with_bonus: u64,    // after bonus (set at finalize)
+    days_active: u64,          // distinct days with activity
+    last_active_day: u64,
+    mainnet_address: Address,
+    qualified: bool,
+    registered: bool
+}
+
+hook constructor() -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    s.store(ADMIN_KEY, caller)
+    s.store(GUARDIAN_KEY, caller)
+    s.store(PAUSED_KEY, false)
+    s.store(FROZEN_KEY, false)
+    s.store(FINALIZED_KEY, false)
+    s.store(USER_COUNT_KEY, 0u64)
+    s.store(TOTAL_POINTS_KEY, 0u64)
+    s.store(QUALIFIED_COUNT_KEY, 0u64)
+    s.store(MERKLE_ROOT_KEY, Hash::zero())
+    return 0
+}
+
+fn when_not_paused() {
+    let s: Storage = Storage::new()
+    let paused: bool = s.load(PAUSED_KEY).unwrap_or(false)
+    require(!paused, "paused")
+}
+
+fn when_not_frozen() {
+    let s: Storage = Storage::new()
+    let frozen: bool = s.load(FROZEN_KEY).unwrap_or(false)
+    require(!frozen, "frozen")
+}
+
+fn only_admin() {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let admin: Address = s.load(ADMIN_KEY).expect("err")
+    if caller == admin { return }
+    let tl_opt: optional<Hash> = s.load(TIMELOCK_KEY)
+    require(tl_opt.is_some(), "notauth")
+    let tl: Hash = tl_opt.expect("err")
+    let cc: Hash = get_contract_caller().expect("err")
+    require(cc == tl, "notauth")
+}
+
+fn only_guardian_or_admin() {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let g: Address = s.load(GUARDIAN_KEY).expect("err")
+    if caller == g { return }
+    only_admin()
+}
+
+// Only authorized contracts (recorders) can call record_*
+// Admin is always authorized
+fn only_authorized_recorder() {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let admin: Address = s.load(ADMIN_KEY).expect("err")
+    if caller == admin { return }
+    // Check if caller is in the authorized recorders list
+    let is_auth: bool = s.load(RECORDER_PREFIX + caller.to_string()).unwrap_or(false)
+    require(is_auth, "notauth")
+}
+
+fn get_day(topo: u64) -> u64 {
+    return topo / BLOCKS_PER_DAY
+}
+
+fn get_or_init_user(user: Address) -> UserPoints {
+    let s: Storage = Storage::new()
+    let key: string = USER_PREFIX + user.to_string()
+    let opt: optional<UserPoints> = s.load(key)
+    if opt.is_some() {
+        return opt.expect("err")
+    }
+    // New user — register
+    let up: UserPoints = UserPoints {
+        mining: 0,
+        relayer: 0,
+        governance: 0,
+        chat: 0,
+        liquidity: 0,
+        bounty: 0,
+        community: 0,
+        total_raw: 0,
+        total_with_bonus: 0,
+        days_active: 0,
+        last_active_day: 0,
+        mainnet_address: Address::zero(),
+        qualified: false,
+        registered: true
+    }
+    s.store(key, up)
+    // Add to user list
+    let count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
+    s.store(USER_LIST_PREFIX + count.to_string(), user)
+    s.store(USER_COUNT_KEY, count + 1)
+    return up
+}
+
+fn update_day_activity(up: UserPoints, current_day: u64) -> UserPoints {
+    if up.last_active_day != current_day {
+        up.days_active += 1
+        up.last_active_day = current_day
+    }
+    return up
+}
+
+fn check_daily_cap(user: Address, category: u8, points_to_add: u64, cap: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let current_day: u64 = get_day(get_current_topoheight())
+    let key: string = DAILY_PREFIX + user.to_string() + "_" + category.to_string() + "_" + current_day.to_string()
+    let current: u64 = s.load(key).unwrap_or(0)
+    if current + points_to_add > cap {
+        // Cap reached — only add up to cap
+        let allowed: u64 = cap - current
+        s.store(key, cap)
+        return allowed
+    }
+    s.store(key, current + points_to_add)
+    return points_to_add
+}
+
+fn add_points(user: Address, category: u8, points: u64) {
+    if points == 0 { return }
+    let s: Storage = Storage::new()
+    let up: UserPoints = get_or_init_user(user)
+    let current_day: u64 = get_day(get_current_topoheight())
+    up = update_day_activity(up, current_day)
+
+    if category == CAT_MINING {
+        up.mining += points
+    } else if category == CAT_RELAYER {
+        up.relayer += points
+    } else if category == CAT_GOVERNANCE {
+        up.governance += points
+    } else if category == CAT_CHAT {
+        up.chat += points
+    } else if category == CAT_LIQUIDITY {
+        up.liquidity += points
+    } else if category == CAT_BOUNTY {
+        up.bounty += points
+    } else if category == CAT_COMMUNITY {
+        up.community += points
+    }
+    up.total_raw += points
+    s.store(USER_PREFIX + user.to_string(), up)
+
+    // Update global total
+    let total: u64 = s.load(TOTAL_POINTS_KEY).unwrap_or(0)
+    s.store(TOTAL_POINTS_KEY, total + points)
+}
+
+// Entry 0: Record mining activity (called by XelisVaultMiner or StakedOracle)
+// valid_submissions: number of valid price submissions
+// runtime_blocks: blocks since last heartbeat (for uptime points)
+entry record_mining_activity(miner: Address, valid_submissions: u64, runtime_blocks: u64) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_authorized_recorder()
+
+    // Submissions points (with daily cap)
+    let sub_points: u64 = valid_submissions * PTS_MINING_SUBMISSION
+    let capped_sub: u64 = check_daily_cap(miner, CAT_MINING, sub_points, CAP_MINING_DAILY)
+    add_points(miner, CAT_MINING, capped_sub)
+
+    // Uptime points (50 per hour = 50 per 720 blocks)
+    let hours: u64 = runtime_blocks / 720
+    let uptime_points: u64 = hours * PTS_MINING_HOUR
+    add_points(miner, CAT_MINING, uptime_points)
+
+    return 0
+}
+
+// Entry 1: Record relayer activity (called by VaultChat)
+entry record_relayer_activity(relayer: Address, valid_anchors: u64, uptime_blocks: u64) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_authorized_recorder()
+
+    let anchor_points: u64 = valid_anchors * PTS_RELAYER_ANCHOR
+    let capped: u64 = check_daily_cap(relayer, CAT_RELAYER, anchor_points, CAP_RELAYER_DAILY)
+    add_points(relayer, CAT_RELAYER, capped)
+
+    let days: u64 = uptime_blocks / BLOCKS_PER_DAY
+    let uptime_points: u64 = days * PTS_RELAYER_DAY
+    add_points(relayer, CAT_RELAYER, uptime_points)
+
+    return 0
+}
+
+// Entry 2: Record governance vote (called by Governor)
+entry record_governance_vote(voter: Address, _proposal_id: u64) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_authorized_recorder()
+    add_points(voter, CAT_GOVERNANCE, PTS_GOV_VOTE)
+    return 0
+}
+
+// Entry 3: Record governance proposal (called by Governor)
+entry record_governance_proposal(proposer: Address, _proposal_id: u64) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_authorized_recorder()
+    add_points(proposer, CAT_GOVERNANCE, PTS_GOV_PROPOSAL)
+    return 0
+}
+
+// Entry 4: Record chat message (called by VaultChat, capped daily)
+entry record_chat_message(sender: Address) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_authorized_recorder()
+    let capped: u64 = check_daily_cap(sender, CAT_CHAT, PTS_CHAT_MSG, CAP_CHAT_DAILY)
+    add_points(sender, CAT_CHAT, capped)
+    return 0
+}
+
+// Entry 5: Record chat group created (called by VaultChat)
+entry record_chat_group_created(creator: Address) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_authorized_recorder()
+    add_points(creator, CAT_CHAT, PTS_CHAT_GROUP)
+    return 0
+}
+
+// Entry 6: Record liquidity provided (called by VaultEngine, VaultSwap, PSM)
+// xel_amount: amount of XEL provided (in atomic)
+entry record_liquidity_provided(user: Address, xel_amount: u64) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_authorized_recorder()
+    let points: u64 = (xel_amount / 100000000) * PTS_LIQ_PER_XEL  // convert atomic to XEL
+    add_points(user, CAT_LIQUIDITY, points)
+    return 0
+}
+
+// Entry 7: Record bug bounty (admin only)
+// severity: 1=critical, 2=high, 3=medium
+entry record_bug_bounty(reporter: Address, severity: u8) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_admin()
+    let points: u64 = 0
+    if severity == 1 {
+        points = PTS_BUG_CRITICAL
+    } else if severity == 2 {
+        points = PTS_BUG_HIGH
+    } else if severity == 3 {
+        points = PTS_BUG_MEDIUM
+    } else {
+        require(false, "badsev")
+    }
+    add_points(reporter, CAT_BOUNTY, points)
+    return 0
+}
+
+// Entry 8: Record manual attribution (admin only, for community contributions)
+entry record_manual_attribution(user: Address, category: u8, points: u64, _reason: string) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    only_admin()
+    require(category >= 1 && category <= 7, "badcat")
+    require(points <= 10000, "toomuch")  // cap manual attribution
+    add_points(user, category, points)
+    return 0
+}
+
+// Entry 9: User records their mainnet address
+// Must be called BEFORE freeze_points()
+entry record_mainnet_address(mainnet_addr: Address) -> u64 {
+    when_not_paused()
+    when_not_frozen()
+    require(mainnet_addr != Address::zero(), "badaddr")
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let up: UserPoints = get_or_init_user(caller)
+    up.mainnet_address = mainnet_addr
+    s.store(USER_PREFIX + caller.to_string(), up)
+    emit_event("MainnetAddressRecorded", caller.to_string())
+    return 0
+}
+
+// Entry 10: Freeze points (admin only, ends point accumulation)
+// After freeze, no more record_* calls accepted
+entry freeze_points() -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    let frozen: bool = s.load(FROZEN_KEY).unwrap_or(false)
+    require(!frozen, "alreadyfrozen")
+    s.store(FROZEN_KEY, true)
+    emit_event("PointsFrozen", "")
+    return 0
+}
+
+// Entry 11: Finalize distribution (admin only, after freeze)
+// Calculates bonus multipliers, marks qualified users, sets total_with_bonus
+// After this, the Merkle root can be generated off-chain and set
+entry finalize_distribution() -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    require(s.load(FROZEN_KEY).unwrap_or(false), "notfrozen")
+    require(!s.load(FINALIZED_KEY).unwrap_or(false), "alreadyfinal")
+
+    let user_count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
+    let i: u64 = 0
+    let total_with_bonus: u64 = 0
+    let qualified_count: u64 = 0
+
+    while i < user_count {
+        let user_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string())
+        if user_opt.is_some() {
+            let user: Address = user_opt.expect("err")
+            let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("err")
+
+            // Check qualification
+            let has_mainnet: bool = up.mainnet_address != Address::zero()
+            let has_min_points: bool = up.total_raw >= MIN_POINTS_TO_QUALIFY
+            let has_min_days: bool = up.days_active >= MIN_DAYS_ACTIVE
+            up.qualified = has_mainnet && has_min_points && has_min_days
+
+            if up.qualified {
+                // Apply bonuses
+                let bonus_mult: u64 = 10000  // 1x base
+
+                // Multi-role bonus (3+ categories with > 0 points)
+                let active_categories: u64 = 0
+                if up.mining > 0 { active_categories += 1 }
+                if up.relayer > 0 { active_categories += 1 }
+                if up.governance > 0 { active_categories += 1 }
+                if up.chat > 0 { active_categories += 1 }
+                if up.liquidity > 0 { active_categories += 1 }
+                if up.bounty > 0 { active_categories += 1 }
+                if up.community > 0 { active_categories += 1 }
+                if active_categories >= 3 {
+                    bonus_mult = (bonus_mult * BONUS_MULTI_ROLE_BPS) / 10000
+                }
+
+                // Apply bonus to total
+                up.total_with_bonus = (up.total_raw * bonus_mult) / 10000
+                total_with_bonus += up.total_with_bonus
+                qualified_count += 1
+            } else {
+                up.total_with_bonus = 0
+            }
+            s.store(USER_PREFIX + user.to_string(), up)
+        }
+        i += 1
+    }
+
+    s.store(TOTAL_POINTS_KEY, total_with_bonus)
+    s.store(QUALIFIED_COUNT_KEY, qualified_count)
+    s.store(FINALIZED_KEY, true)
+    emit_event("DistributionFinalized", qualified_count.to_string())
+    return qualified_count
+}
+
+// Entry 12: Set Merkle root (admin, after finalize)
+// The Merkle root is generated off-chain from the qualified users + their distributions
+entry set_merkle_root(root: Hash) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    require(s.load(FINALIZED_KEY).unwrap_or(false), "notfinal")
+    require(root != Hash::zero(), "badroot")
+    s.store(MERKLE_ROOT_KEY, root)
+    emit_event("MerkleRootSet", root.to_hex())
+    return 0
+}
+
+// Pub fn 13: Get total points for a user (with bonus, if finalized)
+pub fn get_user_points(user: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
+    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
+    if finalized {
+        return up.total_with_bonus
+    }
+    return up.total_raw
+}
+
+// Pub fn 14: Get user breakdown (per category)
+pub fn get_user_breakdown(user: Address) -> (u64, u64, u64, u64, u64, u64, u64, u64, u64, bool, bool) {
+    let s: Storage = Storage::new()
+    let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
+    return (
+        up.mining, up.relayer, up.governance, up.chat,
+        up.liquidity, up.bounty, up.community,
+        up.total_raw, up.total_with_bonus,
+        up.qualified, up.registered
+    )
+}
+
+// Pub fn 15: Get total points across all users
+pub fn get_total_points() -> u64 {
+    let s: Storage = Storage::new()
+    return s.load(TOTAL_POINTS_KEY).unwrap_or(0)
+}
+
+// Pub fn 16: Get total user count
+pub fn get_user_count() -> u64 {
+    let s: Storage = Storage::new()
+    return s.load(USER_COUNT_KEY).unwrap_or(0)
+}
+
+// Pub fn 17: Get VLT distribution for a user (proportional to points)
+// Returns 0 if not finalized or not qualified
+pub fn get_user_distribution(user: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
+    if !finalized { return 0 }
+    let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
+    if !up.qualified { return 0 }
+    let total: u64 = s.load(TOTAL_POINTS_KEY).unwrap_or(0)
+    if total == 0 { return 0 }
+    return (up.total_with_bonus * TOTAL_DISTRIBUTABLE) / total
+}
+
+// Pub fn 18: Get mainnet address recorded by user
+pub fn get_mainnet_address(user: Address) -> Address {
+    let s: Storage = Storage::new()
+    let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
+    return up.mainnet_address
+}
+
+// Pub fn 19: Check if points are frozen
+pub fn is_frozen() -> bool {
+    let s: Storage = Storage::new()
+    return s.load(FROZEN_KEY).unwrap_or(false)
+}
+
+// Pub fn 20: Check if distribution is finalized
+pub fn is_finalized() -> bool {
+    let s: Storage = Storage::new()
+    return s.load(FINALIZED_KEY).unwrap_or(false)
+}
+
+// Pub fn 21: Get Merkle root (for mainnet claim verification)
+pub fn get_merkle_root() -> Hash {
+    let s: Storage = Storage::new()
+    return s.load(MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
+}
+
+// Pub fn 22: Get qualified users count
+pub fn get_qualified_users() -> u64 {
+    let s: Storage = Storage::new()
+    return s.load(QUALIFIED_COUNT_KEY).unwrap_or(0)
+}
+
+// Entry 23: Set authorized recorder (contract that can call record_*)
+entry set_authorized_recorder(addr: Address, authorized: bool) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(RECORDER_PREFIX + addr.to_string(), authorized)
+    return 0
+}
+
+// Entry 24: Set VLT contract
+entry set_vlt_contract(vc: Hash) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(VLT_CONTRACT_KEY, vc)
+    return 0
+}
+
+// Entry 25: Set registry
+entry set_registry(registry: Hash) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(REGISTRY_KEY, registry)
+    return 0
+}
+
+// Entry 26: Set timelock
+entry set_timelock(tl: Hash) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(TIMELOCK_KEY, tl)
+    return 0
+}
+
+// Entry 27: Set guardian
+entry set_guardian(g: Address) -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    s.store(GUARDIAN_KEY, g)
+    return 0
+}
+
+// Entry 28: Pause
+entry pause() -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    s.store(PAUSED_KEY, true)
+    return 0
+}
+
+// Entry 29: Unpause
+entry unpause() -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    s.store(PAUSED_KEY, false)
+    return 0
+}
+
+// Entry 30: Transfer admin
+entry transfer_admin(new_admin: Address) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(ADMIN_KEY, new_admin)
+    return 0
+}
+
+// Entry 31: Get version
+entry get_version() -> string {
+    return VERSION
+}

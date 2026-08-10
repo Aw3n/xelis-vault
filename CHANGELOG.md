@@ -135,3 +135,75 @@ Legitimate (profit share, not transaction tax), transparent (all on-chain), alig
 - Chunk IDs validated: 23/23 OK
 - Deployment priority: 35 core + 13 pending = 48 total
 
+
+---
+
+## [v10.4] — 2026-08-09
+
+### Added — Airdrop System (testnet → mainnet)
+
+Complete airdrop infrastructure: track contributions on testnet, distribute VLT on mainnet via Merkle proofs.
+
+#### NEW CONTRACTS (2 core)
+
+| Contract | File | Network | Purpose |
+|---|---|---|---|
+| AirdropTracker | `contracts/airdrop/AirdropTracker.slx` | TESTNET | Accumulates points per user from all core contracts (32 entries, 10 pub fn) |
+| AirdropClaim | `contracts/airdrop/AirdropClaim.slx` | MAINNET | Distributes VLT via Merkle proofs (16 entries, 5 pub fn) |
+
+#### NEW SCRIPTS
+
+- `scripts/airdrop_indexer.py` — Bot that listens to on-chain events and calls `record_*()` on AirdropTracker (for contracts that don't call directly)
+- `scripts/generate_airdrop_merkle.py` — Generates Merkle tree + proofs from AirdropTracker data (after finalize)
+
+#### NEW DOCUMENTATION
+
+- `docs/AIRDROP_PLAN.md` (400 lines) — Complete airdrop plan:
+  - Process overview (7 steps from snapshot to claim)
+  - Points system (7 categories, daily caps, bonus multipliers)
+  - Qualification criteria (1000 points + 7 distinct days + mainnet address)
+  - Distribution formula (proportional to points)
+  - Anti-Sybil measures (on-chain + off-chain + governance)
+  - Integration with core contracts (Option A: direct call, Option B: indexer)
+  - Deployment checklist (before/during/end/mainnet)
+
+#### AIRDROP MECHANICS
+
+**Points system:**
+- 7 categories: MINING, RELAYER, GOVERNANCE, CHAT, LIQUIDITY, BOUNTY, COMMUNITY
+- Daily caps: 1000 pts/day mining, 500 relayer, 100 chat (anti-farm)
+- Bonus: +25% for multi-role (3+ categories active)
+- Qualification: 1000 points + 7 distinct days + mainnet address recorded
+
+**Distribution:**
+- 500,000 VLT total for testnet contributors
+- Formula: `user_vlt = (user_points × 500,000 VLT) / total_points_all_users`
+- Proportional, transparent, on-chain verifiable
+
+**Process:**
+1. Users interact with protocol on testnet → points accumulate
+2. Users register mainnet address via `record_mainnet_address()`
+3. Admin calls `freeze_points()` (snapshot)
+4. Admin calls `finalize_distribution()` (calculate VLT per user)
+5. Off-chain: `generate_airdrop_merkle.py` builds Merkle tree
+6. Admin deploys `AirdropClaim.slx` on mainnet with Merkle root
+7. Users call `claim(testnet_addr, mainnet_addr, amount, proof)` on mainnet
+8. After 6 months, unclaimed funds → treasury
+
+#### ANTI-SYBIL
+
+- Daily caps on points (prevents bot farming)
+- 7 distinct days minimum (filters one-day bots)
+- 1000 points minimum (filters occasional bots)
+- Mainnet address required (proves long-term intent)
+- Off-chain pattern detection (5 addresses submitting same price at same second = suspect)
+- Governance dispute mechanism
+
+### Stats
+- **Total contracts**: 48 → 50 (37 core + 13 pending)
+- **Total Silex lines**: ~19,000 → ~26,000
+- **Total entry functions**: 866 → 910+
+- Chunk IDs validated: 23/23 OK
+- Deployment priority: 37 core + 13 pending = 50 total
+- Tests: 26/26 PASS (100%)
+

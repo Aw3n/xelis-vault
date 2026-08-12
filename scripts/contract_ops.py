@@ -577,3 +577,272 @@ def faucet_info(client):
 
     print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
     input()
+
+
+# ============================================================================
+# Governance — Proposals viewer, Vote, Create proposal
+# ============================================================================
+
+def gov_view_proposals(client):
+    """View active governance proposals."""
+    if not check_contracts_configured(client):
+        return
+    governor = client.cfg.get("governor_hash")
+    if not governor:
+        info_box("Error", ["Governor not configured"])
+        return
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  🗳  ACTIVE PROPOSALS{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    # Get proposals count (Governor pub fn get_proposals_count)
+    count = client.invoke_contract_fn(governor, "get_proposals_count")
+    if not count or not isinstance(count, int) or count == 0:
+        print(f"  {C.DIM}No active proposals.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    print(f"  {C.DIM}Total proposals: {count}{C.RESET}\n")
+    print(f"  {'#':<4} {'Status':<12} {'For':>8} {'Against':>8} {'Description'}")
+    print(f"  {C.GRAY}{'─' * 60}{C.RESET}")
+
+    # Show last 10 proposals
+    start = max(0, count - 10)
+    for i in range(start, count):
+        proposal = client.invoke_contract_fn(governor, "get_proposal", [i])
+        if proposal and len(proposal) >= 5:
+            pid, proposer, for_votes, against_votes, executed = proposal[:5]
+            status = "✅ Executed" if executed else "🟡 Active"
+            desc = f"Proposal #{pid}"
+            print(f"  {C.DIM}{i:<4}{C.RESET} {status:<12} {for_votes:>8} {against_votes:>8} {desc}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def gov_vote(client):
+    """Vote on a governance proposal."""
+    if not check_contracts_configured(client):
+        return
+    governor = client.cfg.get("governor_hash")
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  🗳  VOTE ON PROPOSAL{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    pid_str = text_input("  Proposal ID: ")
+    try:
+        pid = int(pid_str)
+    except ValueError:
+        print(f"\n  {C.RED}Invalid ID.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    vote_choice = menu("Vote", [
+        ("👍 For", "1"),
+        ("👎 Against", "0"),
+        ("🤐 Abstain", "2"),
+        ("Cancel", None),
+    ])
+    if vote_choice is None:
+        return
+
+    print(f"\n  {C.DIM}Submitting vote...{C.RESET}")
+    tx = client.submit_transaction(governor, 1, [pid, int(vote_choice)])  # GOV_VOTE = 1
+    show_tx_result(tx, "Vote submitted")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def gov_create_proposal(client):
+    """Create a new governance proposal."""
+    if not check_contracts_configured(client):
+        return
+    governor = client.cfg.get("governor_hash")
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  📝 CREATE PROPOSAL{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  {C.DIM}Proposals allow the community to change protocol parameters.{C.RESET}")
+    print(f"  {C.DIM}They require a 7-day voting period + 48h timelock.{C.RESET}\n")
+
+    title = text_input("  Title: ")
+    if not title:
+        return
+
+    description = text_input("  Description: ")
+    if not description:
+        return
+
+    print(f"\n  {C.DIM}Proposal type:{C.RESET}")
+    ptype = menu("Type", [
+        ("Parameter change (fee, LTV, etc.)", "param"),
+        ("Add new oracle feed", "oracle"),
+        ("Treasury spend", "treasury"),
+        ("Other", "other"),
+        ("Cancel", None),
+    ])
+    if ptype is None:
+        return
+
+    print(f"\n  {C.YELLOW}⚠ This will submit a proposal (costs gas).{C.RESET}")
+    if confirm("  Confirm?"):
+        print(f"\n  {C.DIM}Submitting...{C.RESET}")
+        tx = client.submit_transaction(governor, 0, [title, description])  # GOV_PROPOSE = 0
+        show_tx_result(tx, "Proposal created")
+    else:
+        print(f"\n  {C.DIM}Cancelled.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+# ============================================================================
+# AMM — Add liquidity, View pools
+# ============================================================================
+
+def amm_add_liquidity(client, xel_amount: float, vlt_amount: float):
+    """Add liquidity to VLT/XEL pool."""
+    if not check_contracts_configured(client):
+        return
+    vault_swap = client.cfg.get("vault_swap_hash")
+    xel_asset = "0x" + "0" * 64
+    vlt_asset = client.cfg.get("vlt_asset_hash", "")
+    if not vlt_asset:
+        print(f"\n  {C.RED}VLT asset not configured.{C.RESET}")
+        input()
+        return
+
+    xel_atomic = int(xel_amount * (10 ** 8))
+    vlt_atomic = int(vlt_amount * (10 ** 8))
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  💧 ADD LIQUIDITY (VLT/XEL pool){C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  XEL amount:  {C.YELLOW}{fmt_xel(xel_atomic)}{C.RESET}")
+    print(f"  VLT amount:  {C.YELLOW}{fmt_vlt(vlt_atomic)}{C.RESET}")
+    print(f"  {C.DIM}You'll receive LP tokens representing your share.{C.RESET}")
+    print(f"  {C.DIM}You earn 0.3% of every swap, proportional to your share.{C.RESET}")
+
+    if confirm("\n  Confirm add liquidity?"):
+        print(f"\n  {C.DIM}Submitting...{C.RESET}")
+        tx = client.submit_transaction(vault_swap, 0, [xel_asset, vlt_asset, xel_atomic, vlt_atomic])
+        show_tx_result(tx, "Liquidity added")
+    else:
+        print(f"\n  {C.DIM}Cancelled.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def amm_view_pools(client):
+    """View AMM pools and prices."""
+    if not check_contracts_configured(client):
+        return
+    vault_swap = client.cfg.get("vault_swap_hash")
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  📊 AMM POOLS & PRICES{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    # Get XEL price
+    price = client.get_xel_price()
+    if price:
+        print(f"  {C.BOLD}XEL/USD (oracle):{C.RESET} {C.GREEN}{fmt_usd(price)}{C.RESET}\n")
+
+    # Show VLT/XEL pool info
+    vlt_asset = client.cfg.get("vlt_asset_hash", "")
+    xel_asset = "0x" + "0" * 64
+
+    if vlt_asset:
+        print(f"  {C.BOLD}VLT/XEL Pool:{C.RESET}")
+        # In production: query VaultSwap for reserves
+        print(f"    {C.DIM}(reserves will appear once pool is created){C.RESET}")
+
+    # Show xUSD/XEL pool info
+    xusd_asset = client.cfg.get("xusd_asset_hash", "")
+    if xusd_asset:
+        print(f"\n  {C.BOLD}xUSD/XEL Pool:{C.RESET}")
+        print(f"    {C.DIM}(reserves will appear once pool is created){C.RESET}")
+
+    # PSM info
+    psm = client.cfg.get("psm_hash")
+    if psm:
+        print(f"\n  {C.BOLD}PSM (Peg Stability Module):{C.RESET}")
+        print(f"    {C.CYAN}Fee:{C.RESET} 0.5% mint / 0.1% redeem")
+        if price:
+            print(f"    {C.CYAN}Rate:{C.RESET} 1 XEL = {fmt_usd(price)} xUSD")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+# ============================================================================
+# Mixer — Merkle root, Nullifier check
+# ============================================================================
+
+def mixer_view_root(client):
+    """View privacy mixer Merkle root."""
+    if not check_contracts_configured(client):
+        return
+    mixer = client.cfg.get("mixer_hash")
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  🌳 MIXER MERKLE ROOT{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    # PrivacyMixer pub fn get_merkle_root
+    root = client.invoke_contract_fn(mixer, "get_merkle_root")
+    if root:
+        print(f"  Current root: {C.GREEN}{root}{C.RESET}")
+    else:
+        print(f"  {C.DIM}(no deposits yet — root will be generated on first deposit){C.RESET}")
+
+    leaf_count = client.invoke_contract_fn(mixer, "get_leaf_count")
+    if leaf_count is not None:
+        print(f"  Total leaves: {leaf_count}")
+        print(f"  Tree depth:   24")
+        print(f"  Capacity:     {2**24:,} deposits")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def mixer_check_nullifier(client):
+    """Check if a nullifier has been used (prevents double-spend)."""
+    if not check_contracts_configured(client):
+        return
+    mixer = client.cfg.get("mixer_hash")
+
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  🔍 CHECK NULLIFIER{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  {C.DIM}A nullifier is generated when you withdraw from the mixer.{C.RESET}")
+    print(f"  {C.DIM}Each nullifier can only be used once (prevents double-spend).{C.RESET}\n")
+
+    nullifier = text_input("  Nullifier hash: ")
+    if not nullifier:
+        return
+
+    # PrivacyMixer pub fn is_nullifier_used
+    used = client.invoke_contract_fn(mixer, "is_nullifier_used", [nullifier])
+    if used:
+        print(f"\n  {C.RED}⚠ This nullifier has been USED.{C.RESET}")
+        print(f"  {C.DIM}The withdrawal has already been claimed.{C.RESET}")
+    else:
+        print(f"\n  {C.GREEN}✓ This nullifier is UNUSED.{C.RESET}")
+        print(f"  {C.DIM}You can still use it to withdraw.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()

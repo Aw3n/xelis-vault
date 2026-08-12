@@ -32,9 +32,11 @@ from tui import *
 from airdrop_cli import AirdropClient, screen_airdrop_dashboard
 from contract_ops import (
     vault_deposit, vault_borrow, vault_repay, vault_withdraw, vault_view,
-    psm_mint, psm_redeem, amm_swap,
+    psm_mint, psm_redeem, amm_swap, amm_add_liquidity, amm_view_pools,
     gov_stake, gov_unstake, gov_claim_rewards,
-    mixer_deposit, mixer_withdraw, faucet_info,
+    gov_view_proposals, gov_vote, gov_create_proposal,
+    mixer_deposit, mixer_withdraw, mixer_view_root, mixer_check_nullifier,
+    faucet_info,
     fmt_xel, fmt_vlt, fmt_xusd, fmt_usd, fmt_addr, fmt_amount,
 )
 
@@ -395,9 +397,17 @@ def screen_swap(client):
             except ValueError:
                 pass
         elif choice == "add_liquidity":
-            info_box("Liquidity", ["Add liquidity via xvault --advanced", "(coming soon)"])
+            xel_amt = text_input("  XEL amount to add: ")
+            vlt_amt = text_input("  VLT amount to add: ")
+            try:
+                x = float(xel_amt)
+                v = float(vlt_amt)
+                if x > 0 and v > 0:
+                    amm_add_liquidity(client, x, v)
+            except ValueError:
+                pass
         elif choice == "view_pools":
-            info_box("Pools", ["Pool viewer coming soon", "Use the explorer for now"])
+            amm_view_pools(client)
 
 def screen_governance(client):
     while True:
@@ -431,11 +441,11 @@ def screen_governance(client):
         elif choice == "claim":
             gov_claim_rewards(client)
         elif choice == "proposals":
-            info_box("Proposals", ["Proposal viewer coming soon"])
+            gov_view_proposals(client)
         elif choice == "vote":
-            info_box("Vote", ["Voting interface coming soon"])
+            gov_vote(client)
         elif choice == "create":
-            info_box("Create Proposal", ["Proposal creation coming soon"])
+            gov_create_proposal(client)
 
 def screen_mixer(client):
     while True:
@@ -460,9 +470,9 @@ def screen_mixer(client):
         elif choice == "withdraw":
             mixer_withdraw(client)
         elif choice == "root":
-            info_box("Merkle Root", ["Merkle root viewer coming soon"])
+            mixer_view_root(client)
         elif choice == "nullifier":
-            info_box("Nullifier Check", ["Nullifier checker coming soon"])
+            mixer_check_nullifier(client)
 
 def screen_chat(client):
     import chat_crypto as cc

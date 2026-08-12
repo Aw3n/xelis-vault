@@ -16,7 +16,7 @@
 │                                                                  │
 │  LES CONTRATS DE PHASE 5+ (v10.2 BRAINSTORMING) NE SONT PAS      │
 │  PRIORITAIRES — NE PAS LES DÉPLOYER TANT QUE :                   │
-│    1. Les 38 contrats core ne sont pas déployés                  │
+│    1. Les 37 contrats core ne sont pas déployés                  │
 │    2. Le testnet n'est pas stable                                │
 │    3. L'audit externe n'est pas fait                             │
 │    4. Il reste du temps à la toute fin                           │
@@ -25,16 +25,15 @@
 
 ---
 
-## ✅ Phase 1 — CORE (38 contrats, à déployer en premier)
+## ✅ Phase 1 — CORE (37 contrats, à déployer en premier)
 
-Ces 38 contrats sont le cœur du protocole. **Ils doivent être déployés dans l'ordre ci-dessous** (voir `deploy/deploy_testnet.py`).
+Ces 37 contrats sont le cœur du protocole. **Ils doivent être déployés dans l'ordre ci-dessous** (voir `deploy/deploy_testnet.py`).
 
-### 1. Infrastructure (3 contrats)
+### 1. Infrastructure (2 contrats)
 | # | Contract | File | Notes |
 |---|----------|------|-------|
 | 1 | ContractRegistry | `contracts/proxy/ContractRegistry.slx` | Doit être déployé en premier |
-| 2 | Upgradeable | `contracts/proxy/Upgradeable.slx` | Pattern pour upgrades |
-| 3 | ComplianceModule | `contracts/compliance/ComplianceModule.slx` | KYC/AML ZK |
+| 2 | ComplianceModule | `contracts/compliance/ComplianceModule.slx` | KYC/AML ZK |
 
 ### 2. Token Layer (3 contrats)
 | # | Contract | File | Notes |
@@ -126,7 +125,7 @@ Ces 38 contrats sont le cœur du protocole. **Ils doivent être déployés dans 
 Ces 13 contrats sont des **features brainstorming v10.2**. Ils sont marqués `⚠️ DEPLOYMENT STATUS: PENDING` dans leur en-tête.
 
 **Conditions de déploiement (toutes doivent être vraies) :**
-1. ✅ Les 38 contrats core sont déployés et fonctionnels
+1. ✅ Les 37 contrats core sont déployés et fonctionnels
 2. ✅ Le testnet est stable depuis ≥ 4 semaines
 3. ✅ L'audit externe est terminé
 4. ✅ La governance a voté pour activer la feature
@@ -166,7 +165,7 @@ Ces 13 contrats sont des **features brainstorming v10.2**. Ils sont marqués `�
 □ ÉTAPE 11 : Déployer GovernanceVault + Governor + Timelock + GuardianMultisig + OracleGovernance
 □ ÉTAPE 12 : Déployer VaultChat
 □ ÉTAPE 13 : Déployer FaucetContract (testnet only)
-□ ÉTAPE 14 : Déployer ComplianceModule + Upgradeable
+□ ÉTAPE 14 : Déployer ComplianceModule
 □ ÉTAPE 15 : Wire tous les contrats (set_registry, set_oracle, etc.)
 □ ÉTAPE 16 : Vérifier les 23 chunk IDs cross-contract (validate_chunk_ids.py)
 □ ÉTAPE 17 : Lancer les tests (tests/test_all_contracts.py --live)

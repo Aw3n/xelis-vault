@@ -24,73 +24,72 @@ Avant de commencer, vous devez avoir :
 ## 🎯 Vue d'ensemble
 
 ```
-38 contrats core à déployer dans cet ordre :
+37 contrats core à déployer dans cet ordre :
 
-Phase 1 : Infrastructure (3 contrats)
+Phase 1 : Infrastructure (2 contrats)
   1. ContractRegistry
-  2. Upgradeable
-  3. ComplianceModule
+  2. ComplianceModule
 
 Phase 2 : Token Layer (3 contrats)
-  4. VLTToken
-  5. xUSD
-  6. FaucetContract (testnet only)
+  3. VLTToken
+  4. xUSD
+  5. FaucetContract (testnet only)
 
 Phase 3 : Mining & Oracle (3 contrats)
-  7. XelisVaultMiner
-  8. StakedOracle
-  9. MinerPool
+  6. XelisVaultMiner
+  7. StakedOracle
+  8. MinerPool
 
 Phase 4 : Core Lending (5 contrats)
-  10. InterestRateModel
-  11. VaultEngineV3
-  12. SavingsRate
-  13. FlashLoan
-  14. FlashCallback
+  9. InterestRateModel
+  10. VaultEngineV3
+  11. SavingsRate
+  12. FlashLoan
+  13. FlashCallback
 
 Phase 5 : AMM (2 contrats)
-  15. VaultSwapV2
-  16. PSM
+  14. VaultSwapV2
+  15. PSM
 
 Phase 6 : Lending Markets (3 contrats)
-  17. LendingMarket
-  18. PeerLoan
-  19. SyndicatePool
+  16. LendingMarket
+  17. PeerLoan
+  18. SyndicatePool
 
 Phase 7 : Auctions & Privacy (2 contrats)
-  20. SealedBidAuction
-  21. PrivacyMixer
+  19. SealedBidAuction
+  20. PrivacyMixer
 
 Phase 8 : Tokenization & Treasury (4 contrats)
-  22. AssetVault
-  23. TreasuryVault
-  24. RevenueShare
-  25. Payroll
+  21. AssetVault
+  22. TreasuryVault
+  23. RevenueShare
+  24. Payroll
 
 Phase 9 : Insurance (2 contrats)
-  26. InsurancePool
-  27. PrivateInsurance
+  25. InsurancePool
+  26. PrivateInsurance
 
 Phase 10 : Governance (4 contrats)
-  28. GovernanceVault
-  29. Governor
-  30. Timelock
-  31. GuardianMultisig
-  32. OracleGovernance
+  27. GovernanceVault
+  28. Governor
+  29. Timelock
+  30. GuardianMultisig
+  31. OracleGovernance
 
 Phase 11 : Chat (1 contract)
-  33. VaultChat
+  32. VaultChat
 
 Phase 12 : Founder & Fees (3 contrats)
-  34. FounderVesting (instance 1 : 4 ans)
-  35. FounderVesting (instance 2 : 10 ans)
-  36. FeeDistributor
+  33. FounderVesting (instance 1 : 4 ans)
+  34. FounderVesting (instance 2 : 10 ans)
+  35. FeeDistributor
 
 Phase 13 : Airdrop (2 contrats)
-  37. AirdropTracker (TESTNET)
-  38. AirdropClaim (MAINNET, déployé plus tard)
+  36. AirdropTracker (TESTNET)
+  37. AirdropClaim (MAINNET, déployé plus tard)
 
-TOTAL : 38 contrats core (37 sur testnet + 1 sur mainnet)
+TOTAL : 37 contrats core (36 sur testnet + 1 sur mainnet)
 ```
 
 ---
@@ -116,21 +115,7 @@ xelis-call REGISTRY_HASH get_version_str
 # → Doit retourner "ContractRegistry v5.0"
 ```
 
-### Étape 1.2 — Déployer Upgradeable
-
-```bash
-xelis-compile contracts/proxy/Upgradeable.slx
-xelis-deploy Upgradeable.bytecode
-# → Sauvegarder : UPGRADEABLE_HASH
-```
-
-**Configuration :**
-```bash
-# set_registry (entry 1)
-xelis-call UPGRADEABLE_HASH set_registry [REGISTRY_HASH]
-```
-
-### Étape 1.3 — Déployer ComplianceModule
+### Étape 1.2 — Déployer ComplianceModule
 
 ```bash
 xelis-compile contracts/compliance/ComplianceModule.slx
@@ -969,7 +954,6 @@ Garde ce fichier dans un endroit sécurisé (pas sur GitHub) :
 ```
 # Infrastructure
 REGISTRY_HASH = 0x...
-UPGRADEABLE_HASH = 0x...
 COMPLIANCE_HASH = 0x...
 
 # Tokens

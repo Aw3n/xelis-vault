@@ -39,7 +39,9 @@ testnet, in canonical dependency order:
     30. AssetVault              (RWA vault)
     31. ComplianceModule        (compliance layer)
     32. MinerPool               (miner pool composable)
-    33. Upgradeable             (proxy pattern helper)
+
+Note: Upgradeable.slx was removed (proxy pattern not useful in Silex since
+upgrading a contract loses the old storage).
 
 After deploying, this script:
   - Wires each contract: set_registry, set_vlt_contract, set_vlt_asset,
@@ -149,7 +151,6 @@ CONTRACTS_IN_ORDER = [
     ("AssetVault",        "rwa",         "AssetVault"),
     ("ComplianceModule",  "compliance",  "ComplianceModule"),
     ("MinerPool",         "miner",       "MinerPool"),
-    ("Upgradeable",       "proxy",       "Upgradeable"),
     # v10.3 additions — Founder & Fee Distribution
     ("FounderVesting",    "founder",     "FounderVesting"),
     ("FeeDistributor",    "founder",     "FeeDistributor"),

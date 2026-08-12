@@ -63,6 +63,22 @@ const DEPLOY_TOPO_KEY: string = "dt"
 // Emergency withdraw after 6 months (6 * 30 * 17280 = 3,110,400 blocks)
 const EMERGENCY_DELAY_BLOCKS: u64 = 3110400
 
+// v10.6: Reentrancy guard
+const RG_STATUS_KEY: string = "rg"
+const RG_NOT_ENTERED: u64 = 1
+const RG_ENTERED: u64 = 2
+
+fn non_reentrant() {
+    let s: Storage = Storage::new()
+    let status: u64 = s.load(RG_STATUS_KEY).unwrap_or(RG_NOT_ENTERED)
+    require(status != RG_ENTERED, "reentrant")
+    s.store(RG_STATUS_KEY, RG_ENTERED)
+}
+
+fn release_reentrancy() {
+    Storage::new().store(RG_STATUS_KEY, RG_NOT_ENTERED)
+}
+
 hook constructor() -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -73,6 +89,7 @@ hook constructor() -> u64 {
     s.store(TOTAL_CLAIMED_KEY, 0u64)
     s.store(CLAIMANTS_COUNT_KEY, 0u64)
     s.store(DEPLOY_TOPO_KEY, get_current_topoheight())
+    s.store(RG_STATUS_KEY, RG_NOT_ENTERED)
     return 0
 }
 
@@ -139,6 +156,7 @@ entry claim(
     proof: Hash[]
 ) -> u64 {
     when_not_paused()
+    non_reentrant()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
 
@@ -177,6 +195,7 @@ entry claim(
     let _ = vlt.call(4u16, [mainnet_addr, amount], {})
 
     emit_event("AirdropClaimed", testnet_addr.to_string() + "_" + amount.to_string())
+    release_reentrancy()
     return amount
 }
 

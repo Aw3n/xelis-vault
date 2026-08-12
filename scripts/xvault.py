@@ -30,6 +30,13 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).parent))
 from tui import *
 from airdrop_cli import AirdropClient, screen_airdrop_dashboard
+from contract_ops import (
+    vault_deposit, vault_borrow, vault_repay, vault_withdraw, vault_view,
+    psm_mint, psm_redeem, amm_swap,
+    gov_stake, gov_unstake, gov_claim_rewards,
+    mixer_deposit, mixer_withdraw, faucet_info,
+    fmt_xel, fmt_vlt, fmt_xusd, fmt_usd, fmt_addr, fmt_amount,
+)
 
 VAULT_DIR = Path.home() / ".xelis-vault"
 CONFIG_PATH = VAULT_DIR / "config" / "config.json"
@@ -128,6 +135,91 @@ class XelisClient:
             return {}
         return self.wallet_rpc("get_balance", [addr, asset]) or {}
 
+    # === Contract interaction methods ===
+
+    def invoke_contract(self, contract_hash, entry_id, params=None):
+        """Invoke a contract entry (read-only via invoke)."""
+        try:
+            r = self.rpc("invoke_contract", [
+                contract_hash,
+                entry_id,
+                params or [],
+            ])
+            return r
+        except:
+            return None
+
+    def invoke_contract_fn(self, contract_hash, fn_name, params=None):
+        """Invoke a contract pub fn (read-only)."""
+        try:
+            r = self.rpc("invoke_contract_fn", [
+                contract_hash,
+                fn_name,
+                params or [],
+            ])
+            return r
+        except:
+            return None
+
+    def submit_transaction(self, contract_hash, entry_id, params=None, fee=100000):
+        """Submit a transaction to a contract (state-changing)."""
+        addr = self.cfg.get("miner_address")
+        if not addr:
+            return None
+        try:
+            r = self.wallet_rpc("submit_transaction", [
+                addr,
+                contract_hash,
+                {"entry_id": entry_id, "args": params or []},
+                fee,
+            ])
+            return r
+        except:
+            return None
+
+    def get_contract_balance(self, contract_hash, asset):
+        """Get a contract's balance for an asset."""
+        try:
+            r = self.rpc("get_balance", [contract_hash, asset])
+            return r
+        except:
+            return None
+
+    # === Helper methods for common contract calls ===
+
+    def get_xel_price(self):
+        """Get XEL/USD price from StakedOracle."""
+        oracle = self.cfg.get("oracle_hash") or ""
+        if not oracle:
+            return 0
+        # StakedOracle entry 4 = get_price_for_asset_entry
+        result = self.invoke_contract(oracle, 4, ["0x" + "0" * 64])
+        return result if isinstance(result, (int, float)) else 0
+
+    def get_vlt_balance(self, addr=None):
+        """Get VLT balance for an address."""
+        if not addr:
+            addr = self.cfg.get("miner_address")
+        vlt_asset = self.cfg.get("vlt_asset_hash") or ""
+        if not vlt_asset or not addr:
+            return 0
+        result = self.wallet_rpc("get_balance", [addr, vlt_asset])
+        if result and isinstance(result, dict):
+            return int(result.get("balance", 0))
+        return 0
+
+    def get_xusd_balance(self, addr=None):
+        """Get xUSD balance for an address."""
+        if not addr:
+            addr = self.cfg.get("miner_address")
+        xusd_asset = self.cfg.get("xusd_asset_hash") or ""
+        if not xusd_asset or not addr:
+            return 0
+        result = self.wallet_rpc("get_balance", [addr, xusd_asset])
+        if result and isinstance(result, dict):
+            return int(result.get("balance", 0))
+        return 0
+
 def ensure_wallet():
     wallet_name = "xelis_wallet.exe" if os.name == "nt" else "xelis_wallet"
     if shutil.which(wallet_name):
@@ -218,19 +310,44 @@ def screen_vault(client):
             ("Repay xUSD debt", "repay"),
             ("Withdraw XEL collateral", "withdraw"),
             ("View your vaults", "view"),
-            ("View all vaults (liquidation)", "all"),
             ("Back", None),
         ], "Deposit XEL, borrow xUSD, earn")
-        if choice is None or choice is None:
+        if choice is None:
             break
-        info_box("Coming Soon", [
-            "This feature will be available once",
-            "contracts are deployed on testnet.",
-            "",
-            "Expected: August 25, 2026",
-            "",
-            "Follow @xelisvault for updates",
-        ])
+        elif choice == "deposit":
+            amount = text_input("  Amount of XEL to deposit: ")
+            try:
+                amt = float(amount)
+                if amt > 0:
+                    vault_deposit(client, amt)
+            except ValueError:
+                pass
+        elif choice == "borrow":
+            amount = text_input("  Amount of xUSD to borrow: ")
+            try:
+                amt = float(amount)
+                if amt > 0:
+                    vault_borrow(client, amt)
+            except ValueError:
+                pass
+        elif choice == "repay":
+            amount = text_input("  Amount of xUSD to repay: ")
+            try:
+                amt = float(amount)
+                if amt > 0:
+                    vault_repay(client, amt)
+            except ValueError:
+                pass
+        elif choice == "withdraw":
+            amount = text_input("  Amount of XEL to withdraw: ")
+            try:
+                amt = float(amount)
+                if amt > 0:
+                    vault_withdraw(client, amt)
+            except ValueError:
+                pass
+        elif choice == "view":
+            vault_view(client)
 
 def screen_swap(client):
     while True:
@@ -245,12 +362,42 @@ def screen_swap(client):
         ], "Trade XEL, xUSD, VLT")
         if choice is None:
             break
-        info_box("Coming Soon", [
-            "This feature will be available once",
-            "contracts are deployed on testnet.",
-            "",
-            "Expected: August 25, 2026",
-        ])
+        elif choice == "psm_mint":
+            amount = text_input("  Amount of XEL to swap: ")
+            try:
+                amt = float(amount)
+                if amt > 0:
+                    psm_mint(client, amt)
+            except ValueError:
+                pass
+        elif choice == "psm_redeem":
+            amount = text_input("  Amount of xUSD to redeem: ")
+            try:
+                amt = float(amount)
+                if amt > 0:
+                    psm_redeem(client, amt)
+            except ValueError:
+                pass
+        elif choice == "swap_xel_vlt":
+            amount = text_input("  Amount of XEL to swap: ")
+            try:
+                amt = float(amount)
+                if amt > 0:
+                    amm_swap(client, "XEL", "VLT", amt)
+            except ValueError:
+                pass
+        elif choice == "swap_vlt_xel":
+            amount = text_input("  Amount of VLT to swap: ")
+            try:
+                amt = float(amount)
+                if amt > 0:
+                    amm_swap(client, "VLT", "XEL", amt)
+            except ValueError:
+                pass
+        elif choice == "add_liquidity":
+            info_box("Liquidity", ["Add liquidity via xvault --advanced", "(coming soon)"])
+        elif choice == "view_pools":
+            info_box("Pools", ["Pool viewer coming soon", "Use the explorer for now"])
 
 def screen_governance(client):
     while True:
@@ -265,12 +412,30 @@ def screen_governance(client):
         ], "Stake VLT, vote, propose")
         if choice is None:
             break
-        info_box("Coming Soon", [
-            "This feature will be available once",
-            "contracts are deployed on testnet.",
-            "",
-            "Expected: August 25, 2026",
-        ])
+        elif choice == "stake":
+            amount = text_input("  Amount of VLT to stake: ")
+            try:
+                amt = float(amount)
+                if amt > 0:
+                    gov_stake(client, amt)
+            except ValueError:
+                pass
+        elif choice == "unstake":
+            amount = text_input("  Amount of VLT to unstake: ")
+            try:
+                amt = float(amount)
+                if amt > 0:
+                    gov_unstake(client, amt)
+            except ValueError:
+                pass
+        elif choice == "claim":
+            gov_claim_rewards(client)
+        elif choice == "proposals":
+            info_box("Proposals", ["Proposal viewer coming soon"])
+        elif choice == "vote":
+            info_box("Vote", ["Voting interface coming soon"])
+        elif choice == "create":
+            info_box("Create Proposal", ["Proposal creation coming soon"])
 
 def screen_mixer(client):
     while True:
@@ -283,12 +448,21 @@ def screen_mixer(client):
         ], "Private transfers")
         if choice is None:
             break
-        info_box("Coming Soon", [
-            "This feature will be available once",
-            "contracts are deployed on testnet.",
-            "",
-            "Expected: August 25, 2026",
-        ])
+        elif choice == "deposit":
+            denom_choice = menu("Select denomination", [
+                ("10 XEL", "10"),
+                ("100 XEL", "100"),
+                ("1000 XEL", "1000"),
+                ("Cancel", None),
+            ])
+            if denom_choice:
+                mixer_deposit(client, int(denom_choice))
+        elif choice == "withdraw":
+            mixer_withdraw(client)
+        elif choice == "root":
+            info_box("Merkle Root", ["Merkle root viewer coming soon"])
+        elif choice == "nullifier":
+            info_box("Nullifier Check", ["Nullifier checker coming soon"])
 
 def screen_chat(client):
     import chat_crypto as cc
@@ -466,35 +640,70 @@ def _chat_add_contact(client, cc):
 def screen_stats(client):
     clear()
     print(BANNER)
-    print(f"\n{C.CYAN}{C.BOLD}Protocol Statistics{C.RESET}\n")
+    print(f"\n{C.CYAN}{C.BOLD}  📊 PROTOCOL STATISTICS{C.RESET}")
     print(f"  {C.GRAY}{'=' * 56}{C.RESET}")
-    stats = [
-        ("Oracle", [
-            "XEL/USD price:     --",
-            "Active miners:     --",
-            "Last aggregation:  --",
-            "Circuit breaker:   --",
-        ]),
-        ("VaultEngine", [
-            "Total vaults:      --",
-            "Total collateral:  --",
-            "Total borrowed:    --",
-            "Redemption queue:  --",
-        ]),
-        ("xUSD", [
-            "Total supply:      --",
-            "Peg deviation:     --",
-        ]),
-        ("AMM Pools", [
-            "VLT/XEL reserve:   --",
-            "xUSD/XEL reserve:  --",
-            "24h volume:        --",
-        ]),
-    ]
-    for section, lines in stats:
-        print(f"\n  {C.BOLD}{section}:{C.RESET}")
-        for line in lines:
-            print(f"    {C.CYAN}{line}{C.RESET}")
+
+    # Get real data from contracts
+    oracle = client.cfg.get("oracle_hash") or ""
+    vault_engine = client.cfg.get("vault_engine_hash") or ""
+    psm = client.cfg.get("psm_hash") or ""
+
+    # Oracle stats
+    print(f"\n  {C.BOLD}📈 Oracle:{C.RESET}")
+    if oracle:
+        price = client.get_xel_price()
+        if price:
+            print(f"    {C.CYAN}XEL/USD price:{C.RESET}     {C.GREEN}{fmt_usd(price)}{C.RESET}")
+        else:
+            print(f"    {C.CYAN}XEL/USD price:{C.RESET}     {C.DIM}--{C.RESET}")
+    else:
+        print(f"    {C.DIM}(oracle not configured — run --setup){C.RESET}")
+
+    # VaultEngine stats
+    print(f"\n  {C.BOLD}🏦 VaultEngine:{C.RESET}")
+    if vault_engine:
+        total = client.invoke_contract(vault_engine, 13)  # total_vaults entry
+        if total and isinstance(total, int):
+            print(f"    {C.CYAN}Total vaults:{C.RESET}      {total}")
+        else:
+            print(f"    {C.CYAN}Total vaults:{C.RESET}      {C.DIM}--{C.RESET}")
+    else:
+        print(f"    {C.DIM}(vault engine not configured){C.RESET}")
+
+    # PSM stats
+    print(f"\n  {C.BOLD}💱 PSM:{C.RESET}")
+    if psm:
+        print(f"    {C.CYAN}Fee:{C.RESET}               0.5% mint / 0.1% redeem")
+    else:
+        print(f"    {C.DIM}(PSM not configured){C.RESET}")
+
+    # Balances
+    addr = client.cfg.get("miner_address")
+    print(f"\n  {C.BOLD}💰 Your Balances:{C.RESET}")
+    if addr:
+        balances = client.get_balance()
+        if balances:
+            for asset, amount in balances.items():
+                if isinstance(amount, dict):
+                    bal = amount.get("balance", 0)
+                    print(f"    {C.GREEN}{fmt_amount(int(bal) if bal else 0)}{C.RESET} {asset}")
+                else:
+                    print(f"    {C.GREEN}{amount}{C.RESET} {asset}")
+        else:
+            print(f"    {C.DIM}(wallet not connected){C.RESET}")
+
+        # VLT balance
+        vlt_bal = client.get_vlt_balance()
+        if vlt_bal:
+            print(f"    {C.GREEN}{fmt_vlt(vlt_bal)}{C.RESET}")
+
+        # xUSD balance
+        xusd_bal = client.get_xusd_balance()
+        if xusd_bal:
+            print(f"    {C.GREEN}{fmt_xusd(xusd_bal)}{C.RESET}")
+    else:
+        print(f"    {C.DIM}(address not configured){C.RESET}")
+
     print(f"\n  {C.GRAY}{'=' * 56}{C.RESET}")
     print(f"\n{C.DIM}  Press Enter to go back...{C.RESET}")
     read_key()

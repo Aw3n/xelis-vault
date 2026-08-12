@@ -70,6 +70,23 @@ const BURN_PENDING_KEY: string = "bp"
 // Total collected (all-time, per asset)
 const TOTAL_COLLECTED_PREFIX: string = "tc_"
 
+
+// v10.6: Reentrancy guard
+const RG_STATUS_KEY: string = "rg"
+const RG_NOT_ENTERED: u64 = 1
+const RG_ENTERED: u64 = 2
+
+fn non_reentrant_fd() {
+    let s: Storage = Storage::new()
+    let status: u64 = s.load(RG_STATUS_KEY).unwrap_or(RG_NOT_ENTERED)
+    require(status != RG_ENTERED, "reentrant")
+    s.store(RG_STATUS_KEY, RG_ENTERED)
+}
+
+fn release_reentrancy_fd() {
+    Storage::new().store(RG_STATUS_KEY, RG_NOT_ENTERED)
+}
+
 hook constructor() -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -83,6 +100,7 @@ hook constructor() -> u64 {
     s.store(FOUNDER_PENDING_KEY, 0u64)
     s.store(TREASURY_PENDING_KEY, 0u64)
     s.store(BURN_PENDING_KEY, 0u64)
+    s.store(RG_STATUS_KEY, RG_NOT_ENTERED)
     return 0
 }
 
@@ -161,6 +179,7 @@ entry collect_fee(asset: Hash, amount: u64) -> u64 {
 // Entry 1: Founder claims their accumulated share
 entry claim_founder_share() -> u64 {
     when_not_paused()
+    non_reentrant_fd()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     let founder: Address = s.load(FOUNDER_KEY).expect("err")
@@ -175,6 +194,7 @@ entry claim_founder_share() -> u64 {
     // For XEL: transfer_xel(founder, pending)
     // For tokens: token.call(transfer_to, [founder, pending])
     emit_event("FounderShareClaimed", pending.to_string())
+    release_reentrancy_fd()
     return pending
 }
 

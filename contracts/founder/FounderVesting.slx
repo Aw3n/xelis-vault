@@ -64,6 +64,23 @@ const DEFAULT_CLIFF_BLOCKS: u64 = 6307200       // 1 year
 const DEFAULT_VESTING_BLOCKS: u64 = 18921600    // 3 years (after cliff)
 const DEFAULT_TOTAL_AMOUNT: u64 = 50000000000000 // 500,000 VLT (8 decimals)
 
+
+// v10.6: Reentrancy guard
+const RG_STATUS_KEY: string = "rg"
+const RG_NOT_ENTERED: u64 = 1
+const RG_ENTERED: u64 = 2
+
+fn non_reentrant_fv() {
+    let s: Storage = Storage::new()
+    let status: u64 = s.load(RG_STATUS_KEY).unwrap_or(RG_NOT_ENTERED)
+    require(status != RG_ENTERED, "reentrant")
+    s.store(RG_STATUS_KEY, RG_ENTERED)
+}
+
+fn release_reentrancy_fv() {
+    Storage::new().store(RG_STATUS_KEY, RG_NOT_ENTERED)
+}
+
 hook constructor() -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -76,6 +93,7 @@ hook constructor() -> u64 {
     s.store(START_TOPO_KEY, get_current_topoheight())
     s.store(CLIFF_BLOCKS_KEY, DEFAULT_CLIFF_BLOCKS)
     s.store(VESTING_BLOCKS_KEY, DEFAULT_VESTING_BLOCKS)
+    s.store(RG_STATUS_KEY, RG_NOT_ENTERED)
     return 0
 }
 
@@ -109,6 +127,7 @@ fn only_guardian_or_admin() {
 // After cliff, linear vesting over 3 years
 entry claim_founder_tokens() -> u64 {
     when_not_paused()
+    non_reentrant_fv()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     let founder: Address = s.load(FOUNDER_KEY).expect("err")
@@ -149,6 +168,7 @@ entry claim_founder_tokens() -> u64 {
     let _ = vlt.call(4u16, [founder, claimable], {})
 
     emit_event("FounderTokensClaimed", claimable.to_string())
+    release_reentrancy_fv()
     return claimable
 }
 

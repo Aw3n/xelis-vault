@@ -3,7 +3,7 @@
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
 
 Each `entry` function gets a sequential ID starting at 0 in declaration order.
-**Total entry functions across 51 contracts:** 935
+**Total entry functions across 50 contracts:** 930
 
 `pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.
 
@@ -281,26 +281,23 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 
 | ID | Name | Parameters | Return |
 |----|------|------------|--------|
-| 0 | `claim_both` | `—` | `u` |
-| 1 | `refill_xel` | `amount: u64` | `u` |
-| 2 | `refill_vlt` | `amount: u64` | `u` |
-| 3 | `set_claim_amounts` | `xel_amt: u64, vlt_amt: u64` | `u` |
-| 4 | `set_cooldown_blocks` | `n: u64` | `u` |
-| 5 | `set_daily_caps` | `xel_cap: u64, vlt_cap: u64` | `u` |
-| 6 | `set_lifetime_caps` | `xel_cap: u64, vlt_cap: u64` | `u` |
-| 7 | `pause` | `reason: string` | `u` |
-| 8 | `unpause` | `—` | `u` |
+| 0 | `refill_xel` | `—` | `u` |
+| 1 | `refill_vlt` | `amount: u64` | `u` |
+| 2 | `distribute` | `addresses: Address[]` | `u` |
+| 3 | `set_claim_amounts` | `xel_amount: u64, vlt_amount: u64` | `u` |
+| 4 | `set_cooldown_blocks` | `blocks: u64` | `u` |
+| 5 | `set_lifetime_caps` | `xel_cap: u64, vlt_cap: u64` | `u` |
+| 6 | `pause` | `—` | `u` |
+| 7 | `unpause` | `—` | `u` |
+| 8 | `set_vlt_contract` | `vc: Hash` | `u` |
 | 9 | `set_vlt_asset` | `va: Hash` | `u` |
-| 10 | `set_vlt_contract` | `vc: Hash` | `u` |
-| 11 | `set_guardian` | `g: Address` | `u` |
-| 12 | `set_emergency` | `e: Address` | `u` |
+| 10 | `set_registry` | `registry: Hash` | `u` |
+| 11 | `set_timelock` | `tl: Hash` | `u` |
+| 12 | `set_guardian` | `g: Address` | `u` |
 | 13 | `transfer_admin` | `new_admin: Address` | `u` |
-| 14 | `get_faucet_info_entry` | `—` | `(` |
-| 15 | `get_user_claims_entry` | `addr: Address` | `(` |
-| 16 | `get_faucet_vlt_balance_entry` | `—` | `u` |
-| 17 | `get_version` | `—` | `s` |
-| 18 | `request_emergency_withdraw` | `—` | `u` |
-| 19 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 14 | `get_version` | `—` | `s` |
+| 15 | `request_emergency_withdraw` | `—` | `u` |
+| 16 | `execute_emergency_withdraw` | `—` | `u` |
 
 ## `flashloan/FlashCallback.slx`
 
@@ -912,13 +909,6 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 11 | `get_version_str` | `—` | `s` |
 | 12 | `request_emergency_withdraw` | `—` | `u` |
 | 13 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
-
-## `proxy/Upgradeable.slx`
-
-| ID | Name | Parameters | Return |
-|----|------|------------|--------|
-| 0 | `migrate_from` | `prev_hash: Hash` | `u` |
-| 1 | `get_version` | `—` | `s` |
 
 ## `revenue/RevenueShare.slx`
 

@@ -56,6 +56,13 @@ const DEFAULT_BASE_REWARD_CHAT: u64 = 10000000        // 0.1 VLT (v10.7: was 0.5
 // No Sybil advantage: 10 miners × 1000 VLT = 1 miner × 10000 VLT (same total)
 const MAX_STAKE_MULTIPLIER: u64 = 50                   // max 50x reward for 50,000+ VLT stake
 
+// v10.11: Bitcoin-style halving rewards (replaces fixed daily budget)
+// Rewards halve every year, lasting 30+ years with decreasing emission
+// Geometric series: initial + initial/2 + initial/4 + ... = 2 × initial
+// Initial year distributes 2,750,000 VLT → total approaches 5,500,000 VLT
+const HALVING_INTERVAL_BLOCKS: u64 = 6307200              // 1 year at 5s blocks
+const INITIAL_REWARD_PER_BLOCK: u64 = 43593000            // ~0.436 VLT/block (2,750,000 VLT / 6,307,200 blocks)
+
 const REP_MAX: u64 = 10000
 const REP_EXCELLENT: u64 = 8000
 const REP_GOOD: u64 = 5000
@@ -180,12 +187,31 @@ fn remove_reputation(addr: Address, points: u64) {
     s.store(MINER_PREFIX + addr.to_string(), miner)
 }
 
+// v10.11: Bitcoin-style halving — returns current per-block reward based on elapsed epochs
+fn get_current_block_reward() -> u64 {
+    let s: Storage = Storage::new()
+    let launch_topo: u64 = s.load(LAUNCH_TOPO_KEY).unwrap_or(get_current_topoheight())
+    let current_topo: u64 = get_current_topoheight()
+    if current_topo <= launch_topo { return INITIAL_REWARD_PER_BLOCK }
+
+    let elapsed: u64 = current_topo - launch_topo
+    let epoch: u64 = elapsed / HALVING_INTERVAL_BLOCKS
+
+    let reward: u64 = INITIAL_REWARD_PER_BLOCK
+    let i: u64 = 0
+    while i < epoch {
+        reward = reward / 2
+        if reward == 0 { return 0 }
+        i += 1
+    }
+    return reward
+}
+
 fn get_dynamic_reward(base_reward: u64, miner_addr: Address) -> u64 {
-    // v10.10: Rewards are now stake-weighted by reputation
-    // Formula: reward = (stake × rep_mult / total_weighted_stake) × daily_budget
-    // The base_reward parameter is now used as the daily budget per submission cycle
-    // total_weighted_stake = sum of (stake × rep_mult) for all active miners
-    // This is self-regulating: more miners = lower per-miner reward, but total is fixed
+    // v10.11: Bitcoin-style halving rewards
+    // reward = block_reward × (stake / total_staked) × rep_mult / 10000
+    // block_reward halves every year (like Bitcoin halving)
+    // No fixed budget limit — lasts 30+ years with decreasing emission
     let s: Storage = Storage::new()
     let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
     if miner_opt.is_none() { return 0 }
@@ -193,13 +219,15 @@ fn get_dynamic_reward(base_reward: u64, miner_addr: Address) -> u64 {
     let rep_mult: u64 = get_reputation_multiplier(miner.reputation)
     if rep_mult == 0 { return 0 }
 
-    // Get total staked (cached in TOTAL_STAKED_KEY)
     let total_staked: u64 = s.load(TOTAL_STAKED_KEY).unwrap_or(0)
     if total_staked == 0 { return 0 }
 
-    // reward = base × (stake / total_staked) × rep_mult / 10000
-    // base_reward now represents the per-cycle budget (not per-submission)
-    let reward: u64 = (base_reward as u128 * miner.stake as u128 * rep_mult as u128 / (total_staked as u128 * 10000u128)) as u64
+    // Get current block reward (halving-based)
+    let block_reward: u64 = get_current_block_reward()
+    if block_reward == 0 { return 0 }
+
+    // reward = block_reward × (stake / total_staked) × rep_mult / 10000
+    let reward: u64 = (block_reward as u128 * miner.stake as u128 * rep_mult as u128 / (total_staked as u128 * 10000u128)) as u64
     return reward
 }
 

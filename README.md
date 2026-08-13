@@ -234,28 +234,28 @@ This means: even if the project loses popularity and miners drop, the protocol *
 ## Miner Rewards
 
 ```
-daily_budget = 5,500,000 VLT / 10 years / 365 = 1,507 VLT/day (FIXED)
+Bitcoin-style halving: rewards halve every year, lasting 30+ years
 
-reward = (stake × reputation_mult / total_weighted_stake) × daily_budget
+block_reward = INITIAL_REWARD_PER_BLOCK / 2^epoch
+  where epoch = (current_block - launch_block) / HALVING_INTERVAL
+
+reward = block_reward × (stake / total_staked) × reputation_mult / 10000
 ```
 
-**Stake-weighted rewards** — self-regulating like Bitcoin:
-- Few miners → high APY → attracts more miners
-- Many miners → low APY → natural equilibrium
-- Budget ALWAYS lasts 10 years (total/day is fixed at 1,507 VLT)
+**Self-regulating like Bitcoin** — high early rewards attract miners, then decrease:
 
-| Miners | Reward/miner/day | APY (1,000 VLT) | Total/day | Budget lasts |
-|--------|-----------------|-----------------|-----------|--------------|
-| 1 | 1,507 VLT | 55,000% | 1,507 VLT | 10 years |
-| 10 | 151 VLT | 5,500% | 1,507 VLT | 10 years |
-| 100 | 15 VLT | 550% | 1,507 VLT | 10 years |
-| 500 | 3 VLT | 110% | 1,507 VLT | 10 years |
-| 1000 | 1.5 VLT | 55% | 1,507 VLT | 10 years |
-| 10000 | 0.15 VLT | 5.5% | 1,507 VLT | 10 years |
+| Year | VLT/year | VLT/day | Cumul % | APY (100 miners) |
+|------|----------|---------|---------|-------------------|
+| 1 | 2,750,000 | 7,534 | 50% | 2,750% |
+| 2 | 1,375,000 | 3,767 | 75% | 1,375% |
+| 3 | 687,500 | 1,884 | 87.5% | 688% |
+| 5 | 171,875 | 471 | 96.9% | 172% |
+| 10 | 5,371 | 15 | 99.9% | 5% |
 
-**Budget: 5,500,000 VLT over 10 years** (55% of total supply).
-**Min stake: 1,000 VLT** (anti-Sybil, ROI > 200 days).
-**No budget_factor, no daily cap** — pure stake-weighted distribution.
+**Budget: 5,500,000 VLT** (approached via geometric series, never truly exhausted).
+**Halving: every 1 year** (6,307,200 blocks at 5s).
+**Min stake: 1,000 VLT** (anti-Sybil).
+**No fixed end date** — rewards continue indefinitely at decreasing rates.
 **Reputation multiplier** changes each miner's share (Excellent 1.5x, Good 1.0x, etc.).
 
 ### Features

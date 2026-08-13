@@ -241,11 +241,11 @@ reward = BASE_REWARD_ORACLE (0.4756 VLT)
 
 | Miners | Est. reward/miner/day | ROI on 100 VLT stake |
 |--------|----------------------|---------------------|
-| 10 | ~55 VLT | < 2 days |
-| 50 | ~11 VLT | ~9 days |
-| 100 | ~5.5 VLT | ~18 days |
+| 10 | ~150 VLT | < 1 day |
+| 50 | ~30 VLT | ~3 days |
+| 100 | ~15 VLT | ~7 days |
 
-**Budget: 6,000,000 VLT over 10 years** (60% of total supply).
+**Budget: 5,500,000 VLT over 10 years** (55% of total supply).
 
 ### Features
 
@@ -262,20 +262,30 @@ reward = BASE_REWARD_ORACLE (0.4756 VLT)
 
 | Allocation | Amount | % | Purpose |
 |------------|--------|---|---------|
-| Oracle rewards | 6,000,000 | 60% | Distributed to miners over 10 years |
-| Team | 1,000,000 | 10% | 4-year vesting, 1-year cliff |
-| Treasury | 1,000,000 | 10% | Governance-controlled |
-| DEX liquidity | 1,200,000 | 12% | VLT/XEL pool seeding |
-| Community airdrop | 500,000 | 5% | Contributors & helpers |
-| Community airdrop (launch) | 200,000 | 2% | Launch community distribution |
-| Bug bounty | 100,000 | 1% | Perpetual |
+| Oracle rewards | 5,500,000 | 55% | Distributed to miners over 10 years |
+| Chat relayer rewards | 1,000,000 | 10% | Relayer network over 10 years (100k VLT/year) |
+| DEX liquidity | 1,000,000 | 10% | VLT/XEL pool seeding |
+| Founder vesting (4y) | 500,000 | 5% | 4-year vesting, 1-year cliff |
+| Treasury | 500,000 | 5% | Governance-controlled |
+| Community airdrop | 500,000 | 5% | Testnet contributors (via AirdropTracker) |
+| Launch airdrop | 200,000 | 2% | First 1,000 mainnet users (200 VLT each) |
+| Bug bounty | 100,000 | 1% | Perpetual, Immunefi |
+| Protocol reserve | 200,000 | 2% | Buffer for unforeseen needs |
+| Founder ongoing (10y) | 500,000 | 5% | 10-year vesting, 50k VLT/year |
 
-**100% fair launch** — no presale, no seed investors, no VC allocation. The 7% airdrop is distributed to community members, contributors, and helpers who support the protocol.
+**100% fair launch** — no presale, no seed investors, no VC allocation.
+
+### Fee Distribution (via FeeDistributor contract)
+
+All protocol fees are split automatically:
+- **50% burned** (deflationary pressure)
+- **40% to treasury** (governance-controlled)
+- **10% to founder** (ongoing XEL revenue, no extra cost to users)
 
 ### xUSD Stablecoin
 
 - **Peg mechanism**: PSM (Peg Stability Module) — mint/redeem xUSD 1:1 with XEL at oracle price
-- **Collateral**: VaultEngine CDPs — deposit XEL, borrow xUSD (200% min collateral ratio)
+- **Collateral**: VaultEngine CDPs — deposit XEL, borrow xUSD (150% min collateral ratio)
 - **Stability fee**: 2% APR on borrows (accrues continuously via global index)
 - **Burn mechanisms**: 50% of all slashes burned + 50% of protocol fees burned
 

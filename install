@@ -140,13 +140,33 @@ chmod +x "${BIN_DIR}/xvault-relayer"
 
 success "Launchers installed: xvault-miner, xvault, xvault-relayer"
 
+# Auto-add BIN_DIR to PATH (permanent)
 if [[ ":${PATH}:" != *":${BIN_DIR}:"* ]]; then
-    warn "${BIN_DIR} not in PATH"
+    warn "${BIN_DIR} not in PATH — adding it permanently"
     SHELL_NAME=$(basename "$SHELL")
     case "$SHELL_NAME" in
-        bash) info "  echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.bashrc" ;;
-        zsh)  info "  echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.zshrc" ;;
-        *)    info "  export PATH=\"${BIN_DIR}:\$PATH\"" ;;
+        bash)
+            if ! grep -q "${BIN_DIR}" ~/.bashrc 2>/dev/null; then
+                echo "export PATH=\"${BIN_DIR}:\$PATH\"" >> ~/.bashrc
+                success "Added to ~/.bashrc (restart terminal or run: source ~/.bashrc)"
+            fi
+            ;;
+        zsh)
+            if ! grep -q "${BIN_DIR}" ~/.zshrc 2>/dev/null; then
+                echo "export PATH=\"${BIN_DIR}:\$PATH\"" >> ~/.zshrc
+                success "Added to ~/.zshrc (restart terminal or run: source ~/.zshrc)"
+            fi
+            ;;
+        fish)
+            if ! grep -q "${BIN_DIR}" ~/.config/fish/config.fish 2>/dev/null; then
+                echo "set -gx PATH ${BIN_DIR} \$PATH" >> ~/.config/fish/config.fish
+                success "Added to fish config"
+            fi
+            ;;
+        *)
+            info "  Run this command to add to PATH:"
+            info "  export PATH=\"${BIN_DIR}:\$PATH\""
+            ;;
     esac
 fi
 

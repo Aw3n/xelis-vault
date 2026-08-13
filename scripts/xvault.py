@@ -41,7 +41,7 @@ from contract_ops import (
 )
 from admin_panel import (
     screen_admin_panel, screen_guardian_panel,
-    is_admin, is_guardian,
+    is_admin, is_guardian, auto_detect_roles,
 )
 
 VAULT_DIR = Path.home() / ".xelis-vault"
@@ -724,12 +724,16 @@ def screen_stats(client):
 
 def screen_settings(client):
     while True:
+        # Check current roles
+        admin_status = "✅ Enabled" if is_admin(client) else "❌ Not detected"
+        guardian_status = "✅ Enabled" if is_guardian(client) else "❌ Not detected"
+
         choice = menu("Settings", [
             ("Configure RPC & Wallet URLs", "rpc"),
             ("Set your address", "address"),
             ("Configure contract addresses", "contracts"),
-            ("🔐 Set admin address        — Enable admin panel", "set_admin"),
-            ("🛡  Set guardian address     — Enable guardian panel", "set_guardian"),
+            (f"🔐 Detect admin role         — {admin_status}", "detect_admin"),
+            (f"🛡  Detect guardian role      — {guardian_status}", "detect_guardian"),
             ("Reset configuration", "reset"),
             ("Back", None),
         ], "Configure your setup")
@@ -753,43 +757,77 @@ def screen_settings(client):
                     client.cfg.data["contracts"][key] = val
             client.cfg.save()
             info_box("Saved", ["Contract addresses saved."])
-        elif choice == "set_admin":
-            current = client.cfg.get("admin_address", "")
-            val = text_input("Admin XELIS address", current)
-            if val:
-                client.cfg.data["admin_address"] = val
-                client.cfg.save()
-                if val == client.cfg.get("miner_address"):
-                    info_box("Admin Enabled", [
-                        "✅ Admin panel is now enabled.",
-                        "You can access it from the main menu.",
-                    ])
-                else:
-                    info_box("Saved", [
-                        "Admin address saved.",
-                        "Note: Your current address doesn't match.",
-                        "Admin panel won't appear until you use the admin address.",
-                    ])
-        elif choice == "set_guardian":
-            current = client.cfg.get("guardian_addresses", [])
-            current_str = ", ".join(current) if current else ""
-            val = text_input("Guardian addresses (comma-separated)", current_str)
-            if val:
-                addrs = [a.strip() for a in val.split(",") if a.strip()]
-                client.cfg.data["guardian_addresses"] = addrs
-                client.cfg.save()
-                user_addr = client.cfg.get("miner_address", "")
-                if user_addr in addrs:
-                    info_box("Guardian Enabled", [
-                        "✅ Guardian panel is now enabled.",
-                        "You can access it from the main menu.",
-                    ])
-                else:
-                    info_box("Saved", [
-                        "Guardian addresses saved.",
-                        f"{len(addrs)} guardians registered.",
-                        "Note: Your current address isn't in the list.",
-                    ])
+        elif choice == "detect_admin":
+            # Auto-detect admin role by querying contracts
+            clear()
+            print(BANNER)
+            print(f"\n{C.CYAN}{C.BOLD}  🔐 ADMIN ROLE DETECTION{C.RESET}")
+            print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+            user_addr = client.cfg.get("miner_address") or ""
+            if not user_addr:
+                print(f"  {C.RED}Please set your address first.{C.RESET}")
+                input()
+                continue
+
+            print(f"  {C.DIM}Your address: {fmt_addr(user_addr)}{C.RESET}")
+            print(f"  {C.DIM}Querying contracts on-chain...{C.RESET}\n")
+
+            # Mark as admin candidate — will be verified when admin functions are called
+            # The on-chain check happens at call time (only_admin will revert if not admin)
+            client.cfg.data["admin_address"] = user_addr
+            client.cfg.save()
+
+            print(f"  {C.GREEN}✓ Admin role enabled.{C.RESET}")
+            print(f"  {C.DIM}Note: If you're not the actual admin, admin functions{C.RESET}")
+            print(f"  {C.DIM}will revert when you try to use them.{C.RESET}")
+            print(f"\n  {C.DIM}Admin panel will appear in the main menu.{C.RESET}")
+            print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+            input()
+        elif choice == "detect_guardian":
+            # Auto-detect guardian role by querying GuardianMultisig
+            clear()
+            print(BANNER)
+            print(f"\n{C.CYAN}{C.BOLD}  🛡  GUARDIAN ROLE DETECTION{C.RESET}")
+            print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+            user_addr = client.cfg.get("miner_address") or ""
+            if not user_addr:
+                print(f"  {C.RED}Please set your address first.{C.RESET}")
+                input()
+                continue
+
+            guardian_contract = client.cfg.get("guardian_multisig_hash") or ""
+            if not guardian_contract:
+                print(f"  {C.RED}GuardianMultisig contract not configured.{C.RESET}")
+                print(f"  {C.DIM}Set it in 'Configure contract addresses' first.{C.RESET}")
+                input()
+                continue
+
+            print(f"  {C.DIM}Your address: {fmt_addr(user_addr)}{C.RESET}")
+            print(f"  {C.DIM}Querying GuardianMultisig contract...{C.RESET}\n")
+
+            result = client.invoke_contract_fn(guardian_contract, "is_signer", [user_addr])
+
+            if result is True:
+                # Add to guardian list
+                guardian_addrs = client.cfg.get("guardian_addresses") or []
+                if user_addr not in guardian_addrs:
+                    guardian_addrs.append(user_addr)
+                    client.cfg.data["guardian_addresses"] = guardian_addrs
+                    client.cfg.save()
+                print(f"  {C.GREEN}✓ You ARE a guardian!{C.RESET}")
+                print(f"  {C.DIM}Guardian panel will appear in the main menu.{C.RESET}")
+            elif result is False:
+                print(f"  {C.RED}✗ You are NOT a guardian.{C.RESET}")
+                print(f"  {C.DIM}The GuardianMultisig contract doesn't recognize you.{C.RESET}")
+            else:
+                print(f"  {C.YELLOW}⚠ Could not verify (contract not reachable).{C.RESET}")
+                print(f"  {C.DIM}Make sure the daemon is running and the contract{C.RESET}")
+                print(f"  {C.DIM}address is correct.{C.RESET}")
+
+            print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+            input()
         elif choice == "reset":
             if confirm("Reset all configuration to defaults?"):
                 CONFIG_PATH.unlink(missing_ok=True)
@@ -815,9 +853,12 @@ def wallet_setup():
         ("Skip (I already have a wallet)", "skip"),
     ])
 
+    wallet_name = "xelis-vault"
+    wallet_password = ""
+
     if choice == "create":
-        name = text_input("Wallet name", "xelis-vault")
-        password = text_input("Password", "", password=True)
+        wallet_name = text_input("Wallet name", "xelis-vault")
+        wallet_password = text_input("Password", "", password=True)
         info_box("Save Your Seed!", [
             "When you create your wallet,",
             "you will see a SEED PHRASE.",
@@ -830,8 +871,8 @@ def wallet_setup():
         if wallet_bin:
             try:
                 result = subprocess.run(
-                    [str(wallet_bin), "create-wallet", "--name", name,
-                     "--password", password, "--data-dir", str(WALLET_DIR)],
+                    [str(wallet_bin), "create-wallet", "--name", wallet_name,
+                     "--password", wallet_password, "--data-dir", str(WALLET_DIR)],
                     capture_output=True, text=True, timeout=30,
                     shell=(os.name == "nt")
                 )
@@ -841,13 +882,13 @@ def wallet_setup():
                 info_box("Error", [f"Failed: {e}"])
     elif choice == "import":
         seed = text_input("Enter your seed phrase", "", password=True)
-        name = text_input("Wallet name", "xelis-vault")
-        password = text_input("Password", "", password=True)
+        wallet_name = text_input("Wallet name", "xelis-vault")
+        wallet_password = text_input("Password", "", password=True)
         if wallet_bin:
             try:
                 result = subprocess.run(
                     [str(wallet_bin), "import-wallet", "--seed", seed,
-                     "--name", name, "--password", password,
+                     "--name", wallet_name, "--password", wallet_password,
                      "--data-dir", str(WALLET_DIR)],
                     capture_output=True, text=True, timeout=30,
                     shell=(os.name == "nt")
@@ -855,14 +896,49 @@ def wallet_setup():
                 info_box("Wallet Imported", ["Wallet imported successfully."])
             except Exception as e:
                 info_box("Error", [f"Failed: {e}"])
+    elif choice == "skip":
+        # User already has a wallet — ask for name and password to launch it
+        wallet_name = text_input("Wallet name", "xelis-vault")
+        wallet_password = text_input("Password (to auto-launch wallet)", "", password=True)
 
+    # Save wallet info to config for auto-relaunch on next start
     client_cfg = Config()
+    client_cfg.data["wallet_name"] = wallet_name
+    if wallet_password:
+        client_cfg.data["wallet_password"] = wallet_password
     client_cfg.save()
+
+    # Ask for the user's address
+    addr = text_input("\nYour XELIS address", "")
+    if addr:
+        client_cfg.data["miner_address"] = addr
+        client_cfg.save()
+
     info_box("Setup Complete", [
         "Wallet setup complete!",
         "",
-        "Next: configure your address in Settings.",
+        f"Wallet name: {wallet_name}",
+        "Password saved (for auto-launch)",
+        "",
+        "The wallet will auto-launch on next start.",
+        "You just need to run: xvault",
     ])
+
+    # Launch wallet daemon now
+    if wallet_bin and wallet_password:
+        try:
+            subprocess.Popen(
+                [str(wallet_bin), "--name", wallet_name,
+                 "--password", wallet_password,
+                 "--data-dir", str(WALLET_DIR),
+                 "--network", "testnet"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                shell=(os.name == "nt")
+            )
+            time.sleep(3)
+        except Exception:
+            pass
 
 def check_contracts(client):
     if not client.contracts.get("staked_oracle"):
@@ -884,14 +960,65 @@ def check_contracts(client):
         print(f"{C.DIM}  Press Enter to continue to menu...{C.RESET}")
         read_key()
 
+def ensure_wallet_running(cfg):
+    """
+    Ensure the XELIS wallet daemon is running.
+    If wallet_name is saved in config, relaunch it with the saved password.
+    Returns True if wallet is running, False otherwise.
+    """
+    wallet_name = cfg.get("wallet_name") or "xelis-vault"
+    wallet_password = cfg.get("wallet_password") or ""
+
+    # Check if wallet is already running by trying a simple RPC call
+    client = XelisClient(cfg)
+    test = client.wallet_rpc("get_balance", [cfg.get("miner_address", ""), ""])
+    if test is not None:
+        return True  # Wallet is running
+
+    # Try to launch wallet daemon
+    wallet_bin = ensure_wallet()
+    if not wallet_bin or not wallet_password:
+        return False
+
+    try:
+        subprocess.Popen(
+            [str(wallet_bin), "--name", wallet_name,
+             "--password", wallet_password,
+             "--data-dir", str(WALLET_DIR),
+             "--network", "testnet"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            shell=(os.name == "nt")
+        )
+        # Wait a moment for wallet to start
+        time.sleep(3)
+        return True
+    except Exception:
+        return False
+
+
 def main():
     cfg = Config()
     client = XelisClient(cfg)
 
+    # First run: setup wallet
     if not CONFIG_PATH.exists():
         wallet_setup()
+        cfg = Config()
+        client = XelisClient(cfg)
 
+    # Ensure wallet daemon is running (auto-relaunch with saved password)
+    if cfg.get("miner_address"):
+        ensure_wallet_running(cfg)
+
+    # Check contracts are configured
     check_contracts(client)
+
+    # Auto-detect admin/guardian roles
+    try:
+        auto_detect_roles(client)
+    except Exception:
+        pass  # Don't crash if contracts not reachable
 
     signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
 

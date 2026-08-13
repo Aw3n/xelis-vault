@@ -141,6 +141,27 @@ class XelisClient:
             return {}
         return self.wallet_rpc("get_balance", [addr, asset]) or {}
 
+    def get_wallet_addresses(self):
+        """Get all addresses from the wallet daemon (auto-detect)."""
+        result = self.wallet_rpc("get_addresses", [])
+        if result is None:
+            return []
+        # Result can be a list of strings or a dict with "addresses" key
+        if isinstance(result, list):
+            return result
+        if isinstance(result, dict):
+            return result.get("addresses", [])
+        return []
+
+    def get_main_address(self):
+        """Get the first/main address from the wallet."""
+        addrs = self.get_wallet_addresses()
+        if addrs:
+            if isinstance(addrs[0], dict):
+                return addrs[0].get("address", "")
+            return addrs[0]
+        return ""
+
     # === Contract interaction methods ===
 
     def invoke_contract(self, contract_hash, entry_id, params=None):
@@ -727,10 +748,21 @@ def screen_settings(client):
         # Check current roles
         admin_status = "✅ Enabled" if is_admin(client) else "❌ Not detected"
         guardian_status = "✅ Enabled" if is_guardian(client) else "❌ Not detected"
+        addr = client.cfg.get("miner_address") or "(not detected)"
+        wallet_name = client.cfg.get("wallet_name") or "(not set)"
+
+        # Show current state
+        clear()
+        print(BANNER)
+        print(f"\n{C.CYAN}{C.BOLD}  ⚙️  SETTINGS{C.RESET}")
+        print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+        print(f"  Wallet:     {C.DIM}{wallet_name}{C.RESET}")
+        print(f"  Address:    {C.DIM}{addr[:25]}...{C.RESET}")
+        print(f"  Admin:      {admin_status}")
+        print(f"  Guardian:   {guardian_status}\n")
 
         choice = menu("Settings", [
             ("Configure RPC & Wallet URLs", "rpc"),
-            ("Set your address", "address"),
             ("Configure contract addresses", "contracts"),
             (f"🔐 Detect admin role         — {admin_status}", "detect_admin"),
             (f"🛡  Detect guardian role      — {guardian_status}", "detect_guardian"),
@@ -744,13 +776,10 @@ def screen_settings(client):
             client.cfg.data["wallet_url"] = text_input("Wallet RPC URL", client.cfg.get("wallet_url"))
             client.cfg.save()
             info_box("Saved", ["Configuration saved successfully."])
-        elif choice == "address":
-            client.cfg.data["miner_address"] = text_input("Your XELIS address", client.cfg.get("miner_address"))
-            client.cfg.save()
-            info_box("Saved", ["Address saved."])
         elif choice == "contracts":
             for key in ["staked_oracle", "miner", "vlt_token", "vlt_asset", "xusd",
-                         "vault_engine", "psm", "vault_swap", "governance_vault"]:
+                         "vault_engine", "psm", "vault_swap", "governance_vault",
+                         "guardian_multisig_hash", "treasury_hash"]:
                 current = client.contracts.get(key, "")
                 val = text_input(f"{key}", current[:20] + "..." if len(current) > 20 else current)
                 if val:
@@ -908,22 +937,6 @@ def wallet_setup():
         client_cfg.data["wallet_password"] = wallet_password
     client_cfg.save()
 
-    # Ask for the user's address
-    addr = text_input("\nYour XELIS address", "")
-    if addr:
-        client_cfg.data["miner_address"] = addr
-        client_cfg.save()
-
-    info_box("Setup Complete", [
-        "Wallet setup complete!",
-        "",
-        f"Wallet name: {wallet_name}",
-        "Password saved (for auto-launch)",
-        "",
-        "The wallet will auto-launch on next start.",
-        "You just need to run: xvault",
-    ])
-
     # Launch wallet daemon now
     if wallet_bin and wallet_password:
         try:
@@ -939,6 +952,34 @@ def wallet_setup():
             time.sleep(3)
         except Exception:
             pass
+
+    # Auto-detect address from wallet (NO manual entry)
+    info_box("Detecting address...", ["Querying wallet for your address..."])
+    temp_client = XelisClient(client_cfg)
+    addr = temp_client.get_main_address()
+
+    if addr:
+        client_cfg.data["miner_address"] = addr
+        client_cfg.save()
+        info_box("Setup Complete", [
+            "Wallet setup complete!",
+            "",
+            f"Wallet name: {wallet_name}",
+            f"Address: {addr[:20]}...",
+            "",
+            "The wallet will auto-launch on next start.",
+            "You just need to run: xvault",
+        ])
+    else:
+        info_box("Setup Complete", [
+            "Wallet setup complete!",
+            "",
+            f"Wallet name: {wallet_name}",
+            "",
+            "⚠ Could not auto-detect your address.",
+            "Make sure the wallet daemon is running.",
+            "Your address will be detected on next launch.",
+        ])
 
 def check_contracts(client):
     if not client.contracts.get("staked_oracle"):
@@ -971,8 +1012,8 @@ def ensure_wallet_running(cfg):
 
     # Check if wallet is already running by trying a simple RPC call
     client = XelisClient(cfg)
-    test = client.wallet_rpc("get_balance", [cfg.get("miner_address", ""), ""])
-    if test is not None:
+    addrs = client.get_wallet_addresses()
+    if addrs:
         return True  # Wallet is running
 
     # Try to launch wallet daemon
@@ -997,6 +1038,22 @@ def ensure_wallet_running(cfg):
         return False
 
 
+def auto_detect_address(client, cfg):
+    """
+    Auto-detect the user's address from the wallet daemon.
+    Called on startup — no manual entry needed.
+    """
+    if not cfg.get("wallet_name"):
+        return  # Wallet not configured yet
+
+    # Try to get address from wallet
+    addr = client.get_main_address()
+    if addr:
+        if cfg.get("miner_address") != addr:
+            cfg.data["miner_address"] = addr
+            cfg.save()
+
+
 def main():
     cfg = Config()
     client = XelisClient(cfg)
@@ -1008,8 +1065,11 @@ def main():
         client = XelisClient(cfg)
 
     # Ensure wallet daemon is running (auto-relaunch with saved password)
-    if cfg.get("miner_address"):
+    if cfg.get("wallet_name"):
         ensure_wallet_running(cfg)
+
+    # Auto-detect address from wallet (NO manual entry)
+    auto_detect_address(client, cfg)
 
     # Check contracts are configured
     check_contracts(client)

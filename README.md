@@ -8,6 +8,7 @@ CDP stablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mix
 
 [![Network](https://img.shields.io/badge/network-testnet-blue)](https://testnet-explorer.xelis.io/)
 [![Contracts](https://img.shields.io/badge/contracts-50%20Silex-blueviolet)](contracts/)
+[![Version](https://img.shields.io/badge/version-v10.6-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -148,7 +149,7 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex -Args "--uninstal
 ## Architecture
 
 ```
-XELIS Vault v10.4 — 50 Silex contracts
+XELIS Vault v10.6 — 50 Silex contracts
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    CONTRACT REGISTRY                         │
@@ -304,13 +305,42 @@ The AMM pool (`VaultSwapV2`) includes a VLT/XEL pool where:
 
 ### Community CLI (`xvault`)
 
-| Flag | Description |
-|------|-------------|
-| `--setup` | Wallet setup only |
-| `--balance` | Quick balance check |
-| `--swap` | Quick swap menu |
-| `--vault` | Vault management |
-| `--governance` | Governance menu |
+```bash
+xvault              # Launch the CLI (wallet auto-launches, address auto-detected)
+```
+
+**Features:**
+- 📊 Dashboard — Overview, balances, airdrop stats
+- 🏦 Vault — Deposit XEL, borrow xUSD, repay, withdraw
+- 💱 Swap — PSM mint/redeem, AMM swap, add liquidity
+- 🗳 Governance — Stake VLT, vote, create proposals
+- 🔒 Mixer — Private transfers (10/100/1000 XEL denominations)
+- 💬 Chat — E2E encrypted messaging
+- 🪂 Airdrop — Points, leaderboard, register mainnet address
+- 📈 Stats — Protocol statistics (real-time price, vaults, balances)
+- 🔐 Admin Panel — Admin-only functions (auto-detected)
+- 🛡 Guardian Panel — Guardian-only emergency controls (auto-detected)
+
+**Admin Panel** (appears automatically if you're the admin):
+- Pause/Unpause all contracts
+- Faucet distribution (batch up to 50 addresses)
+- Airdrop management (freeze, finalize, batch points, disqualify)
+- Miner management (slash, rewards, services)
+- Oracle management (add feed, force update)
+- Protocol parameters (fees, LTV, caps)
+- Founder vesting, revenue share, emergency shutdown
+- Admin audit log viewer
+
+**Guardian Panel** (appears automatically if you're a guardian):
+- Emergency pause/unpause (guardians can act alone)
+- Oracle force update
+- Circuit breaker trigger
+- Multisig proposals (view, confirm, execute)
+
+**Role detection is automatic:**
+- Guardian: verified on-chain via `GuardianMultisig.is_signer()`
+- Admin: enabled in Settings, verified at call time by `only_admin()`
+- No manual address entry — your address is auto-detected from your wallet
 
 Full CLI guide: [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md)
 

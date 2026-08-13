@@ -234,18 +234,23 @@ This means: even if the project loses popularity and miners drop, the protocol *
 ## Miner Rewards
 
 ```
-reward = BASE_REWARD_ORACLE (0.4756 VLT)
+reward = BASE_REWARD_ORACLE (0.05 VLT)
        × reputation_multiplier  (1.5× Excellent, 1.0× Good, 0.5× Warning, 0.25× Critical, 0× Banned)
        × budget_factor / 10000  (auto-adjusts every 2 weeks, 0.5×–2× range)
+       capped at 5 VLT/day per miner (anti-abuse)
 ```
 
-| Miners | Est. reward/miner/day | ROI on 100 VLT stake |
-|--------|----------------------|---------------------|
-| 10 | ~150 VLT | < 1 day |
-| 50 | ~30 VLT | ~3 days |
-| 100 | ~15 VLT | ~7 days |
+| Miners | Est. reward/miner/day | ROI on 1000 VLT stake | APY |
+|--------|----------------------|----------------------|-----|
+| 10 | 5 VLT (capped) | 200 days | 182% |
+| 50 | 5 VLT (capped) | 200 days | 182% |
+| 100 | 5 VLT (capped) | 200 days | 182% |
+| 500 | 3 VLT | 332 days | 110% |
+| 1000 | 1.5 VLT | 664 days | 55% |
 
 **Budget: 5,500,000 VLT over 10 years** (55% of total supply).
+**Min stake: 1,000 VLT** (anti-Sybil, ROI > 200 days).
+**Daily cap: 5 VLT/day** per miner (prevents budget drain with few miners).
 
 ### Features
 

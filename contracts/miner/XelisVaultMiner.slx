@@ -39,17 +39,23 @@ const MINER_LIST_PREFIX: string = "ml_"
 const SERVICE_MINERS_PREFIX: string = "sm_"
 const TOTAL_STAKED_KEY: string = "ts"
 
-const DEFAULT_MIN_STAKE: u64 = 10000000000
+const DEFAULT_MIN_STAKE: u64 = 100000000000          // 1000 VLT (v10.7: was 100, 10x anti-Sybil)
 const DEFAULT_HEARTBEAT_INTERVAL: u64 = 100
 const DEFAULT_HEARTBEAT_TIMEOUT: u64 = 300
 
-const DEFAULT_TOTAL_BUDGET: u64 = 600000000000000
+const DEFAULT_TOTAL_BUDGET: u64 = 550000000000000    // 5.5M VLT (v10.7: was 6M, match whitepaper)
 const DEFAULT_TARGET_DURATION: u64 = 63072000
 const DEFAULT_BUDGET_FACTOR: u64 = 10000
 const DEFAULT_BUDGET_ADJUST_INTERVAL: u64 = 2016
 
-const DEFAULT_BASE_REWARD_ORACLE: u64 = 47564687
-const DEFAULT_BASE_REWARD_CHAT: u64 = 50000000
+const DEFAULT_BASE_REWARD_ORACLE: u64 = 5000000       // 0.05 VLT (v10.7: was 0.4756, 10x reduction)
+const DEFAULT_BASE_REWARD_CHAT: u64 = 10000000        // 0.1 VLT (v10.7: was 0.5, 5x reduction)
+
+// v10.7: Daily reward cap per miner (anti-abuse, prevents budget drain with few miners)
+const MAX_DAILY_REWARD_ORACLE: u64 = 500000000        // 5 VLT/day max per miner (oracle)
+const MAX_DAILY_REWARD_CHAT: u64 = 200000000           // 2 VLT/day max per miner (chat)
+const DAILY_REWARD_PREFIX: string = "dr_"              // miner_addr_service_day → accumulated
+const DAILY_REWARD_DAY_PREFIX: string = "drd_"         // miner_addr_service → last day
 
 const REP_MAX: u64 = 10000
 const REP_EXCELLENT: u64 = 8000
@@ -546,8 +552,10 @@ pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) ->
     }
 
     let base_reward: u64 = s.load(BASE_REWARD_ORACLE_KEY).unwrap_or(DEFAULT_BASE_REWARD_ORACLE)
+    let max_daily: u64 = MAX_DAILY_REWARD_ORACLE
     if service_id == 2 {
         base_reward = s.load(BASE_REWARD_CHAT_KEY).unwrap_or(DEFAULT_BASE_REWARD_CHAT)
+        max_daily = MAX_DAILY_REWARD_CHAT
     }
     if base_reward == 0 { return 0 }
 
@@ -557,19 +565,37 @@ pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) ->
         return 0
     }
 
+    // v10.7: Daily reward cap — prevent budget drain with few miners
+    let current_topo: u64 = get_current_topoheight()
+    let today: u64 = current_topo / 17280
+    let day_key: string = DAILY_REWARD_DAY_PREFIX + miner_addr.to_string() + "_" + service_id.to_string()
+    let reward_key: string = DAILY_REWARD_PREFIX + miner_addr.to_string() + "_" + service_id.to_string() + "_" + today.to_string()
+    let stored_day: u64 = s.load(day_key).unwrap_or(0)
+    let daily_accumulated: u64 = 0
+    if stored_day == today {
+        daily_accumulated = s.load(reward_key).unwrap_or(0)
+    }
+    if daily_accumulated >= max_daily {
+        s.store(MINER_PREFIX + miner_addr.to_string(), miner)
+        return 0
+    }
+    let capped_reward: u64 = reward
+    if daily_accumulated + reward > max_daily {
+        capped_reward = max_daily - daily_accumulated
+    }
+
     let distributed: u64 = s.load(DISTRIBUTED_KEY).unwrap_or(0)
     let total_budget: u64 = s.load(TOTAL_BUDGET_KEY).unwrap_or(DEFAULT_TOTAL_BUDGET)
-    if distributed + reward > total_budget {
+    if distributed + capped_reward > total_budget {
         s.store(MINER_PREFIX + miner_addr.to_string(), miner)
         return 0
     }
 
     let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("err")
     let vlt: Contract = Contract::new(vlt_hash).expect("err")
-    // VLTToken v5 entry 4 = mint_to(to: Address, amount: u64)
-    let _ = vlt.call(4u16, [miner_addr, reward], {})
+    let _ = vlt.call(4u16, [miner_addr, capped_reward], {})
 
-    miner.total_rewards_earned += reward
+    miner.total_rewards_earned += capped_reward
     miner.valid_submissions += 1
     if service_id == 2 { miner.successful_anchors += 1 }
 
@@ -580,9 +606,11 @@ pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) ->
         if miner.reputation > REP_MAX { miner.reputation = REP_MAX }
     }
     s.store(MINER_PREFIX + miner_addr.to_string(), miner)
-    s.store(DISTRIBUTED_KEY, distributed + reward)
+    s.store(DISTRIBUTED_KEY, distributed + capped_reward)
+    s.store(day_key, today)
+    s.store(reward_key, daily_accumulated + capped_reward)
     maybe_adjust_budget()
-    return reward
+    return capped_reward
 }
 
 // ID 9: is_miner_active_entry (was pub fn is_miner_active)

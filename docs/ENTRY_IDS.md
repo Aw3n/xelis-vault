@@ -1,9 +1,9 @@
-# ENTRY IDs — XELIS Vault v10.4
+# ENTRY IDs — XELIS Vault v10.9
 
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
 
 Each `entry` function gets a sequential ID starting at 0 in declaration order.
-**Total entry functions across 50 contracts:** 930
+**Total entry functions across 51 contracts:** 957
 
 `pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.
 
@@ -701,6 +701,31 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 8 | `transfer_admin` | `new_admin: Address` | `u` |
 | 9 | `get_version` | `—` | `s` |
 
+## `miner/MinerDelegation.slx`
+
+| ID | Name | Parameters | Return |
+|----|------|------------|--------|
+| 0 | `register_miner_profile` | `name: string, description: string, commission_bps: u64` | `u` |
+| 1 | `update_miner_profile` | `name: string, description: string, commission_bps: u64` | `u` |
+| 2 | `delegate` | `miner_addr: Address, amount: u64` | `u` |
+| 3 | `undelegate` | `amount: u64` | `u` |
+| 4 | `claim_delegator_rewards` | `—` | `u` |
+| 5 | `claim_miner_rewards` | `—` | `u` |
+| 6 | `distribute_rewards` | `miner_addr: Address, total_reward: u64` | `u` |
+| 7 | `apply_slashing` | `miner_addr: Address, slash_amount: u64` | `u` |
+| 8 | `set_min_commission` | `bps: u64` | `u` |
+| 9 | `set_max_commission` | `bps: u64` | `u` |
+| 10 | `set_undelegate_delay` | `blocks: u64` | `u` |
+| 11 | `set_vlt_contract` | `vc: Hash` | `u` |
+| 12 | `set_vlt_asset` | `va: Hash` | `u` |
+| 13 | `set_registry` | `registry: Hash` | `u` |
+| 14 | `set_timelock` | `tl: Hash` | `u` |
+| 15 | `set_guardian` | `g: Address` | `u` |
+| 16 | `pause` | `—` | `u` |
+| 17 | `unpause` | `—` | `u` |
+| 18 | `transfer_admin` | `new_admin: Address` | `u` |
+| 19 | `get_version` | `—` | `s` |
+
 ## `miner/MinerPool.slx`
 
 | ID | Name | Parameters | Return |
@@ -774,6 +799,13 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 37 | `get_miner_reputation_entry` | `addr: Address` | `u` |
 | 38 | `get_active_miners_count_entry` | `—` | `u` |
 | 39 | `get_miner_at_entry` | `index: u64` | `A` |
+| 40 | `emergency_slash_miner` | `miner_addr: Address, slash_bps: u64, reason: string` | `u` |
+| 41 | `emergency_ban_miner` | `miner_addr: Address, reason: string` | `u` |
+| 42 | `emergency_freeze_rewards` | `frozen: bool` | `u` |
+| 43 | `set_min_stake_entry` | `new_min_stake: u64` | `u` |
+| 44 | `set_max_delegation_pct` | `bps: u64` | `u` |
+| 45 | `get_miner_own_stake_entry` | `addr: Address` | `u` |
+| 46 | `is_rewards_frozen_entry` | `—` | `b` |
 
 ## `nft/VaultNFT.slx`
 

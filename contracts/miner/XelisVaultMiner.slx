@@ -45,8 +45,8 @@ const DEFAULT_HEARTBEAT_TIMEOUT: u64 = 300
 
 const DEFAULT_TOTAL_BUDGET: u64 = 550000000000000    // 5.5M VLT (v10.7: was 6M, match whitepaper)
 const DEFAULT_TARGET_DURATION: u64 = 63072000
-const DEFAULT_BUDGET_FACTOR: u64 = 10000
-const DEFAULT_BUDGET_ADJUST_INTERVAL: u64 = 2016
+const DEFAULT_BUDGET_FACTOR: u64 = 1000              // 0.1x at launch (conservative, v10.9: was 10000/1.0x)
+const DEFAULT_BUDGET_ADJUST_INTERVAL: u64 = 1440     // 1 day (v10.9: was 2016/2 weeks — faster adjustment)
 
 const DEFAULT_BASE_REWARD_ORACLE: u64 = 1000000       // 0.01 VLT (v10.8: stake-weighted, no daily cap)
 const DEFAULT_BASE_REWARD_CHAT: u64 = 10000000        // 0.1 VLT (v10.7: was 0.5, 5x reduction)
@@ -270,7 +270,7 @@ fn maybe_adjust_budget() {
 
     // Symmetric clamp
     let clamped: u64 = new_factor
-    if new_factor < 5000 { clamped = 5000 }
+    if new_factor < 500 { clamped = 500 }           // v10.9: min 0.05x (was 0.5x)
     if new_factor > 20000 { clamped = 20000 }
     s.store(BUDGET_FACTOR_KEY, clamped)
     s.store(LAST_BUDGET_ADJUST_KEY, current_topo)

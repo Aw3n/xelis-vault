@@ -48,14 +48,13 @@ const DEFAULT_TARGET_DURATION: u64 = 63072000
 const DEFAULT_BUDGET_FACTOR: u64 = 10000
 const DEFAULT_BUDGET_ADJUST_INTERVAL: u64 = 2016
 
-const DEFAULT_BASE_REWARD_ORACLE: u64 = 5000000       // 0.05 VLT (v10.7: was 0.4756, 10x reduction)
+const DEFAULT_BASE_REWARD_ORACLE: u64 = 1000000       // 0.01 VLT (v10.8: stake-weighted, no daily cap)
 const DEFAULT_BASE_REWARD_CHAT: u64 = 10000000        // 0.1 VLT (v10.7: was 0.5, 5x reduction)
 
-// v10.7: Daily reward cap per miner (anti-abuse, prevents budget drain with few miners)
-const MAX_DAILY_REWARD_ORACLE: u64 = 500000000        // 5 VLT/day max per miner (oracle)
-const MAX_DAILY_REWARD_CHAT: u64 = 200000000           // 2 VLT/day max per miner (chat)
-const DAILY_REWARD_PREFIX: string = "dr_"              // miner_addr_service_day → accumulated
-const DAILY_REWARD_DAY_PREFIX: string = "drd_"         // miner_addr_service → last day
+// v10.8: Stake-weighted rewards (replaces daily cap)
+// More stake = more rewards (linear, capped at MAX_STAKE_MULTIPLIER)
+// No Sybil advantage: 10 miners × 1000 VLT = 1 miner × 10000 VLT (same total)
+const MAX_STAKE_MULTIPLIER: u64 = 50                   // max 50x reward for 50,000+ VLT stake
 
 const REP_MAX: u64 = 10000
 const REP_EXCELLENT: u64 = 8000
@@ -189,7 +188,22 @@ fn get_dynamic_reward(base_reward: u64, miner_addr: Address) -> u64 {
     let rep_mult: u64 = get_reputation_multiplier(miner.reputation)
     if rep_mult == 0 { return 0 }
     let budget_factor: u64 = s.load(BUDGET_FACTOR_KEY).unwrap_or(DEFAULT_BUDGET_FACTOR)
-    let reward: u64 = (base_reward as u128 * rep_mult as u128 * budget_factor as u128 / 100000000u128) as u64
+
+    // v10.8: Stake-weighted multiplier (more stake = more rewards)
+    // Linear up to MAX_STAKE_MULTIPLIER, then capped
+    let min_stake: u64 = s.load(MIN_STAKE_KEY).unwrap_or(DEFAULT_MIN_STAKE)
+    let stake_mult: u64 = 10000  // default 1x (in bps)
+    if min_stake > 0 {
+        stake_mult = (miner.stake * 10000) / min_stake
+    }
+    // Cap at MAX_STAKE_MULTIPLIER
+    let max_mult_bps: u64 = MAX_STAKE_MULTIPLIER * 10000
+    if stake_mult > max_mult_bps {
+        stake_mult = max_mult_bps
+    }
+
+    // reward = base × stake_mult × rep_mult × budget_factor / (10000 × 10000 × 10000)
+    let reward: u64 = (base_reward as u128 * stake_mult as u128 * rep_mult as u128 * budget_factor as u128 / 1000000000000u128) as u64
     return reward
 }
 
@@ -552,10 +566,8 @@ pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) ->
     }
 
     let base_reward: u64 = s.load(BASE_REWARD_ORACLE_KEY).unwrap_or(DEFAULT_BASE_REWARD_ORACLE)
-    let max_daily: u64 = MAX_DAILY_REWARD_ORACLE
     if service_id == 2 {
         base_reward = s.load(BASE_REWARD_CHAT_KEY).unwrap_or(DEFAULT_BASE_REWARD_CHAT)
-        max_daily = MAX_DAILY_REWARD_CHAT
     }
     if base_reward == 0 { return 0 }
 
@@ -565,37 +577,18 @@ pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) ->
         return 0
     }
 
-    // v10.7: Daily reward cap — prevent budget drain with few miners
-    let current_topo: u64 = get_current_topoheight()
-    let today: u64 = current_topo / 17280
-    let day_key: string = DAILY_REWARD_DAY_PREFIX + miner_addr.to_string() + "_" + service_id.to_string()
-    let reward_key: string = DAILY_REWARD_PREFIX + miner_addr.to_string() + "_" + service_id.to_string() + "_" + today.to_string()
-    let stored_day: u64 = s.load(day_key).unwrap_or(0)
-    let daily_accumulated: u64 = 0
-    if stored_day == today {
-        daily_accumulated = s.load(reward_key).unwrap_or(0)
-    }
-    if daily_accumulated >= max_daily {
-        s.store(MINER_PREFIX + miner_addr.to_string(), miner)
-        return 0
-    }
-    let capped_reward: u64 = reward
-    if daily_accumulated + reward > max_daily {
-        capped_reward = max_daily - daily_accumulated
-    }
-
     let distributed: u64 = s.load(DISTRIBUTED_KEY).unwrap_or(0)
     let total_budget: u64 = s.load(TOTAL_BUDGET_KEY).unwrap_or(DEFAULT_TOTAL_BUDGET)
-    if distributed + capped_reward > total_budget {
+    if distributed + reward > total_budget {
         s.store(MINER_PREFIX + miner_addr.to_string(), miner)
         return 0
     }
 
     let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("err")
     let vlt: Contract = Contract::new(vlt_hash).expect("err")
-    let _ = vlt.call(4u16, [miner_addr, capped_reward], {})
+    let _ = vlt.call(4u16, [miner_addr, reward], {})
 
-    miner.total_rewards_earned += capped_reward
+    miner.total_rewards_earned += reward
     miner.valid_submissions += 1
     if service_id == 2 { miner.successful_anchors += 1 }
 
@@ -606,11 +599,9 @@ pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) ->
         if miner.reputation > REP_MAX { miner.reputation = REP_MAX }
     }
     s.store(MINER_PREFIX + miner_addr.to_string(), miner)
-    s.store(DISTRIBUTED_KEY, distributed + capped_reward)
-    s.store(day_key, today)
-    s.store(reward_key, daily_accumulated + capped_reward)
+    s.store(DISTRIBUTED_KEY, distributed + reward)
     maybe_adjust_budget()
-    return capped_reward
+    return reward
 }
 
 // ID 9: is_miner_active_entry (was pub fn is_miner_active)

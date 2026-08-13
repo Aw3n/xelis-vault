@@ -234,23 +234,26 @@ This means: even if the project loses popularity and miners drop, the protocol *
 ## Miner Rewards
 
 ```
-reward = BASE_REWARD_ORACLE (0.05 VLT)
-       × reputation_multiplier  (1.5× Excellent, 1.0× Good, 0.5× Warning, 0.25× Critical, 0× Banned)
+reward = BASE_REWARD_ORACLE (0.01 VLT)
+       × stake_multiplier    (1x for 1,000 VLT, up to 50x for 50,000+ VLT)
+       × reputation_multiplier (1.5× Excellent, 1.0× Good, 0.5× Warning, 0.25× Critical, 0× Banned)
        × budget_factor / 10000  (auto-adjusts every 2 weeks, 0.5×–2× range)
-       capped at 5 VLT/day per miner (anti-abuse)
 ```
 
-| Miners | Est. reward/miner/day | ROI on 1000 VLT stake | APY |
-|--------|----------------------|----------------------|-----|
-| 10 | 5 VLT (capped) | 200 days | 182% |
-| 50 | 5 VLT (capped) | 200 days | 182% |
-| 100 | 5 VLT (capped) | 200 days | 182% |
-| 500 | 3 VLT | 332 days | 110% |
-| 1000 | 1.5 VLT | 664 days | 55% |
+**Stake-weighted rewards** — more stake = more rewards (linear, capped at 50x).
+No Sybil advantage: 10 miners × 1,000 VLT = 1 miner × 10,000 VLT (same total).
+
+| Miners | Reward/miner/day | APY (1,000 VLT) | ROI | Budget lasts |
+|--------|-----------------|-----------------|-----|--------------|
+| 10 | 3.6 VLT | 131% | 278 days | 419 years |
+| 100 | 3.6 VLT | 131% | 278 days | 42 years |
+| 500 | 3.0 VLT | 110% | 333 days | 10 years |
+| 1000 | 1.5 VLT | 55% | 667 days | 10 years |
 
 **Budget: 5,500,000 VLT over 10 years** (55% of total supply).
-**Min stake: 1,000 VLT** (anti-Sybil, ROI > 200 days).
-**Daily cap: 5 VLT/day** per miner (prevents budget drain with few miners).
+**Min stake: 1,000 VLT** (anti-Sybil, ROI > 278 days).
+**Stake multiplier: up to 50x** (50,000 VLT = max multiplier).
+**No daily cap** — rewards are stake-weighted, budget_factor auto-adjusts.
 
 ### Features
 

@@ -311,8 +311,50 @@ fn aggregate(feed_id: u64) {
         a += 1
     }
 
-    let median_idx: u64 = (n_sub - 1) / 2
-    let median: u64 = collected_prices[median_idx as u32]
+    // v10.9: Stake-weighted median (anti-Sybil)
+    // Instead of simple median (by count), we weight each price by the miner's stake
+    // This prevents Sybil attacks: splitting stake into N miners gives same weight
+    let mc_hash_opt: optional<Hash> = s.load(MINER_CONTRACT_KEY)
+    let total_stake_weight: u64 = 0
+
+    // Get stake for each provider and compute total
+    let collected_stakes: u64[] = []
+    let idx_stake: u64 = 0
+    while idx_stake < n_sub {
+        let provider: Address = collected_providers[idx_stake as u32]
+        let stake: u64 = 1  // default weight if miner contract not set
+        if mc_hash_opt.is_some() {
+            let mc_hash: Hash = mc_hash_opt.expect("err")
+            let mc: Contract = Contract::new(mc_hash).expect("err")
+            // XelisVaultMiner entry 36 = get_miner_stake_entry
+            let result: u64 = mc.call(36u16, [provider], {})
+            if result > 0 { stake = result }
+        }
+        collected_stakes.push(stake)
+        total_stake_weight += stake
+        idx_stake += 1
+    }
+
+    // Stake-weighted median: find the price where cumulative stake crosses 50%
+    let median: u64 = collected_prices[0]
+    if total_stake_weight > 0 {
+        let half_stake: u64 = total_stake_weight / 2
+        let cumul: u64 = 0
+        let idx_wm: u64 = 0
+        while idx_wm < n_sub {
+            cumul += collected_stakes[idx_wm as u32]
+            if cumul > half_stake {
+                median = collected_prices[idx_wm as u32]
+                break
+            }
+            idx_wm += 1
+        }
+        // If we didn't cross 50% (edge case), use last price
+        if idx_wm == n_sub && n_sub > 0 {
+            median = collected_prices[(n_sub - 1) as u32]
+        }
+    }
+
     let min_p: u64 = collected_prices[0]
     let tmp_last_idx: u32 = (n_sub - 1) as u32
     let max_p: u64 = collected_prices[tmp_last_idx]

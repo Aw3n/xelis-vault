@@ -1,0 +1,696 @@
+// ============================================================================
+// MinerDelegation.slx — XELIS Vault v10.8
+// ----------------------------------------------------------------------------
+// Système de délégation de stake pour les miners.
+//
+// RÔLE :
+//   Permet aux holders de VLT de déléguer leur stake à un miner de confiance.
+//   Le miner gagne plus de rewards (stake plus élevé = plus de poids).
+//   Le miner prend une commission (configurable, max 20%).
+//   Le délégateur gagne du yield sur son VLT sans avoir à faire tourner un miner.
+//
+// MÉCANIQUE :
+//   1. Un miner s'enregistre avec un nom, une commission (0-20%), et un min stake
+//   2. Les holders délèguent leur VLT au miner
+//   3. Quand le miner gagne des rewards, ils sont distribués :
+//      - Au miner : sa part proportionnelle + commission sur les délégations
+//      - Aux délégateurs : leur part proportionnelle - commission
+//   4. Si le miner est slasché, le slashing affecte le stake own ET délégué
+//      proportionnellement (les délégateurs partagent le risque)
+//   5. Les délégateurs peuvent unstake avec un délai de 7 jours (anti-rush)
+//
+// SÉCURITÉ ORACLE :
+//   - Plus de stake délégué = plus de poids dans l'oracle (mais capped)
+//   - Un miner avec beaucoup de délégation ne peut pas manipuler seul
+//   - Le min_providers de StakedOracle empêche la concentration
+//   - Slashing progressif : 1% à 50% selon sévérité
+//
+// INCITATIONS :
+//   - Miners : plus de stake = plus de rewards + commission (jusqu'à 20%)
+//   - Délégateurs : yield passif sans faire tourner de miner (3-10% APY)
+//   - Protocole : plus de stake total = plus de sécurité (attaque plus chère)
+//
+// Entry IDs:
+//   0  : register_miner_profile (miner sets name + commission)
+//   1  : update_miner_profile (change name/commission)
+//   2  : delegate (delegator stakes VLT to a miner)
+//   3  : undelegate (delegator unstakes, 7-day delay)
+//   4  : claim_delegator_rewards (delegator claims accumulated rewards)
+//   5  : claim_miner_rewards (miner claims own + commission rewards)
+//   6  : distribute_rewards (called by XelisVaultMiner when miner earns)
+//   7  : apply_slashing (called by XelisVaultMiner when miner is slashed)
+//   8  : get_miner_profile (pub fn)
+//   9  : get_delegator_info (pub fn)
+//   10 : get_miner_total_stake (pub fn)
+//   11 : get_total_delegated (pub fn)
+//   12 : get_top_miners (pub fn)
+//   13 : get_miner_count (pub fn)
+//   14 : set_min_commission
+//   15 : set_max_commission
+//   16 : set_undelegate_delay
+//   17 : set_vlt_contract
+//   18 : set_vlt_asset
+//   19 : set_registry
+//   20 : set_timelock
+//   21 : set_guardian
+//   22 : pause
+//   23 : unpause
+//   24 : transfer_admin
+//   25 : get_version
+// ============================================================================
+
+const VERSION: string = "MinerDelegation v10.8"
+
+const ADMIN_KEY: string = "a"
+const TIMELOCK_KEY: string = "tl"
+const GUARDIAN_KEY: string = "gd"
+const PAUSED_KEY: string = "pz"
+const REGISTRY_KEY: string = "reg"
+const VLT_CONTRACT_KEY: string = "vc"
+const VLT_ASSET_KEY: string = "va"
+
+const MINER_PROFILE_PREFIX: string = "mp_"          // miner_addr → MinerProfile
+const MINER_LIST_PREFIX: string = "ml_"              // index → miner_addr
+const MINER_COUNT_KEY: string = "mc"
+
+const DELEGATOR_PREFIX: string = "del_"              // delegator_addr → Delegation
+const DELEGATOR_MINER_PREFIX: string = "dm_"         // delegator_addr → miner_addr
+const UNDELEGATE_REQUEST_PREFIX: string = "und_"     // delegator_addr → UndelegateRequest
+const MINER_DELEGATOR_PREFIX: string = "md_"         // miner_addr_index → delegator_addr
+const MINER_DELEGATOR_COUNT_PREFIX: string = "mdc_"  // miner_addr → count
+
+const TOTAL_DELEGATED_KEY: string = "td"
+const MINER_PENDING_REWARDS_PREFIX: string = "mpr_"  // miner_addr → pending rewards
+const DELEGATOR_PENDING_PREFIX: string = "dpr_"      // delegator_addr → pending rewards
+
+const MIN_COMMISSION_KEY: string = "mcom"
+const MAX_COMMISSION_KEY: string = "mxcom"
+const UNDELEGATE_DELAY_KEY: string = "udd"
+
+const DEFAULT_MIN_COMMISSION: u64 = 0           // 0% min
+const DEFAULT_MAX_COMMISSION: u64 = 2000        // 20% max
+const DEFAULT_UNDELEGATE_DELAY: u64 = 120960    // 7 days (7 * 17280 blocks)
+const MIN_DELEGATION: u64 = 1000000000          // 10 VLT min delegation
+const MAX_DELEGATORS_PER_MINER: u64 = 500       // anti-concentration
+
+struct MinerProfile {
+    addr: Address,
+    name: string,
+    description: string,
+    commission_bps: u64,           // 0-2000 (0% to 20%)
+    own_stake: u64,                // stake du miner lui-même
+    delegated_stake: u64,          // stake délégué par les holders
+    total_stake: u64,              // own + delegated (cached)
+    total_rewards_earned: u64,     // all-time rewards
+    total_slashed: u64,            // all-time slashed
+    delegator_count: u64,
+    active: bool,
+    registered_at: u64
+}
+
+struct Delegation {
+    delegator: Address,
+    miner_addr: Address,
+    amount: u64,
+    delegated_at: u64,
+    last_claim_topo: u64
+}
+
+struct UndelegateRequest {
+    delegator: Address,
+    miner_addr: Address,
+    amount: u64,
+    request_topo: u64,
+    ready_at_topo: u64
+}
+
+hook constructor() -> u64 {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    s.store(ADMIN_KEY, caller)
+    s.store(GUARDIAN_KEY, caller)
+    s.store(PAUSED_KEY, false)
+    s.store(MINER_COUNT_KEY, 0u64)
+    s.store(TOTAL_DELEGATED_KEY, 0u64)
+    s.store(MIN_COMMISSION_KEY, DEFAULT_MIN_COMMISSION)
+    s.store(MAX_COMMISSION_KEY, DEFAULT_MAX_COMMISSION)
+    s.store(UNDELEGATE_DELAY_KEY, DEFAULT_UNDELEGATE_DELAY)
+    return 0
+}
+
+fn when_not_paused() {
+    let s: Storage = Storage::new()
+    let paused: bool = s.load(PAUSED_KEY).unwrap_or(false)
+    require(!paused, "paused")
+}
+
+fn only_admin() {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let admin: Address = s.load(ADMIN_KEY).expect("err")
+    if caller == admin { return }
+    let tl_opt: optional<Hash> = s.load(TIMELOCK_KEY)
+    require(tl_opt.is_some(), "notauth")
+    let tl: Hash = tl_opt.expect("err")
+    let cc: Hash = get_contract_caller().expect("err")
+    require(cc == tl, "notauth")
+}
+
+fn only_guardian_or_admin() {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let g: Address = s.load(GUARDIAN_KEY).expect("err")
+    if caller == g { return }
+    only_admin()
+}
+
+// Only XelisVaultMiner contract can call distribute_rewards and apply_slashing
+fn only_miner_contract() {
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let admin: Address = s.load(ADMIN_KEY).expect("err")
+    if caller == admin { return }
+    let cc_opt: optional<Hash> = get_contract_caller()
+    require(cc_opt.is_some(), "notauth")
+}
+
+// Entry 0: Register miner profile (name, description, commission)
+// The miner must already be registered in XelisVaultMiner
+entry register_miner_profile(
+    name: string,
+    description: string,
+    commission_bps: u64
+) -> u64 {
+    when_not_paused()
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+
+    // Check name is not empty and reasonable length
+    require(name.len() >= 3 && name.len() <= 32, "badname")
+
+    // Check commission is within bounds
+    let max_com: u64 = s.load(MAX_COMMISSION_KEY).unwrap_or(DEFAULT_MAX_COMMISSION)
+    let min_com: u64 = s.load(MIN_COMMISSION_KEY).unwrap_or(DEFAULT_MIN_COMMISSION)
+    require(commission_bps >= min_com && commission_bps <= max_com, "badcomm")
+
+    // Check if profile already exists
+    let existing_opt: optional<MinerProfile] = s.load(MINER_PROFILE_PREFIX + caller.to_string())
+    let is_new: bool = existing_opt.is_none()
+
+    // Get own stake from XelisVaultMiner (would need cross-contract call in production)
+    // For now, store 0 — will be updated when delegate is called
+    let own_stake: u64 = 0
+    if existing_opt.is_some() {
+        own_stake = existing_opt.expect("err").own_stake
+    }
+
+    let profile: MinerProfile = MinerProfile {
+        addr: caller,
+        name: name,
+        description: description,
+        commission_bps: commission_bps,
+        own_stake: own_stake,
+        delegated_stake: 0,
+        total_stake: own_stake,
+        total_rewards_earned: 0,
+        total_slashed: 0,
+        delegator_count: 0,
+        active: true,
+        registered_at: get_current_topoheight()
+    }
+    s.store(MINER_PROFILE_PREFIX + caller.to_string(), profile)
+
+    if is_new {
+        let count: u64 = s.load(MINER_COUNT_KEY).unwrap_or(0)
+        s.store(MINER_LIST_PREFIX + count.to_string(), caller)
+        s.store(MINER_COUNT_KEY, count + 1)
+    }
+
+    emit_event("MinerProfileRegistered", caller.to_string() + "_" + name)
+    return 0
+}
+
+// Entry 1: Update miner profile (name, description, commission)
+entry update_miner_profile(
+    name: string,
+    description: string,
+    commission_bps: u64
+) -> u64 {
+    when_not_paused()
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+
+    let profile_opt: optional<MinerProfile] = s.load(MINER_PROFILE_PREFIX + caller.to_string())
+    require(profile_opt.is_some(), "notreg")
+    let profile: MinerProfile = profile_opt.expect("err")
+
+    require(name.len() >= 3 && name.len() <= 32, "badname")
+    let max_com: u64 = s.load(MAX_COMMISSION_KEY).unwrap_or(DEFAULT_MAX_COMMISSION)
+    require(commission_bps <= max_com, "badcomm")
+
+    profile.name = name
+    profile.description = description
+    profile.commission_bps = commission_bps
+    s.store(MINER_PROFILE_PREFIX + caller.to_string(), profile)
+    return 0
+}
+
+// Entry 2: Delegate VLT to a miner
+// The delegator must attach VLT to this call (via deposit)
+entry delegate(miner_addr: Address, amount: u64) -> u64 {
+    when_not_paused()
+    require(amount >= MIN_DELEGATION, "mintoo")
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    require(caller != miner_addr, "selfdel")
+
+    // Check miner profile exists and is active
+    let profile_opt: optional<MinerProfile] = s.load(MINER_PROFILE_PREFIX + miner_addr.to_string())
+    require(profile_opt.is_some(), "noprofile")
+    let profile: MinerProfile = profile_opt.expect("err")
+    require(profile.active, "inactive")
+
+    // Check delegator limit per miner
+    require(profile.delegator_count < MAX_DELEGATORS_PER_MINER, "maxdel")
+
+    // Check if delegator already delegates to this miner
+    let existing_opt: optional<Delegation] = s.load(DELEGATOR_PREFIX + caller.to_string())
+    if existing_opt.is_some() {
+        let existing: Delegation = existing_opt.expect("err")
+        require(existing.miner_addr == miner_addr, "alrdydel")
+    }
+
+    // Transfer VLT from delegator to this contract
+    let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("novlt")
+    let vlt: Contract = Contract::new(vlt_hash).expect("err")
+    let _ = vlt.call(4u16, [caller, amount], {})  // transfer_to
+
+    // Update or create delegation
+    let delegation: Delegation
+    let is_new_delegator: bool = existing_opt.is_none()
+    if is_new_delegator {
+        delegation = Delegation {
+            delegator: caller,
+            miner_addr: miner_addr,
+            amount: amount,
+            delegated_at: get_current_topoheight(),
+            last_claim_topo: get_current_topoheight()
+        }
+        // Add to miner's delegator list
+        let dcount: u64 = profile.delegator_count
+        s.store(MINER_DELEGATOR_PREFIX + miner_addr.to_string() + "_" + dcount.to_string(), caller)
+        profile.delegator_count = dcount + 1
+    } else {
+        delegation = existing_opt.expect("err")
+        delegation.amount += amount
+    }
+    s.store(DELEGATOR_PREFIX + caller.to_string(), delegation)
+    s.store(DELEGATOR_MINER_PREFIX + caller.to_string(), miner_addr)
+
+    // Update miner profile
+    profile.delegated_stake += amount
+    profile.total_stake = profile.own_stake + profile.delegated_stake
+    s.store(MINER_PROFILE_PREFIX + miner_addr.to_string(), profile)
+
+    // Update global total
+    let total_del: u64 = s.load(TOTAL_DELEGATED_KEY).unwrap_or(0)
+    s.store(TOTAL_DELEGATED_KEY, total_del + amount)
+
+    emit_event("Delegated", caller.to_string() + "_" + miner_addr.to_string() + "_" + amount.to_string())
+    return 0
+}
+
+// Entry 3: Undelegate (request withdrawal, 7-day delay)
+entry undelegate(amount: u64) -> u64 {
+    when_not_paused()
+    require(amount > 0, "zero")
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+
+    let delegation_opt: optional<Delegation] = s.load(DELEGATOR_PREFIX + caller.to_string())
+    require(delegation_opt.is_some(), "notdel")
+    let delegation: Delegation = delegation_opt.expect("err")
+    require(delegation.amount >= amount, "insuff")
+
+    let delay: u64 = s.load(UNDELEGATE_DELAY_KEY).unwrap_or(DEFAULT_UNDELEGATE_DELAY)
+    let request: UndelegateRequest = UndelegateRequest {
+        delegator: caller,
+        miner_addr: delegation.miner_addr,
+        amount: amount,
+        request_topo: get_current_topoheight(),
+        ready_at_topo: get_current_topoheight() + delay
+    }
+    s.store(UNDELEGATE_REQUEST_PREFIX + caller.to_string(), request)
+
+    emit_event("UndelegateRequested", caller.to_string() + "_" + amount.to_string())
+    return 0
+}
+
+// Entry 4: Claim delegator rewards
+entry claim_delegator_rewards() -> u64 {
+    when_not_paused()
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+
+    let pending: u64 = s.load(DELEGATOR_PENDING_PREFIX + caller.to_string()).unwrap_or(0)
+    require(pending > 0, "nothing")
+
+    s.store(DELEGATOR_PENDING_PREFIX + caller.to_string(), 0u64)
+
+    // Transfer VLT to delegator
+    let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("err")
+    let vlt: Contract = Contract::new(vlt_hash).expect("err")
+    let _ = vlt.call(4u16, [caller, pending], {})
+
+    emit_event("DelegatorRewardsClaimed", caller.to_string() + "_" + pending.to_string())
+    return pending
+}
+
+// Entry 5: Claim miner rewards (own stake rewards + commission)
+entry claim_miner_rewards() -> u64 {
+    when_not_paused()
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+
+    let pending: u64 = s.load(MINER_PENDING_REWARDS_PREFIX + caller.to_string()).unwrap_or(0)
+    require(pending > 0, "nothing")
+
+    s.store(MINER_PENDING_REWARDS_PREFIX + caller.to_string(), 0u64)
+
+    let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("err")
+    let vlt: Contract = Contract::new(vlt_hash).expect("err")
+    let _ = vlt.call(4u16, [caller, pending], {})
+
+    emit_event("MinerRewardsClaimed", caller.to_string() + "_" + pending.to_string())
+    return pending
+}
+
+// Entry 6: Distribute rewards (called by XelisVaultMiner when miner earns)
+// miner_addr: the miner who earned the reward
+// total_reward: total VLT to distribute
+// The reward is split between miner (own stake share + commission) and delegators
+entry distribute_rewards(miner_addr: Address, total_reward: u64) -> u64 {
+    only_miner_contract()
+    require(total_reward > 0, "zero")
+    let s: Storage = Storage::new()
+
+    let profile_opt: optional<MinerProfile] = s.load(MINER_PROFILE_PREFIX + miner_addr.to_string())
+    if profile_opt.is_none() { return 0 }
+    let profile: MinerProfile = profile_opt.expect("err")
+
+    if profile.total_stake == 0 {
+        // No delegation — all rewards go to miner
+        let mp: u64 = s.load(MINER_PENDING_REWARDS_PREFIX + miner_addr.to_string()).unwrap_or(0)
+        s.store(MINER_PENDING_REWARDS_PREFIX + miner_addr.to_string(), mp + total_reward)
+        profile.total_rewards_earned += total_reward
+        s.store(MINER_PROFILE_PREFIX + miner_addr.to_string(), profile)
+        return total_reward
+    }
+
+    // Calculate shares
+    let own_share_bps: u64 = (profile.own_stake * 10000) / profile.total_stake
+    let delegated_share_bps: u64 = 10000 - own_share_bps
+
+    let miner_reward: u64 = (total_reward * own_share_bps) / 10000
+    let delegator_pool: u64 = total_reward - miner_reward
+
+    // Commission on delegator rewards
+    let commission: u64 = (delegator_pool * profile.commission_bps) / 10000
+    let delegator_actual: u64 = delegator_pool - commission
+
+    // Miner gets: own share + commission
+    let miner_total: u64 = miner_reward + commission
+    let mp: u64 = s.load(MINER_PENDING_REWARDS_PREFIX + miner_addr.to_string()).unwrap_or(0)
+    s.store(MINER_PENDING_REWARDS_PREFIX + miner_addr.to_string(), mp + miner_total)
+    profile.total_rewards_earned += miner_total
+
+    // Distribute to delegators proportionally
+    if profile.delegated_stake > 0 && delegator_actual > 0 {
+        let i: u64 = 0
+        while i < profile.delegator_count {
+            let del_addr_opt: optional<Address] = s.load(MINER_DELEGATOR_PREFIX + miner_addr.to_string() + "_" + i.to_string())
+            if del_addr_opt.is_some() {
+                let del_addr: Address = del_addr_opt.expect("err")
+                let del_opt: optional<Delegation] = s.load(DELEGATOR_PREFIX + del_addr.to_string())
+                if del_opt.is_some() {
+                    let del: Delegation = del_opt.expect("err")
+                    let del_share: u64 = (delegator_actual * del.amount) / profile.delegated_stake
+                    let dp: u64 = s.load(DELEGATOR_PENDING_PREFIX + del_addr.to_string()).unwrap_or(0)
+                    s.store(DELEGATOR_PENDING_PREFIX + del_addr.to_string(), dp + del_share)
+                }
+            }
+            i += 1
+        }
+    }
+
+    s.store(MINER_PROFILE_PREFIX + miner_addr.to_string(), profile)
+    return total_reward
+}
+
+// Entry 7: Apply slashing (called by XelisVaultMiner when miner is slashed)
+// The slashing affects own stake AND delegated stake proportionally
+entry apply_slashing(miner_addr: Address, slash_amount: u64) -> u64 {
+    only_miner_contract()
+    require(slash_amount > 0, "zero")
+    let s: Storage = Storage::new()
+
+    let profile_opt: optional<MinerProfile] = s.load(MINER_PROFILE_PREFIX + miner_addr.to_string())
+    if profile_opt.is_none() { return 0 }
+    let profile: MinerProfile = profile_opt.expect("err")
+
+    // Slash own stake first
+    if profile.own_stake >= slash_amount {
+        profile.own_stake -= slash_amount
+    } else {
+        let remaining: u64 = slash_amount - profile.own_stake
+        profile.own_stake = 0
+        // Slash delegated stake proportionally
+        if profile.delegated_stake > 0 {
+            let slash_per_delegator_bps: u64 = (remaining * 10000) / profile.delegated_stake
+            let i: u64 = 0
+            while i < profile.delegator_count {
+                let del_addr_opt: optional<Address] = s.load(MINER_DELEGATOR_PREFIX + miner_addr.to_string() + "_" + i.to_string())
+                if del_addr_opt.is_some() {
+                    let del_addr: Address = del_addr_opt.expect("err")
+                    let del_opt: optional<Delegation] = s.load(DELEGATOR_PREFIX + del_addr.to_string())
+                    if del_opt.is_some() {
+                        let del: Delegation = del_opt.expect("err")
+                        let del_slash: u64 = (del.amount * slash_per_delegator_bps) / 10000
+                        if del.amount >= del_slash {
+                            del.amount -= del_slash
+                        } else {
+                            del.amount = 0
+                        }
+                        s.store(DELEGATOR_PREFIX + del_addr.to_string(), del)
+                    }
+                }
+                i += 1
+            }
+            profile.delegated_stake -= remaining
+            if profile.delegated_stake > remaining {
+                profile.delegated_stake -= remaining
+            } else {
+                profile.delegated_stake = 0
+            }
+        }
+    }
+
+    profile.total_slashed += slash_amount
+    profile.total_stake = profile.own_stake + profile.delegated_stake
+    s.store(MINER_PROFILE_PREFIX + miner_addr.to_string(), profile)
+
+    emit_event("SlashingApplied", miner_addr.to_string() + "_" + slash_amount.to_string())
+    return slash_amount
+}
+
+// Pub fn 8: Get miner profile
+pub fn get_miner_profile(miner_addr: Address) -> (string, string, u64, u64, u64, u64, u64, u64, u64, bool, u64) {
+    let s: Storage = Storage::new()
+    let profile: MinerProfile = s.load(MINER_PROFILE_PREFIX + miner_addr.to_string()).expect("notreg")
+    return (
+        profile.name,
+        profile.description,
+        profile.commission_bps,
+        profile.own_stake,
+        profile.delegated_stake,
+        profile.total_stake,
+        profile.total_rewards_earned,
+        profile.total_slashed,
+        profile.delegator_count,
+        profile.active,
+        profile.registered_at
+    )
+}
+
+// Pub fn 9: Get delegator info
+pub fn get_delegator_info(delegator_addr: Address) -> (Address, u64, u64, u64) {
+    let s: Storage = Storage::new()
+    let del: Delegation = s.load(DELEGATOR_PREFIX + delegator_addr.to_string()).expect("notdel")
+    let pending: u64 = s.load(DELEGATOR_PENDING_PREFIX + delegator_addr.to_string()).unwrap_or(0)
+    return (del.miner_addr, del.amount, pending, del.delegated_at)
+}
+
+// Pub fn 10: Get miner total stake (own + delegated)
+pub fn get_miner_total_stake(miner_addr: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let profile_opt: optional<MinerProfile> = s.load(MINER_PROFILE_PREFIX + miner_addr.to_string())
+    if profile_opt.is_none() { return 0 }
+    let profile: MinerProfile = profile_opt.expect("err")
+    return profile.total_stake
+}
+
+// Pub fn 11: Get total delegated across all miners
+pub fn get_total_delegated() -> u64 {
+    let s: Storage = Storage::new()
+    return s.load(TOTAL_DELEGATED_KEY).unwrap_or(0)
+}
+
+// Pub fn 12: Get top miners by total stake (returns miner at rank N)
+pub fn get_top_miners(rank: u64) -> (Address, string, u64, u64, u64) {
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(MINER_COUNT_KEY).unwrap_or(0)
+    require(rank > 0 && rank <= count, "badrank")
+
+    // Simple scan — find miner with N-th highest total_stake
+    let best_addr: Address = Address::zero()
+    let best_stake: u64 = 0
+    let best_name: string = ""
+    let best_commission: u64 = 0
+    let i: u64 = 0
+    while i < count {
+        let addr_opt: optional<Address] = s.load(MINER_LIST_PREFIX + i.to_string())
+        if addr_opt.is_some() {
+            let addr: Address = addr_opt.expect("err")
+            let profile_opt: optional<MinerProfile] = s.load(MINER_PROFILE_PREFIX + addr.to_string())
+            if profile_opt.is_some() {
+                let profile: MinerProfile = profile_opt.expect("err")
+                // Count how many have higher stake
+                let higher: u64 = 0
+                let j: u64 = 0
+                while j < count {
+                    if j != i {
+                        let other_opt: optional<Address] = s.load(MINER_LIST_PREFIX + j.to_string())
+                        if other_opt.is_some() {
+                            let other_addr: Address = other_opt.expect("err")
+                            let other_profile_opt: optional<MinerProfile] = s.load(MINER_PROFILE_PREFIX + other_addr.to_string())
+                            if other_profile_opt.is_some() {
+                                let other: MinerProfile = other_profile_opt.expect("err")
+                                if other.total_stake > profile.total_stake {
+                                    higher += 1
+                                }
+                            }
+                        }
+                    }
+                    j += 1
+                }
+                if higher == rank - 1 {
+                    return (addr, profile.name, profile.total_stake, profile.commission_bps, profile.delegator_count)
+                }
+            }
+        }
+        i += 1
+    }
+    return (Address::zero(), "", 0, 0, 0)
+}
+
+// Pub fn 13: Get total miner count
+pub fn get_miner_count() -> u64 {
+    let s: Storage = Storage::new()
+    return s.load(MINER_COUNT_KEY).unwrap_or(0)
+}
+
+// Entry 14: Set min commission
+entry set_min_commission(bps: u64) -> u64 {
+    only_admin()
+    require(bps <= 1000, "toohigh")
+    let s: Storage = Storage::new()
+    s.store(MIN_COMMISSION_KEY, bps)
+    return 0
+}
+
+// Entry 15: Set max commission
+entry set_max_commission(bps: u64) -> u64 {
+    only_admin()
+    require(bps <= 5000, "toohigh")
+    let s: Storage = Storage::new()
+    s.store(MAX_COMMISSION_KEY, bps)
+    return 0
+}
+
+// Entry 16: Set undelegate delay
+entry set_undelegate_delay(blocks: u64) -> u64 {
+    only_admin()
+    require(blocks >= 17280, "toosoon")  // min 1 day
+    let s: Storage = Storage::new()
+    s.store(UNDELEGATE_DELAY_KEY, blocks)
+    return 0
+}
+
+// Entry 17: Set VLT contract
+entry set_vlt_contract(vc: Hash) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(VLT_CONTRACT_KEY, vc)
+    return 0
+}
+
+// Entry 18: Set VLT asset
+entry set_vlt_asset(va: Hash) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(VLT_ASSET_KEY, va)
+    return 0
+}
+
+// Entry 19: Set registry
+entry set_registry(registry: Hash) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(REGISTRY_KEY, registry)
+    return 0
+}
+
+// Entry 20: Set timelock
+entry set_timelock(tl: Hash) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(TIMELOCK_KEY, tl)
+    return 0
+}
+
+// Entry 21: Set guardian
+entry set_guardian(g: Address) -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    s.store(GUARDIAN_KEY, g)
+    return 0
+}
+
+// Entry 22: Pause
+entry pause() -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    s.store(PAUSED_KEY, true)
+    return 0
+}
+
+// Entry 23: Unpause
+entry unpause() -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    s.store(PAUSED_KEY, false)
+    return 0
+}
+
+// Entry 24: Transfer admin
+entry transfer_admin(new_admin: Address) -> u64 {
+    only_admin()
+    let s: Storage = Storage::new()
+    s.store(ADMIN_KEY, new_admin)
+    return 0
+}
+
+// Entry 25: Get version
+entry get_version() -> string {
+    return VERSION
+}

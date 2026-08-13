@@ -39,6 +39,10 @@ from contract_ops import (
     faucet_info,
     fmt_xel, fmt_vlt, fmt_xusd, fmt_usd, fmt_addr, fmt_amount,
 )
+from admin_panel import (
+    screen_admin_panel, screen_guardian_panel,
+    is_admin, is_guardian,
+)
 
 VAULT_DIR = Path.home() / ".xelis-vault"
 CONFIG_PATH = VAULT_DIR / "config" / "config.json"
@@ -724,6 +728,8 @@ def screen_settings(client):
             ("Configure RPC & Wallet URLs", "rpc"),
             ("Set your address", "address"),
             ("Configure contract addresses", "contracts"),
+            ("🔐 Set admin address        — Enable admin panel", "set_admin"),
+            ("🛡  Set guardian address     — Enable guardian panel", "set_guardian"),
             ("Reset configuration", "reset"),
             ("Back", None),
         ], "Configure your setup")
@@ -747,6 +753,43 @@ def screen_settings(client):
                     client.cfg.data["contracts"][key] = val
             client.cfg.save()
             info_box("Saved", ["Contract addresses saved."])
+        elif choice == "set_admin":
+            current = client.cfg.get("admin_address", "")
+            val = text_input("Admin XELIS address", current)
+            if val:
+                client.cfg.data["admin_address"] = val
+                client.cfg.save()
+                if val == client.cfg.get("miner_address"):
+                    info_box("Admin Enabled", [
+                        "✅ Admin panel is now enabled.",
+                        "You can access it from the main menu.",
+                    ])
+                else:
+                    info_box("Saved", [
+                        "Admin address saved.",
+                        "Note: Your current address doesn't match.",
+                        "Admin panel won't appear until you use the admin address.",
+                    ])
+        elif choice == "set_guardian":
+            current = client.cfg.get("guardian_addresses", [])
+            current_str = ", ".join(current) if current else ""
+            val = text_input("Guardian addresses (comma-separated)", current_str)
+            if val:
+                addrs = [a.strip() for a in val.split(",") if a.strip()]
+                client.cfg.data["guardian_addresses"] = addrs
+                client.cfg.save()
+                user_addr = client.cfg.get("miner_address", "")
+                if user_addr in addrs:
+                    info_box("Guardian Enabled", [
+                        "✅ Guardian panel is now enabled.",
+                        "You can access it from the main menu.",
+                    ])
+                else:
+                    info_box("Saved", [
+                        "Guardian addresses saved.",
+                        f"{len(addrs)} guardians registered.",
+                        "Note: Your current address isn't in the list.",
+                    ])
         elif choice == "reset":
             if confirm("Reset all configuration to defaults?"):
                 CONFIG_PATH.unlink(missing_ok=True)
@@ -861,7 +904,8 @@ def main():
         print(f"{C.DIM}  Topo: {topo}  |  {addr[:25]}...{C.RESET}")
         print(f"{C.GRAY}{'=' * 60}{C.RESET}")
 
-        choice = menu("XELIS Vault — Main Menu", [
+        # Build menu dynamically based on user role
+        menu_items = [
             ("Dashboard          — Overview & balance", "dashboard"),
             ("Vault              — Deposit, borrow, repay", "vault"),
             ("Swap               — Trade XEL, xUSD, VLT", "swap"),
@@ -871,8 +915,18 @@ def main():
             ("🪂 Airdrop          — Points, leaderboard, claim", "airdrop"),
             ("Stats              — Protocol statistics", "stats"),
             ("Settings           — Configure", "settings"),
-            ("Exit", None),
-        ])
+        ]
+
+        # Add admin panel if user is admin
+        if is_admin(client):
+            menu_items.append(("🔐 Admin Panel       — Manage protocol (admin only)", "admin"))
+        # Add guardian panel if user is guardian
+        if is_guardian(client):
+            menu_items.append(("🛡  Guardian Panel    — Emergency controls (guardian)", "guardian"))
+
+        menu_items.append(("Exit", None))
+
+        choice = menu("XELIS Vault — Main Menu", menu_items)
 
         if choice is None or choice == "exit":
             clear()
@@ -897,6 +951,10 @@ def main():
             screen_stats(client)
         elif choice == "settings":
             screen_settings(client)
+        elif choice == "admin":
+            screen_admin_panel(client)
+        elif choice == "guardian":
+            screen_guardian_panel(client)
 
 if __name__ == "__main__":
     main()

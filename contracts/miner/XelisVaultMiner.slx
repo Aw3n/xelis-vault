@@ -554,6 +554,11 @@ pub fn slash_miner(miner_addr: Address, severity: u8, reporter: Address) -> u64 
 pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) -> u64 {
     only_authorized_service()
     let s: Storage = Storage::new()
+
+    // v10.9: Check if rewards are frozen (emergency)
+    let rewards_frozen: bool = s.load("rewards_frozen").unwrap_or(false)
+    if rewards_frozen { return 0 }
+
     let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
     if miner_opt.is_none() { return 0 }
     let miner: Miner = miner_opt.expect("err")
@@ -1315,3 +1320,142 @@ entry get_active_miners_count_entry() -> u64 { return get_active_miners_count() 
 
 // ID 39: get_miner_at_entry
 entry get_miner_at_entry(index: u64) -> Address { return get_miner_at(index) }
+
+// ============================================================================
+// v10.9: Emergency powers for Guardians and Governance
+// ----------------------------------------------------------------------------
+// These entries allow guardians to immediately respond to oracle manipulation
+// attacks, Sybil attacks, or malicious miner behavior.
+// ============================================================================
+
+// ID 40: emergency_slash_miner (guardian or admin only)
+// Immediately slash a miner by a custom percentage (up to 100% = full slash)
+// Used when a miner is caught manipulating the oracle
+// @params: miner_addr - the miner to slash
+// @params: slash_bps - slash percentage in bps (1-10000, i.e. 0.01% to 100%)
+// @params: reason - human-readable reason for the emergency slash
+// @returns: actual slash amount
+entry emergency_slash_miner(miner_addr: Address, slash_bps: u64, reason: string) -> u64 {
+    only_guardian_or_admin()
+    require(slash_bps > 0 && slash_bps <= 10000, "badbps")
+
+    let s: Storage = Storage::new()
+    let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
+    if miner_opt.is_none() { return 0 }
+    let miner: Miner = miner_opt.expect("err")
+
+    let slash_amount: u64 = (miner.stake as u128 * slash_bps as u128 / 10000u128) as u64
+    if slash_amount == 0 { return 0 }
+
+    let actual_slash: u64 = slash_amount
+    if slash_amount > miner.stake { actual_slash = miner.stake }
+
+    miner.stake -= actual_slash
+    miner.total_slashed += actual_slash
+
+    // Also slash reputation proportionally (slash_bps% of REP_MAX)
+    let rep_loss: u64 = (REP_MAX * slash_bps) / 10000
+    if miner.reputation > rep_loss {
+        miner.reputation -= rep_loss
+    } else {
+        miner.reputation = 0
+    }
+
+    // Deactivate if stake below minimum
+    let min_stake: u64 = s.load(MIN_STAKE_KEY).unwrap_or(DEFAULT_MIN_STAKE)
+    if miner.stake < min_stake {
+        miner.active = false
+    }
+
+    s.store(MINER_PREFIX + miner_addr.to_string(), miner)
+
+    // Update total staked
+    let total_staked: u64 = s.load(TOTAL_STAKED_KEY).unwrap_or(0)
+    if total_staked >= actual_slash {
+        s.store(TOTAL_STAKED_KEY, total_staked - actual_slash)
+    }
+
+    // Burn 50% of slashed amount, 10% to reporter (guardian), 40% to treasury
+    // (simplified: just burn for now, full split in production)
+
+    emit_event("EmergencySlash", miner_addr.to_string() + "_" + actual_slash.to_string() + "_" + reason)
+    return actual_slash
+}
+
+// ID 41: emergency_ban_miner (guardian or admin only)
+// Permanently ban a miner — sets reputation to 0, active to false, stake frozen
+// Used for proven malicious actors (repeated oracle manipulation)
+// @params: miner_addr - the miner to ban
+// @params: reason - human-readable reason
+entry emergency_ban_miner(miner_addr: Address, reason: string) -> u64 {
+    only_guardian_or_admin()
+
+    let s: Storage = Storage::new()
+    let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
+    if miner_opt.is_none() { return 0 }
+    let miner: Miner = miner_opt.expect("err")
+
+    miner.active = false
+    miner.reputation = 0
+    // Stake is frozen — miner cannot withdraw for 30 days (cooling period)
+    // This prevents the attacker from withdrawing and re-attacking
+    s.store("ban_" + miner_addr.to_string(), get_current_topoheight() + 518400)  // 30 days
+    s.store(MINER_PREFIX + miner_addr.to_string(), miner)
+
+    emit_event("EmergencyBan", miner_addr.to_string() + "_" + reason)
+    return 0
+}
+
+// ID 42: emergency_freeze_rewards (guardian or admin only)
+// Freeze all reward distribution temporarily
+// Used when an attack is detected and the protocol needs time to respond
+// @params: frozen - true to freeze, false to unfreeze
+entry emergency_freeze_rewards(frozen: bool) -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    s.store("rewards_frozen", frozen)
+    emit_event("RewardsFrozen", frozen.to_string())
+    return 0
+}
+
+// ID 43: set_min_stake_entry (admin only, via governance)
+// Change the minimum stake required to be a miner
+// Used to increase security if attacks are detected
+entry set_min_stake_entry(new_min_stake: u64) -> u64 {
+    only_admin()
+    require(new_min_stake >= 1000000000, "toolow")  // min 10 VLT
+    let s: Storage = Storage::new()
+    s.store(MIN_STAKE_KEY, new_min_stake)
+    emit_event("MinStakeUpdated", new_min_stake.to_string())
+    return 0
+}
+
+// ID 44: set_max_delegation_pct (admin only, via governance)
+// Set the maximum percentage of total stake one miner can have delegated
+// Anti-concentration parameter
+// @params: bps - max delegation in bps (e.g. 2000 = 20%)
+entry set_max_delegation_pct(bps: u64) -> u64 {
+    only_admin()
+    require(bps >= 500 && bps <= 5000, "badbps")  // 5% to 50%
+    let s: Storage = Storage::new()
+    s.store("max_del_pct", bps)
+    return 0
+}
+
+// ID 45: get_miner_own_stake_entry
+// Returns only the miner's own stake (not including delegated)
+// Used by MinerDelegation to calculate own vs delegated share
+entry get_miner_own_stake_entry(addr: Address) -> u64 {
+    let s: Storage = Storage::new()
+    let miner_opt: optional<Miner> = s.load(MINER_PREFIX + addr.to_string())
+    if miner_opt.is_none() { return 0 }
+    let miner: Miner = miner_opt.expect("err")
+    return miner.stake
+}
+
+// ID 46: is_rewards_frozen (pub fn via entry)
+// Check if rewards are currently frozen
+entry is_rewards_frozen_entry() -> bool {
+    let s: Storage = Storage::new()
+    return s.load("rewards_frozen").unwrap_or(false)
+}

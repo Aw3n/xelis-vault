@@ -78,6 +78,11 @@ const TYPE_SET_PARAM: u8 = 4
 const TYPE_SET_REWARD: u8 = 5
 const TYPE_EMERGENCY_CB: u8 = 6
 const TYPE_RESET_FEED: u8 = 7
+// v10.9: New governance powers for emergency response
+const TYPE_EMERGENCY_SLASH: u8 = 8    // Slash a malicious miner via governance vote
+const TYPE_SET_MIN_STAKE: u8 = 9      // Change min stake (increase security)
+const TYPE_FREEZE_REWARDS: u8 = 10    // Freeze/unfreeze reward distribution
+const TYPE_BAN_MINER: u8 = 11         // Permanently ban a malicious miner
 
 // Param keys (value passed by the proposer; mapped to StakedOracle entries)
 const PARAM_MAX_STALE: u8 = 2
@@ -111,6 +116,7 @@ struct Proposal {
     param_key: u8,
     param_value: u64,
     reward_amount: u64,
+    target_addr: Address,
     description: string
 }
 
@@ -209,6 +215,7 @@ entry propose_add_feed(
         param_key: 0,
         param_value: 0,
         reward_amount: 0,
+        target_addr: Address::zero(),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -262,6 +269,7 @@ entry propose_update_feed(
         param_key: 0,
         param_value: 0,
         reward_amount: 0,
+        target_addr: Address::zero(),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -306,6 +314,7 @@ entry propose_remove_feed(feed_id: u64, description: string) -> u64 {
         param_key: 0,
         param_value: 0,
         reward_amount: 0,
+        target_addr: Address::zero(),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -355,6 +364,7 @@ entry propose_set_param(param_key: u8, param_value: u64, description: string) ->
         param_key: param_key,
         param_value: param_value,
         reward_amount: 0,
+        target_addr: Address::zero(),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -399,6 +409,7 @@ entry propose_set_reward(reward_amount: u64, description: string) -> u64 {
         param_key: 0,
         param_value: 0,
         reward_amount: reward_amount,
+        target_addr: Address::zero(),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -443,6 +454,7 @@ entry propose_emergency_cb(feed_id: u64, description: string) -> u64 {
         param_key: 0,
         param_value: 0,
         reward_amount: 0,
+        target_addr: Address::zero(),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -487,6 +499,7 @@ entry propose_reset_feed(feed_id: u64, description: string) -> u64 {
         param_key: 0,
         param_value: 0,
         reward_amount: 0,
+        target_addr: Address::zero(),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -649,6 +662,30 @@ entry execute_proposal(proposal_id: u64) -> u64 {
     } else if proposal.proposal_type == TYPE_RESET_FEED {
         // StakedOracle v5.0 entry 4 = reset_feed_cb(feed_id)
         let _ = oracle.call(12u16, [proposal.feed_id], {})
+    } else if proposal.proposal_type == TYPE_EMERGENCY_SLASH {
+        // v10.9: Governance can slash a malicious miner
+        // XelisVaultMiner entry 40 = emergency_slash_miner(addr, bps, reason)
+        let mc_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("mcnoset")
+        let miner: Contract = Contract::new(mc_hash).expect("mcnf")
+        let _ = miner.call(40u16, [proposal.target_addr, proposal.param_value, "governance_slash"], {})
+    } else if proposal.proposal_type == TYPE_SET_MIN_STAKE {
+        // v10.9: Governance can change min stake
+        // XelisVaultMiner entry 43 = set_min_stake_entry(new_min_stake)
+        let mc_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("mcnoset")
+        let miner: Contract = Contract::new(mc_hash).expect("mcnf")
+        let _ = miner.call(43u16, [proposal.param_value], {})
+    } else if proposal.proposal_type == TYPE_FREEZE_REWARDS {
+        // v10.9: Governance can freeze/unfreeze rewards
+        // XelisVaultMiner entry 42 = emergency_freeze_rewards(bool)
+        let mc_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("mcnoset")
+        let miner: Contract = Contract::new(mc_hash).expect("mcnf")
+        let _ = miner.call(42u16, [proposal.param_value > 0], {})
+    } else if proposal.proposal_type == TYPE_BAN_MINER {
+        // v10.9: Governance can permanently ban a malicious miner
+        // XelisVaultMiner entry 41 = emergency_ban_miner(addr, reason)
+        let mc_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("mcnoset")
+        let miner: Contract = Contract::new(mc_hash).expect("mcnf")
+        let _ = miner.call(41u16, [proposal.target_addr, "governance_ban"], {})
     }
 
     return 0

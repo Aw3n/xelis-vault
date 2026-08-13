@@ -234,26 +234,29 @@ This means: even if the project loses popularity and miners drop, the protocol *
 ## Miner Rewards
 
 ```
-reward = BASE_REWARD_ORACLE (0.01 VLT)
-       × stake_multiplier    (1x for 1,000 VLT, up to 50x for 50,000+ VLT)
-       × reputation_multiplier (1.5× Excellent, 1.0× Good, 0.5× Warning, 0.25× Critical, 0× Banned)
-       × budget_factor / 10000  (auto-adjusts every 2 weeks, 0.5×–2× range)
+daily_budget = 5,500,000 VLT / 10 years / 365 = 1,507 VLT/day (FIXED)
+
+reward = (stake × reputation_mult / total_weighted_stake) × daily_budget
 ```
 
-**Stake-weighted rewards** — more stake = more rewards (linear, capped at 50x).
-No Sybil advantage: 10 miners × 1,000 VLT = 1 miner × 10,000 VLT (same total).
+**Stake-weighted rewards** — self-regulating like Bitcoin:
+- Few miners → high APY → attracts more miners
+- Many miners → low APY → natural equilibrium
+- Budget ALWAYS lasts 10 years (total/day is fixed at 1,507 VLT)
 
-| Miners | Reward/miner/day | APY (1,000 VLT) | ROI | Budget lasts |
-|--------|-----------------|-----------------|-----|--------------|
-| 10 | 3.6 VLT | 131% | 278 days | 419 years |
-| 100 | 3.6 VLT | 131% | 278 days | 42 years |
-| 500 | 3.0 VLT | 110% | 333 days | 10 years |
-| 1000 | 1.5 VLT | 55% | 667 days | 10 years |
+| Miners | Reward/miner/day | APY (1,000 VLT) | Total/day | Budget lasts |
+|--------|-----------------|-----------------|-----------|--------------|
+| 1 | 1,507 VLT | 55,000% | 1,507 VLT | 10 years |
+| 10 | 151 VLT | 5,500% | 1,507 VLT | 10 years |
+| 100 | 15 VLT | 550% | 1,507 VLT | 10 years |
+| 500 | 3 VLT | 110% | 1,507 VLT | 10 years |
+| 1000 | 1.5 VLT | 55% | 1,507 VLT | 10 years |
+| 10000 | 0.15 VLT | 5.5% | 1,507 VLT | 10 years |
 
 **Budget: 5,500,000 VLT over 10 years** (55% of total supply).
-**Min stake: 1,000 VLT** (anti-Sybil, ROI > 278 days).
-**Stake multiplier: up to 50x** (50,000 VLT = max multiplier).
-**No daily cap** — rewards are stake-weighted, budget_factor auto-adjusts.
+**Min stake: 1,000 VLT** (anti-Sybil, ROI > 200 days).
+**No budget_factor, no daily cap** — pure stake-weighted distribution.
+**Reputation multiplier** changes each miner's share (Excellent 1.5x, Good 1.0x, etc.).
 
 ### Features
 

@@ -454,7 +454,7 @@ entry increase_stake(amount: u64) -> u64 {
         if del_hash != Hash::zero() {
             let del: Contract = Contract::new(del_hash).expect("err")
             // MinerDelegation entry 9 = set_miner_own_stake
-            let _ = del.call(9u16, [caller, miner.stake], {})
+            let _ = del.call(36u16, [caller, miner.stake], {})
         }
     }
     return 0
@@ -487,7 +487,7 @@ entry decrease_stake(amount: u64) -> u64 {
         let del_hash: Hash = del_opt2.expect("err")
         if del_hash != Hash::zero() {
             let del: Contract = Contract::new(del_hash).expect("err")
-            let _ = del.call(9u16, [caller, miner.stake], {})
+            let _ = del.call(36u16, [caller, miner.stake], {})
         }
     }
     return 0
@@ -1523,4 +1523,69 @@ entry get_miner_own_stake_entry(addr: Address) -> u64 {
 entry is_rewards_frozen_entry() -> bool {
     let s: Storage = Storage::new()
     return s.load("rewards_frozen").unwrap_or(false)
+}
+
+// ============================================================================
+// v11.1: pub fn wrappers for cross-contract calls (OracleGovernance)
+// entry functions cannot be called cross-contract — only pub fn can.
+// These wrappers allow governance to call emergency functions.
+// ============================================================================
+
+// Chunk 83: emergency_slash_miner (pub fn wrapper for cross-contract)
+pub fn emergency_slash_miner_cross(miner_addr: Address, slash_bps: u64, reason: string) -> u64 {
+    only_guardian_or_admin()
+    require(slash_bps > 0 && slash_bps <= 10000, "badbps")
+    let s: Storage = Storage::new()
+    let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
+    if miner_opt.is_none() { return 0 }
+    let miner: Miner = miner_opt.expect("err")
+    let slash_amount: u64 = (miner.stake as u128 * slash_bps as u128 / 10000u128) as u64
+    if slash_amount == 0 { return 0 }
+    let actual_slash: u64 = slash_amount
+    if slash_amount > miner.stake { actual_slash = miner.stake }
+    miner.stake -= actual_slash
+    miner.total_slashed += actual_slash
+    let rep_loss: u64 = (REP_MAX * slash_bps) / 10000
+    if miner.reputation > rep_loss { miner.reputation -= rep_loss } else { miner.reputation = 0 }
+    let min_stake: u64 = s.load(MIN_STAKE_KEY).unwrap_or(DEFAULT_MIN_STAKE)
+    if miner.stake < min_stake { miner.active = false }
+    s.store(MINER_PREFIX + miner_addr.to_string(), miner)
+    let total_staked: u64 = s.load(TOTAL_STAKED_KEY).unwrap_or(0)
+    if total_staked >= actual_slash { s.store(TOTAL_STAKED_KEY, total_staked - actual_slash) }
+    emit_event("EmergencySlash", miner_addr.to_string() + "_" + actual_slash.to_string() + "_" + reason)
+    return actual_slash
+}
+
+// Chunk 84: emergency_ban_miner (pub fn wrapper for cross-contract)
+pub fn emergency_ban_miner_cross(miner_addr: Address, reason: string) -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
+    if miner_opt.is_none() { return 0 }
+    let miner: Miner = miner_opt.expect("err")
+    miner.active = false
+    miner.reputation = 0
+    s.store("ban_" + miner_addr.to_string(), get_current_topoheight() + 518400)
+    s.store(MINER_PREFIX + miner_addr.to_string(), miner)
+    emit_event("EmergencyBan", miner_addr.to_string() + "_" + reason)
+    return 0
+}
+
+// Chunk 85: emergency_freeze_rewards (pub fn wrapper for cross-contract)
+pub fn emergency_freeze_rewards_cross(frozen: bool) -> u64 {
+    only_guardian_or_admin()
+    let s: Storage = Storage::new()
+    s.store("rewards_frozen", frozen)
+    emit_event("RewardsFrozen", frozen.to_string())
+    return 0
+}
+
+// Chunk 86: set_min_stake (pub fn wrapper for cross-contract)
+pub fn set_min_stake_cross(new_min_stake: u64) -> u64 {
+    only_admin()
+    require(new_min_stake >= 1000000000, "toolow")
+    let s: Storage = Storage::new()
+    s.store(MIN_STAKE_KEY, new_min_stake)
+    emit_event("MinStakeUpdated", new_min_stake.to_string())
+    return 0
 }

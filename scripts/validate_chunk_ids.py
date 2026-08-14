@@ -20,11 +20,16 @@ CONTRACTS_DIR = Path(__file__).resolve().parent.parent / "contracts"
 
 
 def get_entries(filepath):
-    """Extract entry function names in declaration order from a .slx file."""
+    """Extract ALL function names (entry + pub fn + fn + hook) in declaration order.
+    
+    CRITICAL: In XELIS VM, chunk IDs are assigned to ALL functions in source order,
+    not just entries. A .call(Nu16) targets chunk N which includes entry, pub fn,
+    fn, and hook. Only pub fn chunks are callable cross-contract.
+    """
     src = filepath.read_text()
     entries = []
-    for m in re.finditer(r'^entry\s+(\w+)\s*\(', src, re.MULTILINE):
-        entries.append(m.group(1))
+    for m in re.finditer(r'^(entry|pub fn|fn|hook)\s+(\w+)\s*[\(<]', src, re.MULTILINE):
+        entries.append((m.group(1), m.group(2)))
     return entries
 
 
@@ -115,8 +120,11 @@ def main():
         src = f.read_text()
         rel = str(f.relative_to(CONTRACTS_DIR))
         
-        # Find all .call(Nu16, ...) patterns
-        for m in re.finditer(r'(\w+)\.call\((\d+)u16', src):
+        # Strip comments before searching (avoid false positives in comments)
+        clean_src = re.sub(r'//.*', '', src)
+        
+        # Find all .call(Nu16, ...) patterns in clean source
+        for m in re.finditer(r'(\w+)\.call\((\d+)u16', clean_src):
             var_name = m.group(1)
             entry_id = int(m.group(2))
             
@@ -135,12 +143,18 @@ def main():
             
             if entry_id >= len(entries):
                 errors.append(
-                    f"❌ {rel}: {var_name}.call({entry_id}u16) — entry {entry_id} does not exist "
+                    f"❌ {rel}: {var_name}.call({entry_id}u16) — chunk {entry_id} does not exist "
                     f"in {target_contract} (max={len(entries)-1})"
                 )
             else:
-                fn_name = entries[entry_id]
-                ok += 1
+                func_type, fn_name = entries[entry_id]
+                if func_type == "pub fn":
+                    ok += 1
+                else:
+                    errors.append(
+                        f"🔴 {rel}: {var_name}.call({entry_id}u16) → {target_contract}.{fn_name} "
+                        f"is '{func_type}' (NOT callable cross-contract — only 'pub fn' is)"
+                    )
     
     # Print results
     print("=" * 70)

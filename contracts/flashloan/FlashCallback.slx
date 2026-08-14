@@ -76,9 +76,9 @@ pub fn on_flash_loan(
     let bal: u64 = get_balance_for_asset(asset).unwrap_or(0)
     require(bal >= total_repay, "insrepay")
 
-    let fl: Contract = Contract::new(flash_loan_hash).expect("err")
-    // FIX: kwargs must be `{}` (empty), not a JS object literal.
-    let _ = fl.call(1u16, [total_repay], {})
+    // v11.1: Use native transfer_contract instead of calling FlashLoan entry
+    // (entry functions cannot be called cross-contract — only pub fn can)
+    require(transfer_contract(flash_loan_hash, total_repay, asset), "repayfailed")
 
     return 0
 }

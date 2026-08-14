@@ -135,7 +135,7 @@ fn slash_miner(addr: Address) {
     let mc: Contract = get_miner_contract()
     let s: Storage = Storage::new()
     let guardian: Address = s.load(GUARDIAN_KEY).expect("gnos")
-    let _ = mc.call(17u16, [addr, 0u64, guardian], {})
+    let _ = mc.call(20u16, [addr, 0u64, guardian], {})
 }
 
 // ============================================================================
@@ -330,12 +330,12 @@ fn aggregate(feed_id: u64) {
         if del_hash_opt.is_some() {
             let del_hash: Hash = del_hash_opt.expect("err")
             let del: Contract = Contract::new(del_hash).expect("err")
-            let result: u64 = del.call(22u16, [provider], {})  // MinerDelegation entry 22 = get_miner_total_stake_entry
+            let result: u64 = del.call(16u16, [provider], {})  // MinerDelegation entry 22 = get_miner_total_stake_entry
             if result > 0 { stake = result }
         } else if mc_hash_opt.is_some() {
             let mc_hash: Hash = mc_hash_opt.expect("err")
             let mc: Contract = Contract::new(mc_hash).expect("err")
-            let result: u64 = mc.call(36u16, [provider], {})
+            let result: u64 = mc.call(63u16, [provider], {})
             if result > 0 { stake = result }
         }
         collected_stakes.push(stake)
@@ -501,7 +501,7 @@ fn get_price_by_feed_impl(feed_id: u64) -> u64 {
         min_providers = s.load(MIN_PROVIDERS_FOR_ORACLE_KEY).unwrap_or(DEFAULT_MIN_PROVIDERS)
     }
     let mc: Contract = get_miner_contract()
-    let active_count: u64 = mc.call(22u16, [1u64], {})
+    let active_count: u64 = mc.call(64u16, [1u64], {})
     require(active_count >= min_providers, "notenoughproviders")
 
     let agg_opt: optional<AggregatedPrice> = s.load(FEED_AGG_PREFIX + feed_id.to_string(10u32))
@@ -767,7 +767,7 @@ pub fn set_hard_stale_blocks(n: u64) -> u64 {
 entry disable_bootstrap() -> u64 {
     only_admin()
     let mc: Contract = get_miner_contract()
-    let active_count: u64 = mc.call(22u16, [1u64], {})
+    let active_count: u64 = mc.call(64u16, [1u64], {})
     require(active_count >= 20, "need20providers")
     Storage::new().store(BOOTSTRAP_MODE_KEY, false)
     return 0

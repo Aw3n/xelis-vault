@@ -1,7 +1,7 @@
 // ============================================================================
 // LendingMarket.slx — XELIS Vault v5.0
 // ----------------------------------------------------------------------------
-// FIX #12: get_asset_price() calls oracle.call(4u16, [asset], {})
+// FIX #12: get_asset_price() calls oracle.call(21u16, [asset], {})
 //          (StakedOracle v5.0 entry 9 = get_price_for_asset_entry).
 // FIX N-01: Accrued interest computed via index ratio
 //          (accrued = principal * current_index / position_index) before any
@@ -130,7 +130,7 @@ fn get_asset_price(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let oracle_hash: Hash = s.load(ORACLE_KEY).expect("ornoset")
     let oracle: Contract = Contract::new(oracle_hash).expect("ornf")
-    let price: u64 = oracle.call(4u16, [asset], {})
+    let price: u64 = oracle.call(21u16, [asset], {})
     require(price > 0, "noprice")
     return price
 }
@@ -684,7 +684,7 @@ fn update_pool_interest(pool_id: u64, pool: Pool) {
     let utilization: u64 = (total_borrow as u128 * 10000u128 / total_supply as u128) as u64
 
     let irm: Contract = Contract::new(pool.interest_rate_model).expect("irmnf")
-    let borrow_rate_bps: u64 = irm.call(0u16, [utilization], {})
+    let borrow_rate_bps: u64 = irm.call(11u16, [utilization], {})
 
     let borrow_index: u64 = s.load(bi_key(pool_id)).unwrap_or(INITIAL_INDEX)
     let interest_accumulated: u128 = ((borrow_rate_bps as u128 * blocks_elapsed as u128 * borrow_index as u128) / (BLOCKS_PER_YEAR as u128 * 10000u128)) as u64 as u128
@@ -696,7 +696,7 @@ fn update_pool_interest(pool_id: u64, pool: Pool) {
     }
 
     let reserve_factor: u64 = pool.reserve_factor_bps
-    let supply_rate: u64 = irm.call(1u16, [utilization], {})
+    let supply_rate: u64 = irm.call(12u16, [utilization], {})
     let supply_index: u64 = s.load(si_key(pool_id)).unwrap_or(INITIAL_INDEX)
     let supply_acc: u128 = ((supply_rate as u128 * blocks_elapsed as u128 * supply_index as u128) / (BLOCKS_PER_YEAR as u128 * 10000u128)) as u64 as u128
     let new_supply_index: u128 = supply_index as u128 + supply_acc

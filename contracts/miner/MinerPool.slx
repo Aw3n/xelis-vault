@@ -134,7 +134,7 @@ fn get_miner_stake(addr: Address) -> u64 {
     let s: Storage = Storage::new()
     let miner_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("err")
     let miner: Contract = Contract::new(miner_hash).expect("err")
-    let stake: u64 = miner.call(36u16, [addr], {})
+    let stake: u64 = miner.call(63u16, [addr], {})
     return stake
 }
 
@@ -144,7 +144,7 @@ fn get_miner_reputation(addr: Address) -> u64 {
     let s: Storage = Storage::new()
     let miner_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("err")
     let miner: Contract = Contract::new(miner_hash).expect("err")
-    let rep: u64 = miner.call(37u16, [addr], {})
+    let rep: u64 = miner.call(64u16, [addr], {})
     return rep
 }
 

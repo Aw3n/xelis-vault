@@ -79,9 +79,16 @@ const REP_WARNING: u64 = 2000
 const REP_CRITICAL: u64 = 1000
 const REP_BANNED: u64 = 0
 
-const REP_GAIN_PRICE: u64 = 1
-const REP_GAIN_ANCHOR: u64 = 5
-const REP_GAIN_HEARTBEAT: u64 = 1
+// v11.4: New miners start at REP_START (between Warning and Good)
+// They must prove themselves over time to reach Good then Excellent
+const REP_START: u64 = 3000              // Start at 3000 (between Warning=2000 and Good=5000)
+// v11.4: Reputation gain per valid submission (slower growth = must prove over time)
+const REP_GAIN_PRICE: u64 = 1            // +1 per valid price submission (was 1, keep)
+const REP_GAIN_ANCHOR: u64 = 3           // +3 per valid anchor (was 5, slower)
+const REP_GAIN_HEARTBEAT: u64 = 1         // +1 per heartbeat (was 1, keep)
+// Time-based reputation: after N blocks active, get a bonus
+const REP_PROVEN_BLOCKS: u64 = 259200    // 15 days at 5s blocks (proven miner)
+
 const REP_LOSS_OUTLIER: u64 = 50
 const REP_LOSS_OFFLINE: u64 = 200
 const REP_LOSS_DATA_LOSS: u64 = 500
@@ -165,10 +172,58 @@ fn when_not_paused() {
 }
 
 fn get_reputation_multiplier(rep: u64) -> u64 {
-    if rep >= REP_EXCELLENT { return 15000 }
-    if rep >= REP_GOOD { return 10000 }
-    if rep >= REP_WARNING { return 5000 }
-    if rep >= REP_CRITICAL { return 2500 }
+    if rep >= REP_EXCELLENT { return 15000 }  // 1.5x
+    if rep >= REP_GOOD { return 10000 }       // 1.0x
+    if rep >= REP_WARNING { return 7000 }     // 0.7x (was 0.5x — slightly better for starting miners)
+    if rep >= REP_CRITICAL { return 4000 }     // 0.4x (was 0.25x)
+    return 0                                   // Banned = 0x
+}
+
+// v11.4: Get time-proven reputation bonus
+// After 15 days of activity, miner gets +2000 reputation (from 3000 → 5000 = Good)
+fn get_time_proven_bonus(miner: Miner) -> u64 {
+    let current_topo: u64 = get_current_topoheight()
+    if current_topo >= miner.registered_at + REP_PROVEN_BLOCKS {
+        // Miner has been active for 15+ days — proven
+        return 2000  // +2000 reputation bonus (3000 → 5000 = Good)
+    }
+    return 0
+}
+
+// v11.4: Get effective reputation (base + time bonus)
+fn get_effective_reputation(miner: Miner) -> u64 {
+    let rep: u64 = miner.reputation
+    let time_bonus: u64 = get_time_proven_bonus(miner)
+    rep += time_bonus
+    if rep > REP_MAX { rep = REP_MAX }
+    return rep
+}
+
+// v11.4: New miner bonus — depends on network miner count
+// Fewer miners = higher bonus (incentivize joining when network is small)
+// More miners = bonus disappears (natural equilibrium)
+fn get_new_miner_bonus(miner: Miner, active_miners_count: u64) -> u64 {
+    let current_topo: u64 = get_current_topoheight()
+    // Only applies to miners registered less than 30 days ago
+    let thirty_days: u64 = 2592000  // 30 * 86400 blocks
+    if current_topo > miner.registered_at + thirty_days {
+        return 0  // Bonus expired after 30 days
+    }
+    
+    // Bonus depends on how many miners are active
+    // 0-10 miners: 5000 bps (0.5x extra)
+    // 11-50 miners: 3000 bps (0.3x extra)
+    // 51-100 miners: 1000 bps (0.1x extra)
+    // 100+ miners: 0 (no bonus, network is healthy)
+    if active_miners_count <= 10 {
+        return 5000
+    }
+    if active_miners_count <= 50 {
+        return 3000
+    }
+    if active_miners_count <= 100 {
+        return 1000
+    }
     return 0
 }
 
@@ -223,13 +278,15 @@ const CONCENTRATION_HARD_THRESHOLD_BPS: u64 = 2000  // 20% — penalty maxed
 const CONCENTRATION_MIN_FACTOR_BPS: u64 = 3000      // 0.3x — minimum factor at hard threshold
 
 fn get_dynamic_reward(base_reward: u64, miner_addr: Address) -> u64 {
-    // v11.2: Bitcoin-style halving + STAKE_FLOOR + cap_stake + concentration curve
-    // reward = block_reward × min(stake, cap) / max(total, FLOOR) × rep_mult / 10000 × concentration_factor / 10000
+    // v11.4: Bitcoin-style halving + STAKE_FLOOR + cap + time-proven rep + new miner bonus
     let s: Storage = Storage::new()
     let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
     if miner_opt.is_none() { return 0 }
     let miner: Miner = miner_opt.expect("err")
-    let rep_mult: u64 = get_reputation_multiplier(miner.reputation)
+
+    // v11.4: Use EFFECTIVE reputation (base + time-proven bonus)
+    let effective_rep: u64 = get_effective_reputation(miner)
+    let rep_mult: u64 = get_reputation_multiplier(effective_rep)
     if rep_mult == 0 { return 0 }
 
     let total_staked: u64 = s.load(TOTAL_STAKED_KEY).unwrap_or(0)
@@ -250,14 +307,16 @@ fn get_dynamic_reward(base_reward: u64, miner_addr: Address) -> u64 {
         effective_total = STAKE_FLOOR
     }
 
-    // v11.3: NO concentration penalty on rewards — rewards are proportional to stake
-    // Concentration is handled in StakedOracle (oracle weight penalty, not reward penalty)
-    // This is fairer: a good miner with lots of stake earns full rewards
-    // but has reduced oracle manipulation power
+    // v11.4: New miner bonus — extra multiplier based on network size
+    // Only for miners < 30 days old, depends on active miner count
+    let active_count: u64 = get_active_miners_count()
+    let new_miner_bonus: u64 = get_new_miner_bonus(miner, active_count)
 
     // reward = block_reward × effective_stake × rep_mult / (effective_total × 10000)
-    let reward: u64 = (block_reward as u128 * effective_stake as u128 * rep_mult as u128 / (effective_total as u128 * 10000u128)) as u64
-    return reward
+    //         × (1 + new_miner_bonus / 10000)
+    let base_reward_val: u64 = (block_reward as u128 * effective_stake as u128 * rep_mult as u128 / (effective_total as u128 * 10000u128)) as u64
+    let bonus_amount: u64 = (base_reward_val as u128 * new_miner_bonus as u128 / 10000u128) as u64
+    return base_reward_val + bonus_amount
 }
 
 // ============================================================================
@@ -368,7 +427,7 @@ entry register_miner(endpoint_url: string, miner_pubkey: Hash, services_mask: u8
         last_heartbeat: get_current_topoheight(),
         total_rewards_earned: 0,
         total_slashed: 0,
-        reputation: REP_MAX,
+        reputation: REP_START,  // v11.4: Start at 3000 (between Warning and Good), must prove over time
         valid_submissions: 0,
         successful_anchors: 0,
         total_submissions: 0,

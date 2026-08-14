@@ -3,7 +3,7 @@
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
 
 Each `entry` function gets a sequential ID starting at 0 in declaration order.
-**Total entry functions across 51 contracts:** 957
+**Total entry functions across 51 contracts:** 963
 
 `pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.
 
@@ -707,24 +707,28 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 |----|------|------------|--------|
 | 0 | `register_miner_profile` | `name: string, description: string, commission_bps: u64` | `u` |
 | 1 | `update_miner_profile` | `name: string, description: string, commission_bps: u64` | `u` |
-| 2 | `delegate` | `miner_addr: Address, amount: u64` | `u` |
+| 2 | `delegate` | `miner_addr: Address, amount: u64, auto_compound: bool` | `u` |
 | 3 | `undelegate` | `amount: u64` | `u` |
-| 4 | `claim_delegator_rewards` | `—` | `u` |
-| 5 | `claim_miner_rewards` | `—` | `u` |
-| 6 | `distribute_rewards` | `miner_addr: Address, total_reward: u64` | `u` |
-| 7 | `apply_slashing` | `miner_addr: Address, slash_amount: u64` | `u` |
-| 8 | `set_min_commission` | `bps: u64` | `u` |
-| 9 | `set_max_commission` | `bps: u64` | `u` |
-| 10 | `set_undelegate_delay` | `blocks: u64` | `u` |
-| 11 | `set_vlt_contract` | `vc: Hash` | `u` |
-| 12 | `set_vlt_asset` | `va: Hash` | `u` |
-| 13 | `set_registry` | `registry: Hash` | `u` |
-| 14 | `set_timelock` | `tl: Hash` | `u` |
-| 15 | `set_guardian` | `g: Address` | `u` |
-| 16 | `pause` | `—` | `u` |
-| 17 | `unpause` | `—` | `u` |
-| 18 | `transfer_admin` | `new_admin: Address` | `u` |
-| 19 | `get_version` | `—` | `s` |
+| 4 | `execute_undelegate` | `—` | `u` |
+| 5 | `claim_delegator_rewards` | `—` | `u` |
+| 6 | `claim_miner_rewards` | `—` | `u` |
+| 7 | `distribute_rewards` | `miner_addr: Address, total_reward: u64` | `u` |
+| 8 | `apply_slashing` | `miner_addr: Address, slash_amount: u64` | `u` |
+| 9 | `set_miner_own_stake` | `miner_addr: Address, own_stake: u64` | `u` |
+| 10 | `set_miner_contract_hash` | `mc_hash: Hash` | `u` |
+| 11 | `set_min_commission` | `bps: u64` | `u` |
+| 12 | `set_max_commission` | `bps: u64` | `u` |
+| 13 | `set_undelegate_delay` | `blocks: u64` | `u` |
+| 14 | `set_cap_stake` | `cap: u64` | `u` |
+| 15 | `set_vlt_asset` | `va: Hash` | `u` |
+| 16 | `set_registry` | `registry: Hash` | `u` |
+| 17 | `set_timelock` | `tl: Hash` | `u` |
+| 18 | `set_guardian` | `g: Address` | `u` |
+| 19 | `pause` | `—` | `u` |
+| 20 | `unpause` | `—` | `u` |
+| 21 | `transfer_admin` | `new_admin: Address` | `u` |
+| 22 | `get_miner_total_stake_entry` | `miner_addr: Address` | `u` |
+| 23 | `get_version` | `—` | `s` |
 
 ## `miner/MinerPool.slx`
 
@@ -781,31 +785,32 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 19 | `set_target_duration` | `blocks: u64` | `u` |
 | 20 | `set_vlt_contract` | `vc: Hash` | `u` |
 | 21 | `set_vlt_asset` | `va: Hash` | `u` |
-| 22 | `set_treasury` | `t: Address` | `u` |
-| 23 | `set_registry` | `reg: Hash` | `u` |
-| 24 | `set_timelock` | `tl: Hash` | `u` |
-| 25 | `set_guardian` | `g: Address` | `u` |
-| 26 | `set_emergency` | `e: Address` | `u` |
-| 27 | `pause` | `reason: string` | `u` |
-| 28 | `unpause` | `—` | `u` |
-| 29 | `transfer_admin` | `new_admin: Address` | `u` |
-| 30 | `get_version` | `—` | `s` |
-| 31 | `request_emergency_withdraw` | `—` | `u` |
-| 32 | `cancel_emergency_withdraw` | `—` | `u` |
-| 33 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
-| 34 | `set_compound` | `enabled: bool` | `u` |
-| 35 | `set_rep_decay_params` | `interval: u64, amount: u64` | `u` |
-| 36 | `get_miner_stake_entry` | `addr: Address` | `u` |
-| 37 | `get_miner_reputation_entry` | `addr: Address` | `u` |
-| 38 | `get_active_miners_count_entry` | `—` | `u` |
-| 39 | `get_miner_at_entry` | `index: u64` | `A` |
-| 40 | `emergency_slash_miner` | `miner_addr: Address, slash_bps: u64, reason: string` | `u` |
-| 41 | `emergency_ban_miner` | `miner_addr: Address, reason: string` | `u` |
-| 42 | `emergency_freeze_rewards` | `frozen: bool` | `u` |
-| 43 | `set_min_stake_entry` | `new_min_stake: u64` | `u` |
-| 44 | `set_max_delegation_pct` | `bps: u64` | `u` |
-| 45 | `get_miner_own_stake_entry` | `addr: Address` | `u` |
-| 46 | `is_rewards_frozen_entry` | `—` | `b` |
+| 22 | `set_delegation_contract` | `dck: Hash` | `u` |
+| 23 | `set_treasury` | `t: Address` | `u` |
+| 24 | `set_registry` | `reg: Hash` | `u` |
+| 25 | `set_timelock` | `tl: Hash` | `u` |
+| 26 | `set_guardian` | `g: Address` | `u` |
+| 27 | `set_emergency` | `e: Address` | `u` |
+| 28 | `pause` | `reason: string` | `u` |
+| 29 | `unpause` | `—` | `u` |
+| 30 | `transfer_admin` | `new_admin: Address` | `u` |
+| 31 | `get_version` | `—` | `s` |
+| 32 | `request_emergency_withdraw` | `—` | `u` |
+| 33 | `cancel_emergency_withdraw` | `—` | `u` |
+| 34 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 35 | `set_compound` | `enabled: bool` | `u` |
+| 36 | `set_rep_decay_params` | `interval: u64, amount: u64` | `u` |
+| 37 | `get_miner_stake_entry` | `addr: Address` | `u` |
+| 38 | `get_miner_reputation_entry` | `addr: Address` | `u` |
+| 39 | `get_active_miners_count_entry` | `—` | `u` |
+| 40 | `get_miner_at_entry` | `index: u64` | `A` |
+| 41 | `emergency_slash_miner` | `miner_addr: Address, slash_bps: u64, reason: string` | `u` |
+| 42 | `emergency_ban_miner` | `miner_addr: Address, reason: string` | `u` |
+| 43 | `emergency_freeze_rewards` | `frozen: bool` | `u` |
+| 44 | `set_min_stake_entry` | `new_min_stake: u64` | `u` |
+| 45 | `set_max_delegation_pct` | `bps: u64` | `u` |
+| 46 | `get_miner_own_stake_entry` | `addr: Address` | `u` |
+| 47 | `is_rewards_frozen_entry` | `—` | `b` |
 
 ## `nft/VaultNFT.slx`
 
@@ -861,20 +866,21 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 7 | `set_bootstrap_min_providers` | `n: u64` | `u` |
 | 8 | `set_min_providers` | `n: u64` | `u` |
 | 9 | `set_miner_contract` | `mc: Hash` | `u` |
-| 10 | `set_registry` | `reg: Hash` | `u` |
-| 11 | `set_timelock` | `tl: Hash` | `u` |
-| 12 | `set_guardian` | `g: Address` | `u` |
-| 13 | `set_emergency` | `e: Address` | `u` |
-| 14 | `transfer_admin` | `new_admin: Address` | `u` |
-| 15 | `get_version` | `—` | `s` |
-| 16 | `set_max_deviation_bps_entry` | `bps: u64` | `u` |
-| 17 | `set_cb_threshold_bps_entry` | `bps: u64` | `u` |
-| 18 | `set_aggregation_blocks_entry` | `n: u64` | `u` |
-| 19 | `set_max_stale_blocks_entry` | `n: u64` | `u` |
-| 20 | `set_hard_stale_blocks_entry` | `n: u64` | `u` |
-| 21 | `pause_entry` | `reason: string` | `u` |
-| 22 | `unpause_entry` | `—` | `u` |
-| 23 | `force_update_price` | `feed_id: u64, new_price: u64` | `u` |
+| 10 | `set_delegation_contract` | `dc: Hash` | `u` |
+| 11 | `set_registry` | `reg: Hash` | `u` |
+| 12 | `set_timelock` | `tl: Hash` | `u` |
+| 13 | `set_guardian` | `g: Address` | `u` |
+| 14 | `set_emergency` | `e: Address` | `u` |
+| 15 | `transfer_admin` | `new_admin: Address` | `u` |
+| 16 | `get_version` | `—` | `s` |
+| 17 | `set_max_deviation_bps_entry` | `bps: u64` | `u` |
+| 18 | `set_cb_threshold_bps_entry` | `bps: u64` | `u` |
+| 19 | `set_aggregation_blocks_entry` | `n: u64` | `u` |
+| 20 | `set_max_stale_blocks_entry` | `n: u64` | `u` |
+| 21 | `set_hard_stale_blocks_entry` | `n: u64` | `u` |
+| 22 | `pause_entry` | `reason: string` | `u` |
+| 23 | `unpause_entry` | `—` | `u` |
+| 24 | `force_update_price` | `feed_id: u64, new_price: u64` | `u` |
 
 ## `payroll/Payroll.slx`
 

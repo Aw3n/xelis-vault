@@ -36,7 +36,7 @@ from contract_ops import (
     gov_stake, gov_unstake, gov_claim_rewards,
     gov_view_proposals, gov_vote, gov_create_proposal,
     mixer_deposit, mixer_withdraw, mixer_view_root, mixer_check_nullifier,
-    faucet_info,
+    faucet_info, delegation_dashboard,
     fmt_xel, fmt_vlt, fmt_xusd, fmt_usd, fmt_addr, fmt_amount,
 )
 from admin_panel import (
@@ -1097,6 +1097,7 @@ def main():
             ("Vault              — Deposit, borrow, repay", "vault"),
             ("Swap               — Trade XEL, xUSD, VLT", "swap"),
             ("Governance         — Stake, vote, propose", "governance"),
+            ("🤝 Delegation       — Delegate VLT to miners, earn yield", "delegation"),
             ("Mixer              — Private transfers", "mixer"),
             ("Chat               — Encrypted messaging", "chat"),
             ("🪂 Airdrop          — Points, leaderboard, claim", "airdrop"),
@@ -1127,6 +1128,8 @@ def main():
             screen_swap(client)
         elif choice == "governance":
             screen_governance(client)
+        elif choice == "delegation":
+            delegation_dashboard(client)
         elif choice == "mixer":
             screen_mixer(client)
         elif choice == "chat":

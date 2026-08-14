@@ -84,12 +84,13 @@ Phase 12 : Founder & Fees (3 contrats)
   33. FounderVesting (instance 1 : 4 ans)
   34. FounderVesting (instance 2 : 10 ans)
   35. FeeDistributor
+  36. MinerDelegation
 
 Phase 13 : Airdrop (2 contrats)
-  36. AirdropTracker (TESTNET)
-  37. AirdropClaim (MAINNET, déployé plus tard)
+  37. AirdropTracker (TESTNET)
+  38. AirdropClaim (MAINNET, déployé plus tard)
 
-TOTAL : 37 contrats core (36 sur testnet + 1 sur mainnet)
+TOTAL : 38 contrats core (37 sur testnet + 1 sur mainnet)
 ```
 
 ---
@@ -809,6 +810,44 @@ xelis-call REGISTRY_HASH register ["FeeDistributor", FEEDIST_HASH]
 # (à faire via governance ou admin calls sur chaque contrat)
 ```
 
+### Étape 12.4 — Déployer MinerDelegation
+
+```bash
+xelis-compile contracts/miner/MinerDelegation.slx
+xelis-deploy MinerDelegation.bytecode
+# → Sauvegarder : DELEGATION_HASH
+```
+
+**Configuration (ORDRE CRITIQUE) :**
+```bash
+# 1. Set VLT asset (pour les transferts natifs)
+xelis-call DELEGATION_HASH set_vlt_asset [VLT_ASSET_HASH]
+
+# 2. Set miner contract hash (pour only_miner_contract verification)
+xelis-call DELEGATION_HASH set_miner_contract_hash [MINER_CONTRACT_HASH]
+
+# 3. Set registry
+xelis-call DELEGATION_HASH set_registry [REGISTRY_HASH]
+
+# Enregistrer dans le registry
+xelis-call REGISTRY_HASH register ["MinerDelegation", DELEGATION_HASH]
+
+# 4. CRITIQUE : Configurer XelisVaultMiner pour pousser own_stake vers MinerDelegation
+xelis-call MINER_CONTRACT_HASH set_delegation_contract [DELEGATION_HASH]
+
+# 5. CRITIQUE : Configurer StakedOracle pour lire le total stake depuis MinerDelegation
+xelis-call ORACLE_HASH set_delegation_contract [DELEGATION_HASH]
+
+# 6. Set cap stake (anti-concentration, default 500,000 VLT)
+# Optionnel — le default est déjà 500,000 VLT
+# xelis-call DELEGATION_HASH set_cap_stake [50000000000000]
+```
+
+**Points critiques :**
+- `set_delegation_contract` sur XelisVaultMiner permet de pousser les mises à jour de own_stake
+- `set_delegation_contract` sur StakedOracle permet de lire le total stake (own + delegated) pour la médiane pondérée
+- Sans ces 2 configurations, la délégation n'affecte pas le poids oracle
+
 ---
 
 ## 🪂 PHASE 13 : Airdrop
@@ -1012,6 +1051,7 @@ CHAT_HASH = 0x...
 FOUNDER_VESTING_1_HASH = 0x...
 FOUNDER_VESTING_2_HASH = 0x...
 FEEDIST_HASH = 0x...
+DELEGATION_HASH = 0x...
 
 # Airdrop
 AIRDROP_TRACKER_HASH = 0x...

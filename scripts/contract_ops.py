@@ -846,3 +846,318 @@ def mixer_check_nullifier(client):
 
     print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
     input()
+
+
+# ============================================================================
+# Miner Delegation operations (v11.0)
+# ============================================================================
+
+# MinerDelegation entry IDs
+MD_REGISTER_PROFILE = 0
+MD_UPDATE_PROFILE = 1
+MD_DELEGATE = 2
+MD_UNDELEGATE = 3
+MD_EXECUTE_UNDELEGATE = 4
+MD_CLAIM_DELEGATOR_REWARDS = 5
+MD_CLAIM_MINER_REWARDS = 6
+
+def delegation_dashboard(client):
+    """Main delegation dashboard — browse miners, delegate, manage."""
+    delegation = client.cfg.get("delegation_hash") or client.cfg.get("miner_delegation_hash") or ""
+    if not delegation:
+        clear()
+        print(BANNER)
+        print(f"\n{C.RED}{C.BOLD}  ⚠  MinerDelegation not configured{C.RESET}")
+        print(f"{C.DIM}  Run: xvault → Settings → Configure contract addresses{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    while True:
+        clear()
+        print(BANNER)
+        print(f"\n{C.CYAN}{C.BOLD}  🤝 MINER DELEGATION{C.RESET}")
+        print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+        # Show stats
+        total_del = client.invoke_contract_fn(delegation, "get_total_delegated") or 0
+        miner_count = client.invoke_contract_fn(delegation, "get_miner_count") or 0
+        print(f"  Total delegated: {fmt_vlt(total_del)}")
+        print(f"  Registered miners: {miner_count}\n")
+
+        choice = menu("Delegation Menu", [
+            ("🏆  Browse miners           — Find a miner to delegate to", "browse"),
+            ("📋  My delegation           — View my stakes + rewards", "my_del"),
+            ("💎  Claim delegator rewards — Withdraw earned VLT", "claim_del"),
+            ("🔑  Register miner profile  — Set name + commission (for miners)", "register"),
+            ("✏️   Update miner profile    — Change name/commission", "update"),
+            ("💰  Claim miner rewards     — Withdraw own + commission (miners)", "claim_miner"),
+            ("⏳  Execute undelegate      — Finalize pending withdrawal", "exec_undel"),
+            ("Back", None),
+        ])
+
+        if choice is None:
+            break
+        elif choice == "browse":
+            _delegation_browse(client, delegation)
+        elif choice == "my_del":
+            _delegation_my(client, delegation)
+        elif choice == "claim_del":
+            _delegation_claim_del(client, delegation)
+        elif choice == "register":
+            _delegation_register(client, delegation)
+        elif choice == "update":
+            _delegation_update(client, delegation)
+        elif choice == "claim_miner":
+            _delegation_claim_miner(client, delegation)
+        elif choice == "exec_undel":
+            _delegation_exec_undel(client, delegation)
+
+
+def _delegation_browse(client, delegation):
+    """Browse miners to delegate to."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  🏆 BROWSE MINERS{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    count = client.invoke_contract_fn(delegation, "get_miner_count") or 0
+    if not count:
+        print(f"  {C.DIM}No miners registered yet.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    # Show top 20 miners
+    show = min(20, count)
+    print(f"  {'#':<4} {'Name':<20} {'Stake':>12} {'Commission':>10} {'Delegators':>10}")
+    print(f"  {C.GRAY}{'─' * 60}{C.RESET}")
+
+    for i in range(show):
+        # Get miner at index via list
+        # MinerDelegation stores miner addresses in MINER_LIST_PREFIX
+        # We need to iterate via pub fn if available
+        # For now, show a placeholder
+        pass
+
+    print(f"\n  {C.DIM}(Miner list will be populated from on-chain data){C.RESET}")
+
+    # Delegate to a miner
+    print(f"\n  {C.BOLD}Delegate to a miner:{C.RESET}")
+    miner_addr = text_input("  Miner address: ")
+    if not miner_addr or len(miner_addr) < 10:
+        return
+
+    amount_str = text_input("  VLT amount to delegate: ")
+    try:
+        amount = float(amount_str)
+        if amount < 10:
+            print(f"\n  {C.RED}Minimum delegation is 10 VLT.{C.RESET}")
+            input()
+            return
+    except ValueError:
+        return
+
+    auto = menu("Auto-compound?", [
+        ("Yes — reinvest rewards automatically", "yes"),
+        ("No — claim manually", "no"),
+        ("Cancel", None),
+    ])
+    if auto is None:
+        return
+
+    print(f"\n  {C.BOLD}Delegation summary:{C.RESET}")
+    print(f"  Miner:       {fmt_addr(miner_addr)}")
+    print(f"  Amount:      {C.YELLOW}{amount} VLT{C.RESET}")
+    print(f"  Auto-compound: {'✅ Yes' if auto == 'yes' else '❌ No'}")
+
+    if confirm("\n  Confirm delegation?"):
+        amount_atomic = int(amount * 10**8)
+        print(f"\n  {C.DIM}Submitting...{C.RESET}")
+        tx = client.submit_transaction(delegation, MD_DELEGATE,
+                                       [miner_addr, amount_atomic, auto == "yes"])
+        show_tx_result(tx, "Delegation submitted")
+    else:
+        print(f"\n  {C.DIM}Cancelled.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _delegation_my(client, delegation):
+    """View my delegation."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  📋 MY DELEGATION{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    addr = client.cfg.get("miner_address")
+    if not addr:
+        print(f"  {C.RED}No address configured.{C.RESET}")
+        input()
+        return
+
+    info = client.invoke_contract_fn(delegation, "get_delegator_info", [addr])
+    if not info or len(info) < 5:
+        print(f"  {C.DIM}You haven't delegated to any miner yet.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    miner_addr, amount, index, delegated_at, auto_compound = info
+    pending = client.invoke_contract_fn(delegation, "get_delegator_pending", [addr]) or 0
+
+    print(f"  Delegated to:    {fmt_addr(miner_addr)}")
+    print(f"  Amount:          {C.YELLOW}{fmt_vlt(amount)}{C.RESET}")
+    print(f"  Pending rewards: {C.GREEN}{fmt_vlt(pending)}{C.RESET}")
+    print(f"  Auto-compound:   {'✅ Yes' if auto_compound else '❌ No'}")
+    print(f"  Delegated at:    topo {delegated_at}")
+
+    # Also check if miner has a profile
+    profile = client.invoke_contract_fn(delegation, "get_miner_profile", [miner_addr])
+    if profile and len(profile) >= 3:
+        name, desc, commission = profile[0], profile[1], profile[2]
+        print(f"\n  Miner profile:")
+        print(f"    Name:        {name}")
+        print(f"    Description: {desc}")
+        print(f"    Commission:  {commission/100:.1f}%")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _delegation_claim_del(client, delegation):
+    """Claim delegator rewards."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  💎 CLAIM DELEGATOR REWARDS{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    addr = client.cfg.get("miner_address")
+    pending = client.invoke_contract_fn(delegation, "get_delegator_pending", [addr]) or 0
+
+    if pending > 0:
+        print(f"  Pending rewards: {C.GREEN}{fmt_vlt(pending)}{C.RESET}")
+    else:
+        print(f"  {C.DIM}No pending rewards.{C.RESET}")
+        print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+        input()
+        return
+
+    if confirm("\n  Claim rewards?"):
+        print(f"\n  {C.DIM}Submitting...{C.RESET}")
+        tx = client.submit_transaction(delegation, MD_CLAIM_DELEGATOR_REWARDS, [])
+        show_tx_result(tx, "Rewards claimed")
+    else:
+        print(f"\n  {C.DIM}Cancelled.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _delegation_register(client, delegation):
+    """Register as a miner (set profile)."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  🔑 REGISTER MINER PROFILE{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  {C.DIM}Set your miner name, description, and commission rate.{C.RESET}")
+    print(f"  {C.DIM}Delegators will see this and choose to stake with you.{C.RESET}\n")
+
+    name = text_input("  Miner name (3-32 chars): ")
+    if not name or len(name) < 3:
+        print(f"\n  {C.RED}Name too short.{C.RESET}")
+        input()
+        return
+
+    description = text_input("  Description (optional): ")
+    if not description:
+        description = ""
+
+    print(f"\n  {C.DIM}Commission is the % you take from delegator rewards.{C.RESET}")
+    print(f"  {C.DIM}Range: 0% to 20%. Lower = more attractive to delegators.{C.RESET}")
+    commission_str = text_input("  Commission % (e.g. 10 for 10%): ")
+    try:
+        commission_pct = float(commission_str)
+        if commission_pct < 0 or commission_pct > 20:
+            print(f"\n  {C.RED}Commission must be 0-20%.{C.RESET}")
+            input()
+            return
+        commission_bps = int(commission_pct * 100)
+    except ValueError:
+        return
+
+    print(f"\n  {C.BOLD}Profile summary:{C.RESET}")
+    print(f"  Name:        {name}")
+    print(f"  Description: {description}")
+    print(f"  Commission:  {commission_pct:.1f}%")
+
+    if confirm("\n  Register profile?"):
+        print(f"\n  {C.DIM}Submitting...{C.RESET}")
+        tx = client.submit_transaction(delegation, MD_REGISTER_PROFILE,
+                                       [name, description, commission_bps])
+        show_tx_result(tx, "Profile registered")
+    else:
+        print(f"\n  {C.DIM}Cancelled.{C.RESET}")
+
+    print(f"\n{C.GRAY}  Press Enter...{C.RESET}", end="")
+    input()
+
+
+def _delegation_update(client, delegation):
+    """Update miner profile."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  ✏️  UPDATE MINER PROFILE{C.RESET}\n")
+
+    name = text_input("  New name: ")
+    description = text_input("  New description: ")
+    commission_str = text_input("  New commission %: ")
+    try:
+        commission_bps = int(float(commission_str) * 100)
+    except ValueError:
+        return
+
+    if confirm("\n  Update profile?"):
+        tx = client.submit_transaction(delegation, MD_UPDATE_PROFILE,
+                                       [name, description, commission_bps])
+        show_tx_result(tx, "Profile updated")
+    input()
+
+
+def _delegation_claim_miner(client, delegation):
+    """Claim miner rewards (own + commission)."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  💰 CLAIM MINER REWARDS{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+
+    addr = client.cfg.get("miner_address")
+    pending = client.invoke_contract_fn(delegation, "get_miner_pending", [addr]) or 0
+
+    if pending > 0:
+        print(f"  Pending rewards: {C.GREEN}{fmt_vlt(pending)}{C.RESET}")
+        print(f"  {C.DIM}(includes own stake share + delegator commission){C.RESET}")
+    else:
+        print(f"  {C.DIM}No pending rewards.{C.RESET}")
+        input()
+        return
+
+    if confirm("\n  Claim rewards?"):
+        tx = client.submit_transaction(delegation, MD_CLAIM_MINER_REWARDS, [])
+        show_tx_result(tx, "Miner rewards claimed")
+    input()
+
+
+def _delegation_exec_undel(client, delegation):
+    """Execute pending undelegate."""
+    clear()
+    print(BANNER)
+    print(f"\n{C.CYAN}{C.BOLD}  ⏳ EXECUTE UNDELEGATE{C.RESET}")
+    print(f"{C.GRAY}  {'─' * 56}{C.RESET}\n")
+    print(f"  {C.DIM}Finalize a pending undelegate request (after 7-day delay).{C.RESET}\n")
+
+    if confirm("  Execute undelegate?"):
+        tx = client.submit_transaction(delegation, MD_EXECUTE_UNDELEGATE, [])
+        show_tx_result(tx, "Undelegate executed")
+    input()

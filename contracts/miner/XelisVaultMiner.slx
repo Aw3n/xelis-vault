@@ -14,6 +14,7 @@ const PAUSED_KEY: string = "pz"
 const REGISTRY_KEY: string = "reg"
 const VLT_CONTRACT_KEY: string = "vc"
 const VLT_ASSET_KEY: string = "va"
+const DELEGATION_CONTRACT_KEY: string = "dck"  // v11.0: MinerDelegation contract hash (for pushing own_stake updates)
 const TREASURY_KEY: string = "tr"
 
 const MIN_STAKE_KEY: string = "ms"
@@ -445,10 +446,19 @@ entry increase_stake(amount: u64) -> u64 {
     s.store(MINER_PREFIX + caller.to_string(), miner)
     let total_staked: u64 = s.load(TOTAL_STAKED_KEY).unwrap_or(0)
     s.store(TOTAL_STAKED_KEY, total_staked + amount)
+
+    // v11.0: Push own_stake update to MinerDelegation if configured
+    let del_opt: optional<Hash> = s.load(DELEGATION_CONTRACT_KEY)
+    if del_opt.is_some() {
+        let del_hash: Hash = del_opt.expect("err")
+        if del_hash != Hash::zero() {
+            let del: Contract = Contract::new(del_hash).expect("err")
+            // MinerDelegation entry 9 = set_miner_own_stake
+            let _ = del.call(9u16, [caller, miner.stake], {})
+        }
+    }
     return 0
 }
-
-// ID 4: decrease_stake
 // Withdraw part of the locked VLT stake back to the miner; may deactivate if remaining stake falls below MIN_STAKE.
 // @caller: the miner themselves
 // @params: amount - VLT to withdraw (must be > 0 and <= current stake)
@@ -470,6 +480,16 @@ entry decrease_stake(amount: u64) -> u64 {
     s.store(MINER_PREFIX + caller.to_string(), miner)
     let total_staked: u64 = s.load(TOTAL_STAKED_KEY).unwrap_or(0)
     if total_staked >= amount { s.store(TOTAL_STAKED_KEY, total_staked - amount) }
+
+    // v11.0: Push own_stake update to MinerDelegation if configured
+    let del_opt2: optional<Hash> = s.load(DELEGATION_CONTRACT_KEY)
+    if del_opt2.is_some() {
+        let del_hash: Hash = del_opt2.expect("err")
+        if del_hash != Hash::zero() {
+            let del: Contract = Contract::new(del_hash).expect("err")
+            let _ = del.call(9u16, [caller, miner.stake], {})
+        }
+    }
     return 0
 }
 
@@ -867,6 +887,9 @@ entry set_vlt_contract(vc: Hash) -> u64 { only_admin() Storage::new().store(VLT_
 // @returns: 0 on success
 // @security: only_admin; misconfiguration would break stake transfers
 entry set_vlt_asset(va: Hash) -> u64 { only_admin() Storage::new().store(VLT_ASSET_KEY, va) return 0 }
+
+// v11.0: Set MinerDelegation contract (for pushing own_stake updates)
+entry set_delegation_contract(dck: Hash) -> u64 { only_admin() Storage::new().store(DELEGATION_CONTRACT_KEY, dck) return 0 }
 
 // ID 27: set_treasury
 // Set the treasury address that receives the treasury slice of any slash.

@@ -689,6 +689,12 @@ entry transfer_admin(new_admin: Address) -> u64 {
     return 0
 }
 
+// Entry 30: get_miner_total_stake_entry (cross-contract callable wrapper for pub fn)
+// StakedOracle calls this to get total stake (own + delegated) for oracle weight
+entry get_miner_total_stake_entry(miner_addr: Address) -> u64 {
+    return get_miner_total_stake(miner_addr)
+}
+
 // Entry 29: Get version
 entry get_version() -> string {
     return VERSION

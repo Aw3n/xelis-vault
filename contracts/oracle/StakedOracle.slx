@@ -14,6 +14,7 @@ const EMERGENCY_KEY: string = "ea"
 const PAUSED_KEY: string = "pz"
 const REGISTRY_KEY: string = "reg"
 const MINER_CONTRACT_KEY: string = "mc"
+const DELEGATION_CONTRACT_KEY: string = "dc"  // v11.0: MinerDelegation contract for total stake (own + delegated)
 
 const FEEDS_COUNT_KEY: string = "fc"
 const FEED_PREFIX: string = "fd_"
@@ -318,15 +319,22 @@ fn aggregate(feed_id: u64) {
     let total_stake_weight: u64 = 0
 
     // Get stake for each provider and compute total
+    // v11.0: Try MinerDelegation first (own + delegated), fallback to XelisVaultMiner (own only)
     let collected_stakes: u64[] = []
     let idx_stake: u64 = 0
+    let del_hash_opt: optional<Hash> = s.load(DELEGATION_CONTRACT_KEY)
     while idx_stake < n_sub {
         let provider: Address = collected_providers[idx_stake as u32]
-        let stake: u64 = 1  // default weight if miner contract not set
-        if mc_hash_opt.is_some() {
+        let stake: u64 = 1  // default weight if contracts not set
+        // v11.0: Try MinerDelegation.get_miner_total_stake (own + delegated)
+        if del_hash_opt.is_some() {
+            let del_hash: Hash = del_hash_opt.expect("err")
+            let del: Contract = Contract::new(del_hash).expect("err")
+            let result: u64 = del.call(22u16, [provider], {})  // MinerDelegation entry 22 = get_miner_total_stake_entry
+            if result > 0 { stake = result }
+        } else if mc_hash_opt.is_some() {
             let mc_hash: Hash = mc_hash_opt.expect("err")
             let mc: Contract = Contract::new(mc_hash).expect("err")
-            // XelisVaultMiner entry 36 = get_miner_stake_entry
             let result: u64 = mc.call(36u16, [provider], {})
             if result > 0 { stake = result }
         }
@@ -798,6 +806,9 @@ entry set_min_providers(n: u64) -> u64 {
 // @returns: 0 on success
 // @security: only_admin; misconfiguration would break every submit_price / aggregate
 entry set_miner_contract(mc: Hash) -> u64 { only_admin() Storage::new().store(MINER_CONTRACT_KEY, mc) return 0 }
+
+// v11.0: Set MinerDelegation contract (for total stake = own + delegated in oracle weight)
+entry set_delegation_contract(dc: Hash) -> u64 { only_admin() Storage::new().store(DELEGATION_CONTRACT_KEY, dc) return 0 }
 
 // ID 22: set_registry
 // Set the registry hash (referenced by tooling / off-chain indexers).

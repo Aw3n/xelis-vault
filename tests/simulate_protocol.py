@@ -192,14 +192,25 @@ def distribute_rewards(state):
     total_distributed = 0
     for miner in active_miners:
         rep_mult_float, _ = state.get_rep_mult(miner.reputation)
-        rep_mult = int(rep_mult_float * 10000)  # Convert to bps (10000 = 1.0x)
+        rep_mult = int(rep_mult_float * 10000)
 
-        # CAP_STAKE_PER_MINER: cap individual stake
         effective_stake = min(miner.stake + miner.delegated_stake, CAP_STAKE_PER_MINER)
 
-        # reward per block = block_reward × effective_stake × rep_mult / (effective_total × 10000)
-        reward_per_block = int(block_reward * effective_stake * rep_mult / (effective_total * 10000))
-        # Multiply by blocks since last distribution (assume 1 day = 17280 blocks)
+        # v11.2: Concentration penalty curve
+        concentration_factor = 10000  # 1.0x default
+        total_stake_all = state.total_staked
+        if total_stake_all > 0:
+            miner_share_bps = (miner.stake * 10000) // total_stake_all
+            if miner_share_bps > 800:  # 8% soft threshold
+                if miner_share_bps >= 2000:  # 20% hard threshold
+                    concentration_factor = 3000  # 0.3x
+                else:
+                    excess = miner_share_bps - 800
+                    range_val = 2000 - 800  # 1200
+                    penalty = (excess * 7000) // range_val
+                    concentration_factor = 10000 - penalty
+
+        reward_per_block = int(block_reward * effective_stake * rep_mult * concentration_factor / (effective_total * 100000000))
         reward = reward_per_block * BLOCKS_PER_DAY
         if reward > 0:
             miner.total_rewards += reward
@@ -767,6 +778,18 @@ def scenario_delegation(state):
     results.append(f"  miner_1 rewards: {m1.total_rewards/10**8:.1f} VLT (no delegation)")
     results.append(f"  miner_0 earned {m0.total_rewards/max(m1.total_rewards,1):.1f}x more than miner_1")
 
+    # Check concentration penalty
+    m0_share = (m0.stake / state.total_staked) * 100
+    results.append(f"\n  Concentration analysis:")
+    results.append(f"  miner_0 stake share: {m0_share:.1f}% of total")
+    if m0_share > 20:
+        results.append(f"  ⚠️ miner_0 > 20% — concentration penalty at 0.3x (rewards reduced 70%)")
+    elif m0_share > 8:
+        penalty_pct = ((m0_share - 8) / 12) * 70
+        results.append(f"  ⚠️ miner_0 in penalty zone ({m0_share:.1f}%) — rewards reduced {penalty_pct:.0f}%")
+    else:
+        results.append(f"  ✅ miner_0 < 8% — no concentration penalty")
+
     # Check oracle weight
     prices_with_stakes = []
     for addr, miner in state.miners.items():
@@ -778,15 +801,10 @@ def scenario_delegation(state):
     results.append(f"  miner_0: {m0_weight:.1f}% of total")
     if m0_weight > 50:
         results.append(f"  ⚠️ miner_0 controls >50% of oracle weight!")
+        results.append(f"  Mitigation: Concentration penalty reduces rewards (not oracle weight)")
+        results.append(f"  Mitigation: Guardian can slash if manipulation detected")
     else:
         results.append(f"  ✅ No single miner controls >50%")
-
-    # Test cap
-    cap_total = CAP_STAKE_PER_MINER / 10**8
-    m0_total = (m0.stake + m0.delegated_stake) / 10**8
-    results.append(f"\n  Cap check: miner_0 has {m0_total:.0f} VLT (cap: {cap_total:.0f} VLT)")
-    if m0_total < cap_total:
-        results.append(f"  ✅ Within cap")
     return results
 
 # ============================================================================

@@ -239,24 +239,36 @@ Bitcoin-style halving: rewards halve every year, lasting 30+ years
 block_reward = INITIAL_REWARD_PER_BLOCK / 2^epoch
   where epoch = (current_block - launch_block) / HALVING_INTERVAL
 
-reward = block_reward × (stake / total_staked) × reputation_mult / 10000
+reward = block_reward × min(stake, CAP) / max(total, FLOOR)
+       × reputation_mult / 10000
+       × concentration_factor / 10000
 ```
+
+**Concentration penalty curve** (progressive, not cliff):
+| Miner % of total stake | Factor | Penalty |
+|------------------------|--------|---------|
+| 0-8% | 1.0x | 0% |
+| 10% | 0.88x | 12% |
+| 14% | 0.65x | 35% |
+| 18% | 0.42x | 58% |
+| 20%+ | 0.30x | 70% |
 
 **Self-regulating like Bitcoin** — high early rewards attract miners, then decrease:
 
 | Year | VLT/year | VLT/day | Cumul % | APY (100 miners) |
 |------|----------|---------|---------|-------------------|
-| 1 | 2,750,000 | 7,534 | 50% | 2,750% |
-| 2 | 1,375,000 | 3,767 | 75% | 1,375% |
-| 3 | 687,500 | 1,884 | 87.5% | 688% |
-| 5 | 171,875 | 471 | 96.9% | 172% |
-| 10 | 5,371 | 15 | 99.9% | 5% |
+| 1 | 1,374,749 | 3,766 | 50% | 1,375% |
+| 2 | 687,374 | 1,883 | 75% | 688% |
+| 3 | 343,687 | 942 | 87.5% | 344% |
+| 5 | 85,922 | 235 | 96.9% | 86% |
+| 10 | 2,685 | 7 | 99.9% | 3% |
 
-**Budget: 5,500,000 VLT** (approached via geometric series, never truly exhausted).
+**Budget: 5,500,000 VLT** (geometric series, never truly exhausted).
 **Halving: every 1 year** (6,307,200 blocks at 5s).
 **Min stake: 1,000 VLT** (anti-Sybil).
+**STAKE_FLOOR: 100,000 VLT** (bounds APY when few miners).
+**CAP_STAKE_PER_MINER: 500,000 VLT** (hard cap on stake counted).
 **No fixed end date** — rewards continue indefinitely at decreasing rates.
-**Reputation multiplier** changes each miner's share (Excellent 1.5x, Good 1.0x, etc.).
 
 ### Features
 

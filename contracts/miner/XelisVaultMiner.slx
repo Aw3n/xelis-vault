@@ -63,6 +63,14 @@ const MAX_STAKE_MULTIPLIER: u64 = 50                   // max 50x reward for 50,
 const HALVING_INTERVAL_BLOCKS: u64 = 6307200              // 1 year at 5s blocks
 const INITIAL_REWARD_PER_BLOCK: u64 = 43593000            // ~0.436 VLT/block (2,750,000 VLT / 6,307,200 blocks)
 
+// v11.0: STAKE_FLOOR — virtual minimum total stake in denominator
+// Prevents explosive APY when few miners are active
+// Without this: 3 miners × 1,000 VLT = 3,000 total → 90,000% APY
+// With STAKE_FLOOR = 100,000 VLT: APY bounded to ~2,750% even with 3 miners
+// As real stake grows past 100,000, the floor is no longer relevant
+const STAKE_FLOOR: u64 = 10000000000000               // 100,000 VLT virtual floor
+const CAP_STAKE_PER_MINER: u64 = 50000000000000       // 500,000 VLT max stake counted per miner
+
 const REP_MAX: u64 = 10000
 const REP_EXCELLENT: u64 = 8000
 const REP_GOOD: u64 = 5000
@@ -208,10 +216,8 @@ fn get_current_block_reward() -> u64 {
 }
 
 fn get_dynamic_reward(base_reward: u64, miner_addr: Address) -> u64 {
-    // v10.11: Bitcoin-style halving rewards
-    // reward = block_reward × (stake / total_staked) × rep_mult / 10000
-    // block_reward halves every year (like Bitcoin halving)
-    // No fixed budget limit — lasts 30+ years with decreasing emission
+    // v11.0: Bitcoin-style halving + STAKE_FLOOR + cap_stake
+    // reward = block_reward × min(stake, cap) / max(total_staked, STAKE_FLOOR) × rep_mult / 10000
     let s: Storage = Storage::new()
     let miner_opt: optional<Miner> = s.load(MINER_PREFIX + miner_addr.to_string())
     if miner_opt.is_none() { return 0 }
@@ -226,8 +232,20 @@ fn get_dynamic_reward(base_reward: u64, miner_addr: Address) -> u64 {
     let block_reward: u64 = get_current_block_reward()
     if block_reward == 0 { return 0 }
 
-    // reward = block_reward × (stake / total_staked) × rep_mult / 10000
-    let reward: u64 = (block_reward as u128 * miner.stake as u128 * rep_mult as u128 / (total_staked as u128 * 10000u128)) as u64
+    // v11.0: Cap stake per miner (anti-concentration)
+    let effective_stake: u64 = miner.stake
+    if effective_stake > CAP_STAKE_PER_MINER {
+        effective_stake = CAP_STAKE_PER_MINER
+    }
+
+    // v11.0: STAKE_FLOOR — use max(total_staked, STAKE_FLOOR) as denominator
+    let effective_total: u64 = total_staked
+    if effective_total < STAKE_FLOOR {
+        effective_total = STAKE_FLOOR
+    }
+
+    // reward = block_reward × effective_stake / effective_total × rep_mult / 10000
+    let reward: u64 = (block_reward as u128 * effective_stake as u128 * rep_mult as u128 / (effective_total as u128 * 10000u128)) as u64
     return reward
 }
 

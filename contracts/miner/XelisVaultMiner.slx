@@ -250,29 +250,13 @@ fn get_dynamic_reward(base_reward: u64, miner_addr: Address) -> u64 {
         effective_total = STAKE_FLOOR
     }
 
-    // v11.2: Concentration penalty curve (anti-concentration, progressive)
-    // Miner's share of total stake (in bps)
-    let concentration_factor: u64 = 10000  // 1.0x default (no penalty)
-    if total_staked > 0 {
-        let miner_share_bps: u64 = (miner.stake * 10000) / total_staked
-        if miner_share_bps > CONCENTRATION_SOFT_THRESHOLD_BPS {
-            if miner_share_bps >= CONCENTRATION_HARD_THRESHOLD_BPS {
-                // At or above 20% — minimum factor (0.3x)
-                concentration_factor = CONCENTRATION_MIN_FACTOR_BPS
-            } else {
-                // Between 8% and 20% — linear decrease from 1.0x to 0.3x
-                let excess: u64 = miner_share_bps - CONCENTRATION_SOFT_THRESHOLD_BPS
-                let range: u64 = CONCENTRATION_HARD_THRESHOLD_BPS - CONCENTRATION_SOFT_THRESHOLD_BPS
-                let penalty_range: u64 = 10000 - CONCENTRATION_MIN_FACTOR_BPS  // 7000 bps
-                let penalty: u64 = (excess * penalty_range) / range
-                concentration_factor = 10000 - penalty
-            }
-        }
-    }
+    // v11.3: NO concentration penalty on rewards — rewards are proportional to stake
+    // Concentration is handled in StakedOracle (oracle weight penalty, not reward penalty)
+    // This is fairer: a good miner with lots of stake earns full rewards
+    // but has reduced oracle manipulation power
 
-    // reward = block_reward × effective_stake × rep_mult × concentration_factor
-    //         / (effective_total × 10000 × 10000)
-    let reward: u64 = (block_reward as u128 * effective_stake as u128 * rep_mult as u128 * concentration_factor as u128 / (effective_total as u128 * 100000000u128)) as u64
+    // reward = block_reward × effective_stake × rep_mult / (effective_total × 10000)
+    let reward: u64 = (block_reward as u128 * effective_stake as u128 * rep_mult as u128 / (effective_total as u128 * 10000u128)) as u64
     return reward
 }
 

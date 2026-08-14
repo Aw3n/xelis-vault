@@ -320,17 +320,25 @@ fn aggregate(feed_id: u64) {
 
     // Get stake for each provider and compute total
     // v11.0: Try MinerDelegation first (own + delegated), fallback to XelisVaultMiner (own only)
+    // v11.3: Apply concentration penalty to ORACLE WEIGHT (not rewards)
+    //   - 0-8% of total stake: full weight (1.0x)
+    //   - 8-20%: linear decrease from 1.0x to 0.3x
+    //   - >20%: capped at 0.3x
+    //   This limits manipulation power without penalizing honest miners' rewards
     let collected_stakes: u64[] = []
     let idx_stake: u64 = 0
     let del_hash_opt: optional<Hash> = s.load(DELEGATION_CONTRACT_KEY)
+    
+    // v11.3: First pass — collect raw stakes and compute total
+    let raw_stakes: u64[] = []
+    let raw_total: u64 = 0
     while idx_stake < n_sub {
         let provider: Address = collected_providers[idx_stake as u32]
         let stake: u64 = 1  // default weight if contracts not set
-        // v11.0: Try MinerDelegation.get_miner_total_stake (own + delegated)
         if del_hash_opt.is_some() {
             let del_hash: Hash = del_hash_opt.expect("err")
             let del: Contract = Contract::new(del_hash).expect("err")
-            let result: u64 = del.call(16u16, [provider], {})  // MinerDelegation entry 22 = get_miner_total_stake_entry
+            let result: u64 = del.call(16u16, [provider], {})
             if result > 0 { stake = result }
         } else if mc_hash_opt.is_some() {
             let mc_hash: Hash = mc_hash_opt.expect("err")
@@ -338,8 +346,39 @@ fn aggregate(feed_id: u64) {
             let result: u64 = mc.call(63u16, [provider], {})
             if result > 0 { stake = result }
         }
-        collected_stakes.push(stake)
-        total_stake_weight += stake
+        raw_stakes.push(stake)
+        raw_total += stake
+        idx_stake += 1
+    }
+    
+    // v11.3: Second pass — apply concentration penalty to oracle weight
+    idx_stake = 0
+    while idx_stake < n_sub {
+        let raw_stake: u64 = raw_stakes[idx_stake as u32]
+        let effective_stake: u64 = raw_stake
+        
+        // Apply concentration curve if we know the total
+        if raw_total > 0 {
+            let share_bps: u64 = (raw_stake * 10000) / raw_total
+            if share_bps > 800 {
+                // Above 8% — apply penalty
+                let factor: u64 = 10000  // 1.0x default
+                if share_bps >= 2000 {
+                    // Above 20% — minimum factor (0.3x)
+                    factor = 3000
+                } else {
+                    // Between 8% and 20% — linear from 1.0x to 0.3x
+                    let excess: u64 = share_bps - 800
+                    let range: u64 = 1200  // 2000 - 800
+                    let penalty: u64 = (excess * 7000) / range
+                    factor = 10000 - penalty
+                }
+                effective_stake = (raw_stake * factor) / 10000
+            }
+        }
+        
+        collected_stakes.push(effective_stake)
+        total_stake_weight += effective_stake
         idx_stake += 1
     }
 

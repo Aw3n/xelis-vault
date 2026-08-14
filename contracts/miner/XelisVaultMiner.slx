@@ -4,7 +4,7 @@
 // Silex-verified, all entry IDs aligned, all bugs from audit v4.3 fixed.
 // v5.1: documentation-only minor bump (rich doc comments on every entry & pub fn).
 // ============================================================================
-const VERSION: string = "XelisVaultMiner v5.0"
+const VERSION: string = "XelisVaultMiner v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

@@ -6,7 +6,7 @@
 // FIX #9: Stability fee accrual — borrow amount grows over time
 // FIX #14: Two-step emergency_withdraw
 // ============================================================================
-const VERSION: string = "VaultEngineV3 v5.0"
+const VERSION: string = "VaultEngineV3 v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

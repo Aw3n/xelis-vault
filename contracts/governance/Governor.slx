@@ -25,7 +25,7 @@
 //   12 : get_version() -> string
 // ============================================================================
 
-const VERSION: string = "Governor v5.0"
+const VERSION: string = "Governor v11.3"
 
 const ADMIN_KEY: string = "a"
 const GOVERNANCE_VAULT_KEY: string = "gv"

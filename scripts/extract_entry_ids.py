@@ -33,7 +33,7 @@ def extract_entries(file_path: Path):
     return entries
 
 def main():
-    out = ["# ENTRY IDs — XELIS Vault v10.9\n"]
+    out = ["# ENTRY IDs — XELIS Vault v11.3\n"]
     out.append("Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.\n")
     out.append("Each `entry` function gets a sequential ID starting at 0 in declaration order.")
     out.append("`pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.\n")

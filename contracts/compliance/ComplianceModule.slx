@@ -31,7 +31,7 @@
 //   15 : get_version
 // ============================================================================
 
-const VERSION: string = "ComplianceModule v5.0"
+const VERSION: string = "ComplianceModule v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

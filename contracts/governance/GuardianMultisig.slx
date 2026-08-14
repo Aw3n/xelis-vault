@@ -37,7 +37,7 @@
 //   13 : execute_emergency_withdraw(asset: Hash) -> u64
 // ============================================================================
 
-const VERSION: string = "GuardianMultisig v5.0"
+const VERSION: string = "GuardianMultisig v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

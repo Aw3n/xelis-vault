@@ -31,7 +31,7 @@
 //   19 : execute_emergency_withdraw
 // ============================================================================
 
-const VERSION: string = "InsurancePool v5.0"
+const VERSION: string = "InsurancePool v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

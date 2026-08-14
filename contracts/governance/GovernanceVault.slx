@@ -5,7 +5,7 @@
 // FIX #10/#11: added entry wrappers for get_voting_power, get_total_voting_power
 // so Governor/OracleGovernance can call them via Contract::call.
 // ============================================================================
-const VERSION: string = "GovernanceVault v5.0"
+const VERSION: string = "GovernanceVault v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

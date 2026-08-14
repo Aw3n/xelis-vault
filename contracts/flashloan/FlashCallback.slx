@@ -24,7 +24,7 @@
 //   5 : get_version
 // ============================================================================
 
-const VERSION: string = "FlashCallback v5.0"
+const VERSION: string = "FlashCallback v11.3"
 
 const ADMIN_KEY: string = "a"
 const FLASH_LOAN_KEY: string = "fl"

@@ -35,7 +35,7 @@
 //   redeem : xusd.call(5u16, [xusd_amount], {})                       // xUSD.burn_tokens (chunk 5)
 // ============================================================================
 
-const VERSION: string = "PSM v5.0"
+const VERSION: string = "PSM v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

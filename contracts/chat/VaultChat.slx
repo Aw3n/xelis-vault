@@ -37,7 +37,7 @@
 //   21 : execute_emergency_withdraw
 // ============================================================================
 
-const VERSION: string = "VaultChat v5.0"
+const VERSION: string = "VaultChat v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

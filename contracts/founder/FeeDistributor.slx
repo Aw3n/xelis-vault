@@ -40,7 +40,7 @@
 //   18 : get_version
 // ============================================================================
 
-const VERSION: string = "FeeDistributor v10.3"
+const VERSION: string = "FeeDistributor v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

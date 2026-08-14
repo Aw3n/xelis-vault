@@ -28,7 +28,7 @@
 //   18 : execute_emergency_withdraw
 // ============================================================================
 
-const VERSION: string = "PeerLoan v5.0"
+const VERSION: string = "PeerLoan v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

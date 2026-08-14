@@ -45,7 +45,7 @@
 //   15 : get_version
 // ============================================================================
 
-const VERSION: string = "AirdropClaim v10.4"
+const VERSION: string = "AirdropClaim v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

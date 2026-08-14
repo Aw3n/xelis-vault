@@ -72,7 +72,7 @@
 //   31 : get_version
 // ============================================================================
 
-const VERSION: string = "AirdropTracker v10.4"
+const VERSION: string = "AirdropTracker v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

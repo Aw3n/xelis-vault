@@ -30,7 +30,7 @@
 //   15 : execute_emergency_withdraw
 // ============================================================================
 
-const VERSION: string = "RevenueShare v5.0"
+const VERSION: string = "RevenueShare v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

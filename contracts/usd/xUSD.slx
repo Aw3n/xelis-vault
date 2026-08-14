@@ -7,7 +7,7 @@
 // Cross-contract functions use `pub fn` (required by Contract::call()).
 // ============================================================================
 
-const VERSION: string = "xUSD v5.0"
+const VERSION: string = "xUSD v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

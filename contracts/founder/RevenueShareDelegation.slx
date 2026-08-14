@@ -57,7 +57,7 @@
 //   22 : get_version
 // ============================================================================
 
-const VERSION: string = "RevenueShareDelegation v10.4.3"
+const VERSION: string = "RevenueShareDelegation v11.3"
 
 const ADMIN_KEY: string = "a"
 const FOUNDER_KEY: string = "fa"

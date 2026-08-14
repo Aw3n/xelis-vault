@@ -367,3 +367,90 @@ An external IA cloned the repo and found 9 critical bugs. All have been verified
 - Total contracts: 51 (38 core + 13 pending)
 - Total entries: 935
 
+
+---
+
+## [v11.0] — 2026-08-14
+
+### Added — MinerDelegation complete rewrite + STAKE_FLOOR
+
+- MinerDelegation.slx v11.0: complete rewrite with index-based accounting, native transfers, proper security
+- STAKE_FLOOR = 100,000 VLT (bounds APY when few miners active)
+- CAP_STAKE_PER_MINER = 500,000 VLT (hard cap on stake per miner)
+- StakedOracle reads MinerDelegation.get_miner_total_stake (own + delegated)
+- XelisVaultMiner pushes own_stake updates to MinerDelegation
+
+### Fixed — 8 bugs from external audit
+- only_miner_contract() now checks exact hash (was: any contract)
+- Transfers use native transfer() (was: wrong VLT entry ID)
+- Double subtraction in apply_slashing fixed
+- execute_undelegate() added + stake reduced immediately at request
+- set_miner_own_stake() — single source of truth for own + delegated
+- Index-based accounting (no loops over 500 delegators)
+- Anti-concentration cap on TOTAL stake (own + delegated)
+
+---
+
+## [v11.1] — 2026-08-14
+
+### Fixed — ALL 34 cross-contract call bugs (entry vs pub fn)
+
+CRITICAL: Research into XELIS VM source code revealed that `entry` functions
+CANNOT be called cross-contract — only `pub fn` can. Chunk IDs count ALL
+functions (entry + pub fn + fn + hook) in source order.
+
+Fixed 34 broken calls across 10 contracts:
+- oracle.call(4u16) → oracle.call(21u16) (get_price_for_asset pub fn)
+- irm.call(0/1u16) → irm.call(11/12u16) (get_borrow/supply_rate pub fn)
+- reg.call(0u16) → reg.call(16u16) (get pub fn)
+- miner.call(36/37u16) → miner.call(63/64u16) (get_miner_stake/reputation pub fn)
+- All OracleGovernance calls updated to correct pub fn chunk IDs
+- Added 4 pub fn wrappers in XelisVaultMiner for emergency functions
+- Added 1 pub fn wrapper in MinerDelegation for set_miner_own_stake
+- FlashCallback: replaced fl.call() with transfer_contract()
+- validate_chunk_ids.py: now counts ALL functions + checks pub fn
+
+---
+
+## [v11.2] — 2026-08-14
+
+### Added — Concentration penalty curve (later moved to oracle in v11.3)
+
+Progressive concentration penalty: 0-8% no penalty, 8-20% linear decrease, >20% capped at 0.3x.
+
+---
+
+## [v11.3] — 2026-08-14
+
+### Changed — Concentration penalty moved from rewards to oracle weight
+
+USER INSIGHT: "Don't penalize rewards — penalize oracle manipulation power."
+
+- REMOVED: concentration_factor from get_dynamic_reward() (XelisVaultMiner)
+  Rewards are now purely proportional to stake (fair, no penalty)
+- ADDED: concentration penalty to oracle weight (StakedOracle aggregate)
+  Applied during stake-weighted median calculation (2-pass: collect → penalize → median)
+
+| Miner % of total stake | Oracle weight factor | Rewards |
+|------------------------|---------------------|---------|
+| 0-8%                   | 1.0x (full)         | Full    |
+| 10%                    | 0.88x               | Full    |
+| 14%                    | 0.65x               | Full    |
+| 18%                    | 0.42x               | Full    |
+| 20%+                   | 0.30x               | Full    |
+
+### Fixed — Version synchronization
+- VERSION file: 10.9 → 11.3
+- README: v10.9 → v11.3
+- install: v10.4 → v11.3
+- extract_entry_ids.py: v10.9 → v11.3
+- All 38 core contract VERSION strings: various → v11.3
+- CHANGELOG: added v11.0 through v11.3 entries
+
+### Stats
+- 51 contracts (38 core + 13 pending)
+- 963 entry functions
+- 54/54 cross-contract calls valid (all pub fn)
+- 26/26 tests PASS
+- 10 simulation scenarios validated
+

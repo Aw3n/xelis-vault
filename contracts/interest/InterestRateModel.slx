@@ -22,7 +22,7 @@
 //   8 : get_version
 // ============================================================================
 
-const VERSION: string = "InterestRateModel v5.0"
+const VERSION: string = "InterestRateModel v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

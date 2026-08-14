@@ -41,7 +41,7 @@
 //   13 : get_version
 // ============================================================================
 
-const VERSION: string = "FounderVesting v10.3"
+const VERSION: string = "FounderVesting v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

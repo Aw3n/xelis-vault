@@ -30,7 +30,7 @@
 //   15 : execute_emergency_withdraw
 // ============================================================================
 
-const VERSION: string = "AssetVault v5.0"
+const VERSION: string = "AssetVault v11.3"
 
 const ISSUER_KEY: string = "i"
 const TIMELOCK_KEY: string = "tl"

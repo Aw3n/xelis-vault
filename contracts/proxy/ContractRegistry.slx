@@ -5,7 +5,7 @@
 // Contract::call(N, [name], {}) to resolve a registered contract hash.
 // The pub fn `get` is kept for read-only invocations from the same contract.
 // ============================================================================
-const VERSION: string = "ContractRegistry v5.0"
+const VERSION: string = "ContractRegistry v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

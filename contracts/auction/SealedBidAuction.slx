@@ -38,7 +38,7 @@
 //   20 : execute_emergency_withdraw
 // ============================================================================
 
-const VERSION: string = "SealedBidAuction v5.0"
+const VERSION: string = "SealedBidAuction v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

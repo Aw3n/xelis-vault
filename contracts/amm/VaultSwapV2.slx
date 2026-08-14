@@ -40,7 +40,7 @@
 //   30 : execute_emergency_withdraw
 // ============================================================================
 
-const VERSION: string = "VaultSwapV2 v9.0"
+const VERSION: string = "VaultSwapV2 v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

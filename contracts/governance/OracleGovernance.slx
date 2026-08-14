@@ -49,7 +49,7 @@
 //   20 : get_version() -> string
 // ============================================================================
 
-const VERSION: string = "OracleGovernance v5.0"
+const VERSION: string = "OracleGovernance v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

@@ -30,7 +30,7 @@
 //   16 : execute_emergency_withdraw
 // ============================================================================
 
-const VERSION: string = "Payroll v5.0"
+const VERSION: string = "Payroll v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

@@ -8,7 +8,7 @@ CDP stablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mix
 
 [![Network](https://img.shields.io/badge/network-testnet-blue)](https://testnet-explorer.xelis.io/)
 [![Contracts](https://img.shields.io/badge/contracts-51%20Silex-blueviolet)](contracts/)
-[![Version](https://img.shields.io/badge/version-v10.9-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v11.3-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -149,7 +149,7 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex -Args "--uninstal
 ## Architecture
 
 ```
-XELIS Vault v10.9 — 51 Silex contracts
+XELIS Vault v11.3 — 51 Silex contracts
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    CONTRACT REGISTRY                         │

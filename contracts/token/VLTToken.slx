@@ -9,7 +9,7 @@
 //   4: set_burner
 //   ...
 // ============================================================================
-const VERSION: string = "VLTToken v5.0"
+const VERSION: string = "VLTToken v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

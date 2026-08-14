@@ -1,4 +1,4 @@
-# ENTRY IDs — XELIS Vault v10.9
+# ENTRY IDs — XELIS Vault v11.3
 
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
 

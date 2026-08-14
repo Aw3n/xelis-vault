@@ -28,7 +28,7 @@
 //   13 : execute_emergency_withdraw(asset: Hash) -> u64
 // ============================================================================
 
-const VERSION: string = "Timelock v5.0"
+const VERSION: string = "Timelock v11.3"
 
 const ADMIN_KEY: string = "a"
 const GOVERNOR_KEY: string = "gv"

@@ -4,7 +4,7 @@
 // FIX #5: flash_loan() rewritten cleanly with proper balance check.
 // FIX #14: Two-step emergency_withdraw.
 // ============================================================================
-const VERSION: string = "FlashLoan v5.0"
+const VERSION: string = "FlashLoan v11.3"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"

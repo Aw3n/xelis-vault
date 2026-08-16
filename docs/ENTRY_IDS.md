@@ -3,7 +3,7 @@
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
 
 Each `entry` function gets a sequential ID starting at 0 in declaration order.
-**Total entry functions across 51 contracts:** 965
+**Total entry functions across 51 contracts:** 962
 
 `pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.
 
@@ -908,28 +908,25 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 
 | ID | Name | Parameters | Return |
 |----|------|------------|--------|
-| 0 | `deposit` | `asset: Hash, denomination_id: u64, commitment: Hash` | `u` |
-| 1 | `withdraw` | `asset: Hash, denomination_id: u64, nullifier: Hash, recipient: Address, relayer: Address, merkle_root: Hash, zk_proof: bytes` | `u` |
-| 2 | `get_merkle_root_entry` | `—` | `H` |
-| 3 | `get_deposit_count_entry` | `—` | `u` |
-| 4 | `is_nullifier_used_entry` | `nullifier: Hash` | `b` |
-| 5 | `get_denomination_amount_entry` | `denom_id: u64` | `u` |
-| 6 | `get_deposit_count_for_denom_entry` | `asset: Hash, denom_id: u64` | `u` |
-| 7 | `get_merkle_leaf_entry` | `level: u64, index: u64` | `H` |
-| 8 | `set_zk_verifier` | `zv: Hash` | `u` |
-| 9 | `set_relayer_fee_bps` | `bps: u64` | `u` |
-| 10 | `set_withdraw_fee_bps` | `bps: u64` | `u` |
-| 11 | `set_registry` | `reg: Hash` | `u` |
-| 12 | `set_timelock` | `tl: Hash` | `u` |
-| 13 | `set_guardian` | `g: Address` | `u` |
-| 14 | `pause` | `reason: string` | `u` |
-| 15 | `unpause` | `—` | `u` |
-| 16 | `transfer_admin` | `new_admin: Address` | `u` |
-| 17 | `get_version` | `—` | `s` |
-| 18 | `request_emergency_withdraw` | `—` | `u` |
-| 19 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
-| 20 | `set_denomination` | `denom_id: u8, amount: u64` | `u` |
-| 21 | `add_denomination` | `amount: u64` | `u` |
+| 0 | `deposit` | `recipient: Address, asset: Hash, denomination_id: u64` | `u` |
+| 1 | `execute_mix` | `—` | `u` |
+| 2 | `execute_refund` | `—` | `u` |
+| 3 | `set_threshold` | `threshold: u64` | `u` |
+| 4 | `set_timeout_blocks` | `blocks: u64` | `u` |
+| 5 | `set_split_enabled` | `enabled: bool` | `u` |
+| 6 | `set_denomination` | `denom_id: u8, amount: u64` | `u` |
+| 7 | `add_denomination` | `amount: u64` | `u` |
+| 8 | `set_withdraw_fee_bps` | `bps: u64` | `u` |
+| 9 | `set_treasury` | `tr: Hash` | `u` |
+| 10 | `set_registry` | `reg: Hash` | `u` |
+| 11 | `set_timelock` | `tl: Hash` | `u` |
+| 12 | `set_guardian` | `g: Address` | `u` |
+| 13 | `pause` | `reason: string` | `u` |
+| 14 | `unpause` | `—` | `u` |
+| 15 | `transfer_admin` | `new_admin: Address` | `u` |
+| 16 | `request_emergency_withdraw` | `—` | `u` |
+| 17 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 18 | `get_version` | `—` | `s` |
 
 ## `proxy/ContractRegistry.slx`
 

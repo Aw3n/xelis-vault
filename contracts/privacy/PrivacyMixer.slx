@@ -77,12 +77,15 @@ const MIN_THRESHOLD_KEY: string = "mnth"        // min threshold a user can requ
 const MAX_THRESHOLD_KEY: string = "mxth"        // max threshold a user can request
 const TIMEOUT_BLOCKS_KEY: string = "tb"
 const WITHDRAW_FEE_BPS_KEY: string = "wfb"
+const ADMIN_FEE_BPS_KEY: string = "afb"   // v11.5: tiny fee for admin
 const TREASURY_KEY: string = "tr"
+const ADMIN_FEE_ADDR_KEY: string = "afa"  // v11.5: address to receive admin fee
 
 const DEFAULT_MIN_THRESHOLD: u64 = 3             // user can request min 3
 const DEFAULT_MAX_THRESHOLD: u64 = 100            // user can request max 100
 const DEFAULT_TIMEOUT: u64 = 51840                // 3 jours
 const DEFAULT_WITHDRAW_FEE_BPS: u64 = 0           // 0% par défaut
+const DEFAULT_ADMIN_FEE_BPS: u64 = 10             // 0.1% for admin
 
 // Emergency
 const EMERGENCY_REQUEST_TOPO_KEY: string = "ert"
@@ -114,6 +117,7 @@ hook constructor() -> u64 {
     s.store(MAX_THRESHOLD_KEY, DEFAULT_MAX_THRESHOLD)
     s.store(TIMEOUT_BLOCKS_KEY, DEFAULT_TIMEOUT)
     s.store(WITHDRAW_FEE_BPS_KEY, DEFAULT_WITHDRAW_FEE_BPS)
+    s.store(ADMIN_FEE_BPS_KEY, DEFAULT_ADMIN_FEE_BPS)
     s.store(TOTAL_MIXES_KEY, 0u64)
     return 0
 }
@@ -247,19 +251,30 @@ fn do_mix(s: Storage) -> u64 {
         if entry_opt.is_some() {
             let entry: DepositEntry = entry_opt.expect("err")
 
-            // Calculate net amount after fee
-            let fee: u64 = (entry.amount * withdraw_fee_bps) / 10000
-            let net_amount: u64 = entry.amount - fee
+            // Calculate fees
+            let protocol_fee: u64 = (entry.amount * withdraw_fee_bps) / 10000
+            let admin_fee_bps: u64 = s.load(ADMIN_FEE_BPS_KEY).unwrap_or(DEFAULT_ADMIN_FEE_BPS)
+            let admin_fee: u64 = (entry.amount * admin_fee_bps) / 10000
+            let net_amount: u64 = entry.amount - protocol_fee - admin_fee
 
-            // Transfer to recipient (amount is encrypted by XELIS)
+            // Transfer to recipient (amount is ENCRYPTED by XELIS — invisible in explorer)
             let _ = transfer(entry.recipient, net_amount, entry.asset)
 
-            // Pay fee to treasury
-            if fee > 0 {
+            // Pay protocol fee to treasury
+            if protocol_fee > 0 {
                 let treasury_opt: optional<Hash> = s.load(TREASURY_KEY)
                 if treasury_opt.is_some() {
                     let treasury_hash: Hash = treasury_opt.expect("err")
-                    let _ = transfer_contract(treasury_hash, fee, entry.asset)
+                    let _ = transfer_contract(treasury_hash, protocol_fee, entry.asset)
+                }
+            }
+
+            // Pay admin fee (tiny share for the admin/founder)
+            if admin_fee > 0 {
+                let admin_addr_opt: optional<Address> = s.load(ADMIN_FEE_ADDR_KEY)
+                if admin_addr_opt.is_some() {
+                    let admin_addr: Address = admin_addr_opt.expect("err")
+                    let _ = transfer(admin_addr, admin_fee, entry.asset)
                 }
             }
 
@@ -327,7 +342,7 @@ entry execute_refund() -> u64 {
 // PUB FN: Read-only getters
 // ============================================================================
 
-pub fn get_pool_info() -> (u64, u64, u64, u64, u64, u64, u64) {
+pub fn get_pool_info() -> (u64, u64, u64, u64, u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     return (
         s.load(POOL_COUNT_KEY).unwrap_or(0),
@@ -336,7 +351,8 @@ pub fn get_pool_info() -> (u64, u64, u64, u64, u64, u64, u64) {
         s.load(MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MAX_THRESHOLD),
         s.load(TIMEOUT_BLOCKS_KEY).unwrap_or(DEFAULT_TIMEOUT),
         s.load(POOL_FIRST_TOPO_KEY).unwrap_or(0),
-        s.load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS)
+        s.load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS),
+        s.load(ADMIN_FEE_BPS_KEY).unwrap_or(DEFAULT_ADMIN_FEE_BPS)
     )
 }
 
@@ -390,6 +406,19 @@ entry set_withdraw_fee_bps(bps: u64) -> u64 {
     only_admin()
     require(bps <= 500, "toohigh")
     Storage::new().store(WITHDRAW_FEE_BPS_KEY, bps)
+    return 0
+}
+
+entry set_admin_fee_bps(bps: u64) -> u64 {
+    only_admin()
+    require(bps <= 100, "toohigh")  // max 1%
+    Storage::new().store(ADMIN_FEE_BPS_KEY, bps)
+    return 0
+}
+
+entry set_admin_fee_addr(addr: Address) -> u64 {
+    only_admin()
+    Storage::new().store(ADMIN_FEE_ADDR_KEY, addr)
     return 0
 }
 

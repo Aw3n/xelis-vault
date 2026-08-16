@@ -35,19 +35,18 @@
 //   6  : get_deposit_count_for_denom_entry
 //   7  : get_merkle_leaf_entry
 //   8  : set_zk_verifier
-//   9  : set_relayer_fee_bps
-//   10 : set_withdraw_fee_bps
-//   11 : set_registry
-//   12 : set_timelock
-//   13 : set_guardian
-//   14 : pause
-//   15 : unpause
-//   16 : transfer_admin
-//   17 : get_version
-//   18 : request_emergency_withdraw
-//   19 : execute_emergency_withdraw
-//   20 : set_denomination
-//   21 : add_denomination
+//   9  : set_withdraw_fee_bps
+//   10 : set_registry
+//   11 : set_timelock
+//   12 : set_guardian
+//   13 : pause
+//   14 : unpause
+//   15 : transfer_admin
+//   16 : get_version
+//   17 : request_emergency_withdraw
+//   18 : execute_emergency_withdraw
+//   19 : set_denomination
+//   20 : add_denomination
 // ============================================================================
 
 const VERSION: string = "PrivacyMixer v11.4"
@@ -74,9 +73,7 @@ const DENOM_DEPOSITS_PREFIX: string = "dd_"
 const ZK_VERIFIER_KEY: string = "zv"
 
 // Fees
-const RELAYER_FEE_BPS_KEY: string = "rfb"
 const WITHDRAW_FEE_BPS_KEY: string = "wfb"
-const DEFAULT_RELAYER_FEE_BPS: u64 = 10    // 0.1% for relayer
 const DEFAULT_WITHDRAW_FEE_BPS: u64 = 10   // 0.1% protocol fee
 const TREASURY_KEY: string = "tr"
 
@@ -114,7 +111,6 @@ hook constructor() -> u64 {
     s.store(PAUSED_KEY, false)
     s.store(MERKLE_ROOT_KEY, Hash::zero())
     s.store(LEAF_COUNT_KEY, 0u64)
-    s.store(RELAYER_FEE_BPS_KEY, DEFAULT_RELAYER_FEE_BPS)
     s.store(WITHDRAW_FEE_BPS_KEY, DEFAULT_WITHDRAW_FEE_BPS)
     s.store(RG_STATUS_KEY, RG_NOT_ENTERED)
     return 0
@@ -241,12 +237,11 @@ entry deposit(asset: Hash, denomination_id: u64, commitment: Hash) -> u64 {
 }
 
 // Entry 1: withdraw — user withdraws funds to a fresh address using ZK proof
-// @caller: anyone (can be a relayer acting on behalf of the recipient)
+// @caller: anyone (user with the private note)
 // @params: asset - Hash of the asset
 // @params: denomination_id - which denomination
 // @params: nullifier - Hash(secret) used as nullifier (prevents double-spend)
 // @params: recipient - Address to receive the funds (should be a fresh address)
-// @params: relayer - Address of the relayer (gets relayer fee, or recipient if no relayer)
 // @params: merkle_root - Hash of the Merkle root at time of deposit
 // @params: zk_proof - bytes — the ZK proof proving knowledge of secret for a leaf in the tree
 // @returns: 0 on success
@@ -256,7 +251,6 @@ entry withdraw(
     denomination_id: u64,
     nullifier: Hash,
     recipient: Address,
-    relayer: Address,
     merkle_root: Hash,
     zk_proof: bytes
 ) -> u64 {
@@ -281,34 +275,25 @@ entry withdraw(
     require(zk_verifier_opt.is_some(), "nozkverifier")
     let zk_verifier_hash: Hash = zk_verifier_opt.expect("err")
     let zk_verifier: Contract = Contract::new(zk_verifier_hash).expect("err")
-    // ZK verifier pub fn: verify_proof(proof, merkle_root, nullifier, commitment) -> bool
     let valid: bool = zk_verifier.call(0u16, [zk_proof, merkle_root, nullifier], {})
     require(valid, "badproof")
 
     // 4. Mark nullifier as used
     s.store(nullifier_key, true)
 
-    // 5. Calculate fees
-    let relayer_fee_bps: u64 = s.load(RELAYER_FEE_BPS_KEY).unwrap_or(DEFAULT_RELAYER_FEE_BPS)
+    // 5. Calculate protocol fee (optional, can be 0)
     let withdraw_fee_bps: u64 = s.load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS)
-    let relayer_fee: u64 = (amount * relayer_fee_bps) / 10000
     let protocol_fee: u64 = (amount * withdraw_fee_bps) / 10000
-    let net_amount: u64 = amount - relayer_fee - protocol_fee
+    let net_amount: u64 = amount - protocol_fee
 
-    // 6. Transfer to recipient (net amount)
+    // 6. Transfer to recipient
     require(transfer(recipient, net_amount, asset), "txfail")
 
-    // 7. Pay relayer fee (if relayer is not recipient)
-    if relayer_fee > 0 && relayer != recipient {
-        require(transfer(relayer, relayer_fee, asset), "relayerfail")
-    }
-
-    // 8. Protocol fee to treasury
+    // 7. Protocol fee to treasury (if configured)
     if protocol_fee > 0 {
         let treasury_opt: optional<Hash> = s.load(TREASURY_KEY)
         if treasury_opt.is_some() {
             let treasury_hash: Hash = treasury_opt.expect("err")
-            let treasury: Contract = Contract::new(treasury_hash).expect("err")
             let _ = transfer_contract(treasury_hash, protocol_fee, asset)
         }
     }
@@ -357,15 +342,7 @@ entry set_zk_verifier(zv: Hash) -> u64 {
     return 0
 }
 
-// Entry 9: set_relayer_fee_bps
-entry set_relayer_fee_bps(bps: u64) -> u64 {
-    only_admin()
-    require(bps <= 500, "toohigh")  // max 5%
-    Storage::new().store(RELAYER_FEE_BPS_KEY, bps)
-    return 0
-}
-
-// Entry 10: set_withdraw_fee_bps
+// Entry 9: set_withdraw_fee_bps
 entry set_withdraw_fee_bps(bps: u64) -> u64 {
     only_admin()
     require(bps <= 500, "toohigh")  // max 5%
@@ -373,28 +350,28 @@ entry set_withdraw_fee_bps(bps: u64) -> u64 {
     return 0
 }
 
-// Entry 11: set_registry
+// Entry 10: set_registry
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
     return 0
 }
 
-// Entry 12: set_timelock
+// Entry 11: set_timelock
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
     return 0
 }
 
-// Entry 13: set_guardian
+// Entry 12: set_guardian
 entry set_guardian(g: Address) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(GUARDIAN_KEY, g)
     return 0
 }
 
-// Entry 14: pause
+// Entry 13: pause
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, true)
@@ -402,33 +379,33 @@ entry pause(reason: string) -> u64 {
     return 0
 }
 
-// Entry 15: unpause
+// Entry 14: unpause
 entry unpause() -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, false)
     return 0
 }
 
-// Entry 16: transfer_admin
+// Entry 15: transfer_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
     return 0
 }
 
-// Entry 17: get_version
+// Entry 16: get_version
 entry get_version() -> string {
     return VERSION
 }
 
-// Entry 18: request_emergency_withdraw
+// Entry 17: request_emergency_withdraw
 entry request_emergency_withdraw() -> u64 {
     only_admin()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
     return 0
 }
 
-// Entry 19: execute_emergency_withdraw
+// Entry 18: execute_emergency_withdraw
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -446,7 +423,7 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
     return 0
 }
 
-// Entry 20: set_denomination (governance can change existing denom amount)
+// Entry 19: set_denomination (governance can change existing denom amount)
 entry set_denomination(denom_id: u8, amount: u64) -> u64 {
     only_admin()
     require(amount > 0, "badamt")
@@ -455,7 +432,7 @@ entry set_denomination(denom_id: u8, amount: u64) -> u64 {
     return 0
 }
 
-// Entry 21: add_denomination (governance can add new denomination)
+// Entry 20: add_denomination (governance can add new denomination)
 entry add_denomination(amount: u64) -> u64 {
     only_admin()
     require(amount > 0, "badamt")
@@ -503,10 +480,6 @@ pub fn get_denomination_count() -> u64 {
 
 pub fn get_dynamic_denomination(denom_id: u64) -> u64 {
     return Storage::new().load(DENOM_AMOUNT_PREFIX + denom_id.to_string(10u32)).unwrap_or(0)
-}
-
-pub fn get_relayer_fee_bps() -> u64 {
-    return Storage::new().load(RELAYER_FEE_BPS_KEY).unwrap_or(DEFAULT_RELAYER_FEE_BPS)
 }
 
 pub fn get_withdraw_fee_bps() -> u64 {

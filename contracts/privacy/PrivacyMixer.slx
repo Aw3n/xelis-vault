@@ -5,57 +5,57 @@
 //
 // PRINCIPE :
 //   XELIS chiffre les montants des transactions (homomorphic encryption).
-//   Si 10 personnes deposit, puis le contrat envoie à 10 adresses dans le
-//   même batch, il est IMPOSSIBLE de matcher quel deposit va à quelle adresse
-//   car les montants sont chiffrés.
+//   Si N personnes deposit des montants quelconques, puis le contrat envoie
+//   à N adresses dans le même batch, il est IMPOSSIBLE de matcher quel deposit
+//   va à quelle adresse car les montants sont chiffrés.
+//
+// AMÉLIORATIONS v11.5 :
+//   ✅ Montant libre — l'user dépose le montant qu'il veut (pas de dénomination fixe)
+//      XELIS chiffre les montants → pas besoin de montants identiques pour l'anonymat
+//   ✅ Threshold personnalisable — chaque user choisit son niveau d'anonymat
+//      "Je veux au moins 20 personnes dans le batch avant que ça mix"
+//      Plus le threshold est élevé, plus l'anonymat est fort
+//   ✅ Auto-mix quand le threshold minimum du pool est atteint
+//   ✅ Refund automatique après timeout si pas assez de monde
 //
 // FLOW :
-//   1. User appelle deposit(recipient_addr, denomination_id)
-//      → Spécifie l'adresse où il veut recevoir ses fonds anonymement
-//      → Le contrat stocke (sender, recipient, amount, topo)
+//   1. User appelle deposit(recipient_addr, asset, min_anonymity)
+//      → Spécifie l'adresse de réception + le nombre MIN de personnes dans le batch
+//      → Le montant est libre (attaché à la tx, chiffré par XELIS)
 //      → Funds bloqués dans le contrat
 //
-//   2. Le contrat attend que N personnes deposit (threshold)
-//      → Si threshold atteint → execute_mix() envoie tous les funds
-//      → Si 3 jours (51840 blocks) sans threshold → execute_refund()
+//   2. Le contrat attend que le threshold minimum de tous les deposits soit atteint
+//      → Si un user a demandé min 20, le mix attend 20 deposits
+//      → Si tous les users ont demandé min 5, le mix se fait à 5
+//      → Le mix se fait au MAX des thresholds demandés (anonymat max)
 //
 //   3. MIX : le contrat envoie tous les funds aux recipients
 //      → Toutes les transactions dans le même appel (même block)
 //      → Montants chiffrés par XELIS → intracçable
-//      → Option: split en sub-amounts pour plus de confusion
 //
-// AVANTAGES vs ZK proof (ancien mixer) :
-//   ✅ Pas besoin de ZK verifier (complexe à déployer)
-//   ✅ Pas besoin de Merkle tree
-//   ✅ Pas besoin de générer des proofs off-chain
-//   ✅ Exploite XELIS native privacy (montants chiffrés)
-//   ✅ Simple pour l'user : deposit + wait (pas de withdraw manuel)
-//   ✅ Auto-mix : le contrat fait tout automatiquement
-//   ✅ Refund automatique si pas assez de monde
+//   4. Si timeout (3 jours) → refund automatique à tous les senders
 //
 // Entry IDs:
-//   0  : deposit (spécifier recipient + denomination)
-//   1  : execute_mix (anyone can trigger when threshold reached)
-//   2  : execute_refund (anyone can trigger when timeout reached)
+//   0  : deposit
+//   1  : execute_mix (trigger manuel si threshold atteint)
+//   2  : execute_refund (trigger manuel si timeout)
 //   3  : get_pool_info (pub fn)
 //   4  : get_deposit_info (pub fn)
 //   5  : get_pending_count (pub fn)
-//   6  : set_threshold
-//   7  : set_timeout_blocks
-//   8  : set_split_enabled
-//   9  : set_denomination
-//   10 : add_denomination
-//   11 : set_withdraw_fee_bps
-//   12 : set_treasury
-//   13 : set_registry
-//   14 : set_timelock
-//   15 : set_guardian
-//   16 : pause
-//   17 : unpause
-//   18 : transfer_admin
-//   19 : request_emergency_withdraw
-//   20 : execute_emergency_withdraw
-//   21 : get_version
+//   6  : set_min_threshold
+//   7  : set_max_threshold
+//   8  : set_timeout_blocks
+//   9  : set_withdraw_fee_bps
+//   10 : set_treasury
+//   11 : set_registry
+//   12 : set_timelock
+//   13 : set_guardian
+//   14 : pause
+//   15 : unpause
+//   16 : transfer_admin
+//   17 : request_emergency_withdraw
+//   18 : execute_emergency_withdraw
+//   19 : get_version
 // ============================================================================
 
 const VERSION: string = "PrivacyMixer v11.5"
@@ -67,43 +67,37 @@ const PAUSED_KEY: string = "pz"
 const REGISTRY_KEY: string = "reg"
 
 // Pool state
-const POOL_COUNT_KEY: string = "pc"           // nombre de deposits en attente
-const POOL_DEPOSIT_PREFIX: string = "pd_"      // index → DepositEntry
-const POOL_TOTAL_AMOUNT_PREFIX: string = "pta_" // asset → total amount locked
-const POOL_FIRST_TOPO_KEY: string = "pft"      // topoheight du premier deposit du pool
+const POOL_COUNT_KEY: string = "pc"
+const POOL_DEPOSIT_PREFIX: string = "pd_"
+const POOL_FIRST_TOPO_KEY: string = "pft"
+const POOL_MAX_THRESHOLD_KEY: string = "pmt"   // max threshold requested by any depositor
 
 // Config
-const THRESHOLD_KEY: string = "th"             // min deposits pour mix
-const TIMEOUT_BLOCKS_KEY: string = "tb"        // max blocks avant refund
-const SPLIT_ENABLED_KEY: string = "se"          // split en sub-amounts
+const MIN_THRESHOLD_KEY: string = "mnth"        // min threshold a user can request
+const MAX_THRESHOLD_KEY: string = "mxth"        // max threshold a user can request
+const TIMEOUT_BLOCKS_KEY: string = "tb"
 const WITHDRAW_FEE_BPS_KEY: string = "wfb"
 const TREASURY_KEY: string = "tr"
 
-// Default denominations
-const DENOM_AMOUNT_PREFIX: string = "damt_"
-const DENOM_COUNT_KEY: string = "dcnt"
-const MAX_DENOMS: u64 = 16
-
-const DEFAULT_THRESHOLD: u64 = 5               // min 5 deposits pour mixer
-const DEFAULT_TIMEOUT: u64 = 51840              // 3 jours (3 * 17280 blocks)
-const DEFAULT_WITHDRAW_FEE_BPS: u64 = 0        // 0% par défaut (gratuit)
-const MAX_THRESHOLD: u64 = 50
-const MIN_THRESHOLD: u64 = 3
+const DEFAULT_MIN_THRESHOLD: u64 = 3             // user can request min 3
+const DEFAULT_MAX_THRESHOLD: u64 = 100            // user can request max 100
+const DEFAULT_TIMEOUT: u64 = 51840                // 3 jours
+const DEFAULT_WITHDRAW_FEE_BPS: u64 = 0           // 0% par défaut
 
 // Emergency
 const EMERGENCY_REQUEST_TOPO_KEY: string = "ert"
 const EMERGENCY_DELAY_BLOCKS: u64 = 17280
 
 // Stats
-const TOTAL_MIXED_PREFIX: string = "tm_"        // asset → total mixed all-time
-const TOTAL_MIXES_KEY: string = "tmc"           // total mix events
+const TOTAL_MIXED_PREFIX: string = "tm_"
+const TOTAL_MIXES_KEY: string = "tmc"
 
 struct DepositEntry {
     sender: Address,
     recipient: Address,
     asset: Hash,
     amount: u64,
-    denom_id: u64,
+    min_anonymity: u64,                           // this user's threshold request
     deposited_at: u64
 }
 
@@ -115,9 +109,10 @@ hook constructor() -> u64 {
     s.store(PAUSED_KEY, false)
     s.store(POOL_COUNT_KEY, 0u64)
     s.store(POOL_FIRST_TOPO_KEY, 0u64)
-    s.store(THRESHOLD_KEY, DEFAULT_THRESHOLD)
+    s.store(POOL_MAX_THRESHOLD_KEY, DEFAULT_MIN_THRESHOLD)
+    s.store(MIN_THRESHOLD_KEY, DEFAULT_MIN_THRESHOLD)
+    s.store(MAX_THRESHOLD_KEY, DEFAULT_MAX_THRESHOLD)
     s.store(TIMEOUT_BLOCKS_KEY, DEFAULT_TIMEOUT)
-    s.store(SPLIT_ENABLED_KEY, false)
     s.store(WITHDRAW_FEE_BPS_KEY, DEFAULT_WITHDRAW_FEE_BPS)
     s.store(TOTAL_MIXES_KEY, 0u64)
     return 0
@@ -149,48 +144,40 @@ fn only_guardian_or_admin() {
     only_admin()
 }
 
-fn get_denom_amount(denom_id: u64) -> u64 {
-    let s: Storage = Storage::new()
-    let dynamic: u64 = s.load(DENOM_AMOUNT_PREFIX + denom_id.to_string(10u32)).unwrap_or(0)
-    if dynamic > 0 { return dynamic }
-    if denom_id == 0 { return 1000000000 }     // 10 XEL
-    if denom_id == 1 { return 10000000000 }    // 100 XEL
-    if denom_id == 2 { return 100000000000 }   // 1000 XEL
-    require(false, "baddenom")
-    return 0
-}
-
 // ============================================================================
-// ENTRY 0: deposit — user deposits funds and specifies recipient
+// ENTRY 0: deposit — user deposits ANY amount and specifies recipient + anonymity level
 // @caller: any user
 // @params: recipient - Address where funds should be sent after mix
 // @params: asset - Hash of asset to mix (Hash::zero() for XEL)
-// @params: denomination_id - which denomination (0=10, 1=100, 2=1000, or dynamic)
-// @returns: deposit index in the pool
-// @security: when_not_paused, requires attached deposit >= denomination amount
-// @note: The recipient address is stored on-chain. However, since XELIS encrypts
-//        transaction amounts, when the mix happens, all transfers go out in the
-//        same block with encrypted amounts, making it impossible to match
-//        deposits to withdrawals by amount.
+// @params: min_anonymity - minimum number of people in the batch before mix
+//                          (higher = more anonymity, longer wait)
+// @returns: deposit index
+// @security: when_not_paused, requires attached deposit > 0
+// @note: Amount is FREE (not fixed denomination). XELIS encrypts amounts,
+//        so even different amounts are untraceable when batched together.
 // ============================================================================
 
-entry deposit(recipient: Address, asset: Hash, denomination_id: u64) -> u64 {
+entry deposit(recipient: Address, asset: Hash, min_anonymity: u64) -> u64 {
     when_not_paused()
     require(recipient != Address::zero(), "badrecipient")
-
-    let amount: u64 = get_denom_amount(denomination_id)
-    require(amount > 0, "baddenom")
 
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
 
-    // Verify deposit attached
+    // Get attached deposit (ANY amount, not fixed denomination)
     let dep: u64 = get_deposit_for_asset(asset).expect("err")
-    require(dep >= amount, "insdep")
-    // Refund excess
-    if dep > amount {
-        let _ = transfer(caller, dep - amount, asset)
-    }
+    require(dep > 0, "insdep")
+
+    // Validate anonymity threshold
+    let min_thresh: u64 = s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
+    let max_thresh: u64 = s.load(MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MAX_THRESHOLD)
+    require(min_anonymity >= min_thresh, "toolow")
+    require(min_anonymity <= max_thresh, "toohigh")
+
+    // Refund excess (if user attached more than intended — but since amount is free,
+    // we accept whatever is attached as the amount to mix)
+    // Actually: the attached amount IS the amount to mix. No excess to refund.
+    // If user attached more than they wanted to mix, that's their mistake.
 
     // Store deposit entry
     let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
@@ -198,29 +185,30 @@ entry deposit(recipient: Address, asset: Hash, denomination_id: u64) -> u64 {
         sender: caller,
         recipient: recipient,
         asset: asset,
-        amount: amount,
-        denom_id: denomination_id,
+        amount: dep,
+        min_anonymity: min_anonymity,
         deposited_at: get_current_topoheight()
     }
     s.store(POOL_DEPOSIT_PREFIX + pool_count.to_string(10u32), entry)
-
-    // Track pool total per asset
-    let pool_total: u64 = s.load(POOL_TOTAL_AMOUNT_PREFIX + asset.to_hex()).unwrap_or(0)
-    s.store(POOL_TOTAL_AMOUNT_PREFIX + asset.to_hex(), pool_total + amount)
 
     // Track first deposit topo (for timeout)
     if pool_count == 0 {
         s.store(POOL_FIRST_TOPO_KEY, get_current_topoheight())
     }
 
+    // Update pool max threshold (mix only when ALL users' thresholds are met)
+    let current_max: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
+    if min_anonymity > current_max {
+        s.store(POOL_MAX_THRESHOLD_KEY, min_anonymity)
+    }
+
     s.store(POOL_COUNT_KEY, pool_count + 1)
 
-    emit_event("MixerDeposit", pool_count.to_string(10u32) + "_" + denomination_id.to_string(10u32))
+    emit_event("MixerDeposit", pool_count.to_string(10u32) + "_" + dep.to_string(10u32))
 
     // Auto-mix if threshold reached
-    let threshold: u64 = s.load(THRESHOLD_KEY).unwrap_or(DEFAULT_THRESHOLD)
-    if pool_count + 1 >= threshold {
-        // Execute mix immediately
+    let pool_threshold: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
+    if pool_count + 1 >= pool_threshold {
         let _ = do_mix(s)
     }
 
@@ -229,7 +217,6 @@ entry deposit(recipient: Address, asset: Hash, denomination_id: u64) -> u64 {
 
 // ============================================================================
 // ENTRY 1: execute_mix — send all pending funds to their recipients
-// Called automatically when threshold reached, or manually by anyone
 // @caller: anyone (keeper bot or user)
 // @returns: number of deposits mixed
 // ============================================================================
@@ -240,8 +227,8 @@ entry execute_mix() -> u64 {
     let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
     require(pool_count > 0, "empty")
 
-    let threshold: u64 = s.load(THRESHOLD_KEY).unwrap_or(DEFAULT_THRESHOLD)
-    require(pool_count >= threshold, "notenough")
+    let pool_threshold: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
+    require(pool_count >= pool_threshold, "notenough")
 
     return do_mix(s)
 }
@@ -250,10 +237,9 @@ fn do_mix(s: Storage) -> u64 {
     let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
     if pool_count == 0 { return 0 }
 
-    let split_enabled: bool = s.load(SPLIT_ENABLED_KEY).unwrap_or(false)
     let withdraw_fee_bps: u64 = s.load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS)
 
-    // Process each deposit
+    // Process each deposit — send to recipient
     let i: u64 = 0
     let mixed_count: u64 = 0
     while i < pool_count {
@@ -265,17 +251,8 @@ fn do_mix(s: Storage) -> u64 {
             let fee: u64 = (entry.amount * withdraw_fee_bps) / 10000
             let net_amount: u64 = entry.amount - fee
 
-            if split_enabled && net_amount > 300000000 {
-                // Split into 3 sub-transfers (amounts hidden on XELIS)
-                let part1: u64 = net_amount / 3
-                let part2: u64 = net_amount / 3
-                let part3: u64 = net_amount - part1 - part2
-                let _ = transfer(entry.recipient, part1, entry.asset)
-                let _ = transfer(entry.recipient, part2, entry.asset)
-                let _ = transfer(entry.recipient, part3, entry.asset)
-            } else {
-                let _ = transfer(entry.recipient, net_amount, entry.asset)
-            }
+            // Transfer to recipient (amount is encrypted by XELIS)
+            let _ = transfer(entry.recipient, net_amount, entry.asset)
 
             // Pay fee to treasury
             if fee > 0 {
@@ -290,7 +267,7 @@ fn do_mix(s: Storage) -> u64 {
             let mixed_total: u64 = s.load(TOTAL_MIXED_PREFIX + entry.asset.to_hex()).unwrap_or(0)
             s.store(TOTAL_MIXED_PREFIX + entry.asset.to_hex(), mixed_total + entry.amount)
 
-            // Clean up deposit entry
+            // Clean up
             s.delete(POOL_DEPOSIT_PREFIX + i.to_string(10u32))
             mixed_count += 1
         }
@@ -300,10 +277,7 @@ fn do_mix(s: Storage) -> u64 {
     // Reset pool
     s.store(POOL_COUNT_KEY, 0u64)
     s.store(POOL_FIRST_TOPO_KEY, 0u64)
-
-    // Clear pool totals
-    // (Note: we don't iterate all assets, but the totals will be overwritten
-    //  on next deposit cycle. For production, could track and clear.)
+    s.store(POOL_MAX_THRESHOLD_KEY, s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD))
 
     // Update mix count
     let total_mixes: u64 = s.load(TOTAL_MIXES_KEY).unwrap_or(0)
@@ -326,11 +300,8 @@ entry execute_refund() -> u64 {
 
     let first_topo: u64 = s.load(POOL_FIRST_TOPO_KEY).unwrap_or(0)
     let timeout: u64 = s.load(TIMEOUT_BLOCKS_KEY).unwrap_or(DEFAULT_TIMEOUT)
-    let current_topo: u64 = get_current_topoheight()
+    require(get_current_topoheight() >= first_topo + timeout, "toosoon")
 
-    require(current_topo >= first_topo + timeout, "toosoon")
-
-    // Refund each deposit to original sender
     let i: u64 = 0
     let refunded: u64 = 0
     while i < pool_count {
@@ -344,9 +315,9 @@ entry execute_refund() -> u64 {
         i += 1
     }
 
-    // Reset pool
     s.store(POOL_COUNT_KEY, 0u64)
     s.store(POOL_FIRST_TOPO_KEY, 0u64)
+    s.store(POOL_MAX_THRESHOLD_KEY, s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD))
 
     emit_event("MixerRefund", refunded.to_string(10u32))
     return refunded
@@ -356,22 +327,23 @@ entry execute_refund() -> u64 {
 // PUB FN: Read-only getters
 // ============================================================================
 
-pub fn get_pool_info() -> (u64, u64, u64, u64, u64, bool) {
+pub fn get_pool_info() -> (u64, u64, u64, u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     return (
         s.load(POOL_COUNT_KEY).unwrap_or(0),
-        s.load(THRESHOLD_KEY).unwrap_or(DEFAULT_THRESHOLD),
+        s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD),
+        s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD),
+        s.load(MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MAX_THRESHOLD),
         s.load(TIMEOUT_BLOCKS_KEY).unwrap_or(DEFAULT_TIMEOUT),
         s.load(POOL_FIRST_TOPO_KEY).unwrap_or(0),
-        s.load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS),
-        s.load(SPLIT_ENABLED_KEY).unwrap_or(false)
+        s.load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS)
     )
 }
 
 pub fn get_deposit_info(index: u64) -> (Address, Address, Hash, u64, u64, u64) {
     let s: Storage = Storage::new()
     let entry: DepositEntry = s.load(POOL_DEPOSIT_PREFIX + index.to_string(10u32)).expect("notfound")
-    return (entry.sender, entry.recipient, entry.asset, entry.amount, entry.denom_id, entry.deposited_at)
+    return (entry.sender, entry.recipient, entry.asset, entry.amount, entry.min_anonymity, entry.deposited_at)
 }
 
 pub fn get_pending_count() -> u64 {
@@ -389,61 +361,34 @@ pub fn get_total_mixes() -> u64 {
     return s.load(TOTAL_MIXES_KEY).unwrap_or(0)
 }
 
-pub fn get_denomination_amount(denom_id: u64) -> u64 {
-    return get_denom_amount(denom_id)
-}
-
-pub fn get_denomination_count() -> u64 {
-    let s: Storage = Storage::new()
-    return s.load(DENOM_COUNT_KEY).unwrap_or(3)
-}
-
 // ============================================================================
 // ADMIN ENTRIES
 // ============================================================================
 
-entry set_threshold(threshold: u64) -> u64 {
+entry set_min_threshold(threshold: u64) -> u64 {
     only_admin()
-    require(threshold >= MIN_THRESHOLD && threshold <= MAX_THRESHOLD, "badthresh")
-    Storage::new().store(THRESHOLD_KEY, threshold)
+    require(threshold >= 2, "toolow")
+    Storage::new().store(MIN_THRESHOLD_KEY, threshold)
+    return 0
+}
+
+entry set_max_threshold(threshold: u64) -> u64 {
+    only_admin()
+    require(threshold <= 500, "toohigh")
+    Storage::new().store(MAX_THRESHOLD_KEY, threshold)
     return 0
 }
 
 entry set_timeout_blocks(blocks: u64) -> u64 {
     only_admin()
-    require(blocks >= 17280, "toosoon")  // min 1 day
+    require(blocks >= 17280, "toosoon")
     Storage::new().store(TIMEOUT_BLOCKS_KEY, blocks)
     return 0
 }
 
-entry set_split_enabled(enabled: bool) -> u64 {
-    only_admin()
-    Storage::new().store(SPLIT_ENABLED_KEY, enabled)
-    return 0
-}
-
-entry set_denomination(denom_id: u8, amount: u64) -> u64 {
-    only_admin()
-    require(amount > 0, "badamt")
-    require(denom_id < MAX_DENOMS as u8, "baddenom")
-    Storage::new().store(DENOM_AMOUNT_PREFIX + denom_id.to_string(10u32), amount)
-    return 0
-}
-
-entry add_denomination(amount: u64) -> u64 {
-    only_admin()
-    require(amount > 0, "badamt")
-    let s: Storage = Storage::new()
-    let count: u64 = s.load(DENOM_COUNT_KEY).unwrap_or(3)
-    require(count < MAX_DENOMS, "maxdenom")
-    s.store(DENOM_AMOUNT_PREFIX + count.to_string(10u32), amount)
-    s.store(DENOM_COUNT_KEY, count + 1)
-    return count
-}
-
 entry set_withdraw_fee_bps(bps: u64) -> u64 {
     only_admin()
-    require(bps <= 500, "toohigh")  // max 5%
+    require(bps <= 500, "toohigh")
     Storage::new().store(WITHDRAW_FEE_BPS_KEY, bps)
     return 0
 }

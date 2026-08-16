@@ -53,6 +53,23 @@ const CONFIRMATION_PREFIX: string = "c_"
 const EMERGENCY_REQUEST_TOPO_KEY: string = "ert"
 const EMERGENCY_DELAY_BLOCKS: u64 = 17280
 
+
+// v11.4: Reentrancy guard
+const RG_STATUS_KEY: string = "rg"
+const RG_NOT_ENTERED: u64 = 1
+const RG_ENTERED: u64 = 2
+
+fn non_reentrant() {
+    let s: Storage = Storage::new()
+    let status: u64 = s.load(RG_STATUS_KEY).unwrap_or(RG_NOT_ENTERED)
+    require(status != RG_ENTERED, "reentrant")
+    s.store(RG_STATUS_KEY, RG_ENTERED)
+}
+
+fn release_reentrancy() {
+    Storage::new().store(RG_STATUS_KEY, RG_NOT_ENTERED)
+}
+
 struct Proposal {
     id: u64,
     proposer: Address,

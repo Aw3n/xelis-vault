@@ -210,6 +210,7 @@ fn update_merkle_root(new_leaf: Hash, leaf_index: u64) {
 // @security: when_not_paused, requires attached deposit >= denomination amount
 entry deposit(asset: Hash, denomination_id: u64, commitment: Hash) -> u64 {
     when_not_paused()
+    non_reentrant()
     require(commitment != Hash::zero(), "badcommit")
     let amount: u64 = get_denom_amount(denomination_id)
     require(amount > 0, "baddenom")

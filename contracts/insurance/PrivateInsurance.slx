@@ -40,6 +40,23 @@ const POLICY_PREFIX: string = "p_"
 const EMERGENCY_REQUEST_TOPO_KEY: string = "ert"
 const EMERGENCY_DELAY_BLOCKS: u64 = 17280
 
+
+// v11.4: Reentrancy guard
+const RG_STATUS_KEY: string = "rg"
+const RG_NOT_ENTERED: u64 = 1
+const RG_ENTERED: u64 = 2
+
+fn non_reentrant() {
+    let s: Storage = Storage::new()
+    let status: u64 = s.load(RG_STATUS_KEY).unwrap_or(RG_NOT_ENTERED)
+    require(status != RG_ENTERED, "reentrant")
+    s.store(RG_STATUS_KEY, RG_ENTERED)
+}
+
+fn release_reentrancy() {
+    Storage::new().store(RG_STATUS_KEY, RG_NOT_ENTERED)
+}
+
 struct Policy {
     id: u64,
     insurer: Address,
@@ -187,6 +204,7 @@ entry buy_policy(policy_id: u64) -> u64 {
 // @security: when_not_paused
 entry claim(policy_id: u64, evidence_hash: Hash) -> u64 {
     when_not_paused()
+    non_reentrant()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     let policy: Policy = s.load(policy_key(policy_id)).expect("err")

@@ -1,21 +1,31 @@
 // ============================================================================
-// PrivacyMixer.slx — XELIS Vault v5.0
+// PrivacyMixer.slx — XELIS Vault v11.4
 // ----------------------------------------------------------------------------
-// Merkle-tree deposit / ZK-proof withdraw mixer, preserved from v4.2.
+// Mixer de confidentialité type Tornado Cash, adapté pour XELIS.
 //
-// FIX: update_merkle_root() indentation + correctness bug from v4.2 fixed.
-//   In v4.2 the loop body had a stray `let combined` line preceding the
-//   if/else block (visually misindented to function scope) and never updated
-//   `current` with `hash(combined)`, so the merkle root was always equal to
-//   the latest leaf. The fixed version actually walks the tree, persists
-//   intermediate nodes for future sibling lookups, and stores the real root.
+// FONCTIONNEMENT :
+//   1. Deposit : user attache XEL/xUSD/VLT + fournit un commitment (hash de secret)
+//      → Le commitment est ajouté au Merkle tree (profondeur 24 = 16M deposits)
+//      → Le user reçoit une "note" privée (secret + leaf_index)
+//   2. Withdraw : user fournit un ZK proof prouvant qu'il connaît le secret
+//      d'un leaf dans le Merkle tree, sans révéler lequel
+//      → Le nullifier (hash du secret) est vérifié non-used
+//      → Les fonds vont à une adresse fraîche (non liée au deposit)
+//      → Impossible de lier deposit ↔ withdraw
 //
-// NOTE: emergency_withdraw is ADMIN-ONLY (uses ADMIN_KEY directly, not a
-//   separate EMERGENCY_KEY) per task spec.
+// SÉCURITÉ :
+//   - Merkle tree profondeur 24 (16,777,216 deposits max)
+//   - Nullifier prevents double-spend
+//   - ZK proof required (vérifié via contrat ZK verifier externe)
+//   - Reentrancy guard sur withdraw
+//   - Relayeur possible (withdraw peut être appelé par un tiers au nom du recipient)
 //
-// Two-step emergency_withdraw (IDs 16/17, "ert" key, 17280-block delay).
+// DÉNOMINATIONS :
+//   - 3 dénominations par défaut : 10, 100, 1000 (XEL/xUSD/VLT)
+//   - Dénominations dynamiques configurables via governance (jusqu'à 16)
+//   - Dépôts anonymes uniquement entre mêmes dénominations
 //
-// Entry IDs (sequential, starting at 0):
+// Entry IDs:
 //   0  : deposit
 //   1  : withdraw
 //   2  : get_merkle_root_entry
@@ -25,38 +35,76 @@
 //   6  : get_deposit_count_for_denom_entry
 //   7  : get_merkle_leaf_entry
 //   8  : set_zk_verifier
-//   9  : set_registry
-//   10 : set_timelock
-//   11 : set_guardian
-//   12 : pause
-//   13 : unpause
-//   14 : transfer_admin
-//   15 : get_version
-//   16 : request_emergency_withdraw
-//   17 : execute_emergency_withdraw
+//   9  : set_relayer_fee_bps
+//   10 : set_withdraw_fee_bps
+//   11 : set_registry
+//   12 : set_timelock
+//   13 : set_guardian
+//   14 : pause
+//   15 : unpause
+//   16 : transfer_admin
+//   17 : get_version
+//   18 : request_emergency_withdraw
+//   19 : execute_emergency_withdraw
+//   20 : set_denomination
+//   21 : add_denomination
 // ============================================================================
 
-const VERSION: string = "PrivacyMixer v11.3"
+const VERSION: string = "PrivacyMixer v11.4"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"
 const GUARDIAN_KEY: string = "gd"
 const PAUSED_KEY: string = "pz"
 const REGISTRY_KEY: string = "reg"
+
+// Merkle tree
 const MERKLE_ROOT_KEY: string = "mr"
 const LEAF_PREFIX: string = "leaf_"
 const LEAF_COUNT_KEY: string = "lc"
+const MERKLE_DEPTH: u64 = 24  // 2^24 = 16,777,216 deposits max
+
+// Nullifier (anti double-spend)
 const NULLIFIER_PREFIX: string = "null_"
+
+// Deposit tracking per denomination
 const DENOM_DEPOSITS_PREFIX: string = "dd_"
+
+// ZK verifier contract
 const ZK_VERIFIER_KEY: string = "zv"
 
+// Fees
+const RELAYER_FEE_BPS_KEY: string = "rfb"
+const WITHDRAW_FEE_BPS_KEY: string = "wfb"
+const DEFAULT_RELAYER_FEE_BPS: u64 = 10    // 0.1% for relayer
+const DEFAULT_WITHDRAW_FEE_BPS: u64 = 10   // 0.1% protocol fee
+const TREASURY_KEY: string = "tr"
+
+// Default denominations (atomic, 8 decimals)
 const DENOM_10: u64 = 1000000000
 const DENOM_100: u64 = 10000000000
 const DENOM_1000: u64 = 100000000000
-const MERKLE_DEPTH: u64 = 24
 
+// Dynamic denominations
+const DENOM_AMOUNT_PREFIX: string = "damt_"
+const DENOM_COUNT_KEY: string = "dcnt"
+const MAX_DYNAMIC_DENOMS: u64 = 16
+
+// Emergency withdraw
 const EMERGENCY_REQUEST_TOPO_KEY: string = "ert"
-const EMERGENCY_DELAY_BLOCKS: u64 = 17280
+const EMERGENCY_DELAY_BLOCKS: u64 = 17280  // 24h
+
+// v11.4: Reentrancy guard
+const RG_STATUS_KEY: string = "rg"
+const RG_NOT_ENTERED: u64 = 1
+const RG_ENTERED: u64 = 2
+
+struct DepositData {
+    commitment: Hash,
+    leaf_index: u64,
+    asset: Hash,
+    denom_id: u64
+}
 
 hook constructor() -> u64 {
     let s: Storage = Storage::new()
@@ -66,7 +114,16 @@ hook constructor() -> u64 {
     s.store(PAUSED_KEY, false)
     s.store(MERKLE_ROOT_KEY, Hash::zero())
     s.store(LEAF_COUNT_KEY, 0u64)
+    s.store(RELAYER_FEE_BPS_KEY, DEFAULT_RELAYER_FEE_BPS)
+    s.store(WITHDRAW_FEE_BPS_KEY, DEFAULT_WITHDRAW_FEE_BPS)
+    s.store(RG_STATUS_KEY, RG_NOT_ENTERED)
     return 0
+}
+
+fn when_not_paused() {
+    let s: Storage = Storage::new()
+    let paused: bool = s.load(PAUSED_KEY).unwrap_or(false)
+    require(!paused, "paused")
 }
 
 fn only_admin() {
@@ -89,12 +146,24 @@ fn only_guardian_or_admin() {
     only_admin()
 }
 
-fn when_not_paused() {
-    let paused: bool = Storage::new().load(PAUSED_KEY).unwrap_or(false)
-    require(!paused, "paused")
+fn non_reentrant() {
+    let s: Storage = Storage::new()
+    let status: u64 = s.load(RG_STATUS_KEY).unwrap_or(RG_NOT_ENTERED)
+    require(status != RG_ENTERED, "reentrant")
+    s.store(RG_STATUS_KEY, RG_ENTERED)
 }
 
+fn release_reentrancy() {
+    Storage::new().store(RG_STATUS_KEY, RG_NOT_ENTERED)
+}
+
+// Get denomination amount (checks dynamic denoms first, then defaults)
 fn get_denom_amount(denom_id: u64) -> u64 {
+    let s: Storage = Storage::new()
+    // Check dynamic denominations
+    let dynamic: u64 = s.load(DENOM_AMOUNT_PREFIX + denom_id.to_string(10u32)).unwrap_or(0)
+    if dynamic > 0 { return dynamic }
+    // Default denominations
     if denom_id == 0 { return DENOM_10 }
     if denom_id == 1 { return DENOM_100 }
     if denom_id == 2 { return DENOM_1000 }
@@ -102,7 +171,7 @@ fn get_denom_amount(denom_id: u64) -> u64 {
     return 0
 }
 
-// FIXED: properly walks the tree, persists intermediate nodes, updates root.
+// Merkle tree update — properly walks the tree, persists intermediate nodes
 fn update_merkle_root(new_leaf: Hash, leaf_index: u64) {
     let s: Storage = Storage::new()
     let current: Hash = new_leaf
@@ -118,7 +187,7 @@ fn update_merkle_root(new_leaf: Hash, leaf_index: u64) {
         } else {
             combined = sibling_val.to_hex() + current.to_hex()
         }
-        // Persist the current node so future deposits can use it as a sibling.
+        // Persist current node for future sibling lookups
         let node_key: string = LEAF_PREFIX + level.to_string(10u32) + "_" + idx.to_string(10u32)
         s.store(node_key, current)
         current = hash(combined)
@@ -132,243 +201,233 @@ fn update_merkle_root(new_leaf: Hash, leaf_index: u64) {
 // ENTRIES
 // ============================================================================
 
-// ID 0: deposit
-// deposit.
+// Entry 0: deposit — user deposits funds into the mixer
 // @caller: any user
-// @params: asset - Hash
-// @params: denomination_id - u64
-// @params: commitment - Hash
-// @returns: u
-// @security: when_not_paused
+// @params: asset - Hash of the asset to mix (XEL = Hash::zero(), or token asset hash)
+// @params: denomination_id - which denomination (0=10, 1=100, 2=1000, or dynamic)
+// @params: commitment - Hash(secret) — the user's secret commitment (kept private off-chain)
+// @returns: leaf_index (for the user to construct Merkle proof later)
+// @security: when_not_paused, requires attached deposit >= denomination amount
 entry deposit(asset: Hash, denomination_id: u64, commitment: Hash) -> u64 {
     when_not_paused()
     require(commitment != Hash::zero(), "badcommit")
     let amount: u64 = get_denom_amount(denomination_id)
+    require(amount > 0, "baddenom")
+
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
+
+    // v11.4: Verify deposit is attached (native transfer)
     let dep: u64 = get_deposit_for_asset(asset).expect("err")
     require(dep >= amount, "insdep")
+    // Refund excess
     if dep > amount {
         let _ = transfer(caller, dep - amount, asset)
     }
+
+    // Add commitment to Merkle tree
     let leaf_index: u64 = s.load(LEAF_COUNT_KEY).unwrap_or(0)
     s.store(LEAF_PREFIX + "0_" + leaf_index.to_string(10u32), commitment)
     s.store(LEAF_COUNT_KEY, leaf_index + 1)
     update_merkle_root(commitment, leaf_index)
+
+    // Track deposits per denomination (for analytics)
     let denom_key: string = DENOM_DEPOSITS_PREFIX + asset.to_hex() + "_" + denomination_id.to_string(10u32)
     s.store(denom_key, s.load(denom_key).unwrap_or(0) + 1)
-    return 0
+
+    emit_event("MixerDeposit", leaf_index.to_string(10u32) + "_" + denomination_id.to_string(10u32))
+    return leaf_index
 }
 
-// ID 1: withdraw
-// withdraw.
-// @caller: any user
-// @params: asset - Hash
-// @params: denomination_id - u64
-// @params: nullifier - Hash
-// @params: recipient - Address
-// @params: merkle_root - Hash
-// @params: zk_proof - bytes
-// @returns: u
-// @security: when_not_paused
+// Entry 1: withdraw — user withdraws funds to a fresh address using ZK proof
+// @caller: anyone (can be a relayer acting on behalf of the recipient)
+// @params: asset - Hash of the asset
+// @params: denomination_id - which denomination
+// @params: nullifier - Hash(secret) used as nullifier (prevents double-spend)
+// @params: recipient - Address to receive the funds (should be a fresh address)
+// @params: relayer - Address of the relayer (gets relayer fee, or recipient if no relayer)
+// @params: merkle_root - Hash of the Merkle root at time of deposit
+// @params: zk_proof - bytes — the ZK proof proving knowledge of secret for a leaf in the tree
+// @returns: 0 on success
+// @security: when_not_paused, non_reentrant, nullifier check, ZK proof verification
 entry withdraw(
     asset: Hash,
     denomination_id: u64,
     nullifier: Hash,
     recipient: Address,
+    relayer: Address,
     merkle_root: Hash,
     zk_proof: bytes
 ) -> u64 {
     when_not_paused()
+    non_reentrant()
+
     let amount: u64 = get_denom_amount(denomination_id)
+    require(amount > 0, "baddenom")
     let s: Storage = Storage::new()
+
+    // 1. Check nullifier not already used (anti double-spend)
     let nullifier_key: string = NULLIFIER_PREFIX + nullifier.to_hex()
     let used_opt: optional<bool> = s.load(nullifier_key)
     require(!used_opt.unwrap_or(false), "used")
+
+    // 2. Verify Merkle root matches current root
     let current_root: Hash = s.load(MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
     require(merkle_root == current_root, "badroot")
+
+    // 3. Verify ZK proof via external ZK verifier contract
     let zk_verifier_opt: optional<Hash> = s.load(ZK_VERIFIER_KEY)
     require(zk_verifier_opt.is_some(), "nozkverifier")
-    let zk_verifier: Contract = Contract::new(zk_verifier_opt.expect("err")).expect("err")
+    let zk_verifier_hash: Hash = zk_verifier_opt.expect("err")
+    let zk_verifier: Contract = Contract::new(zk_verifier_hash).expect("err")
+    // ZK verifier pub fn: verify_proof(proof, merkle_root, nullifier, commitment) -> bool
     let valid: bool = zk_verifier.call(0u16, [zk_proof, merkle_root, nullifier], {})
     require(valid, "badproof")
+
+    // 4. Mark nullifier as used
     s.store(nullifier_key, true)
-    let ok: bool = transfer(recipient, amount, asset)
-    require(ok, "txfail")
+
+    // 5. Calculate fees
+    let relayer_fee_bps: u64 = s.load(RELAYER_FEE_BPS_KEY).unwrap_or(DEFAULT_RELAYER_FEE_BPS)
+    let withdraw_fee_bps: u64 = s.load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS)
+    let relayer_fee: u64 = (amount * relayer_fee_bps) / 10000
+    let protocol_fee: u64 = (amount * withdraw_fee_bps) / 10000
+    let net_amount: u64 = amount - relayer_fee - protocol_fee
+
+    // 6. Transfer to recipient (net amount)
+    require(transfer(recipient, net_amount, asset), "txfail")
+
+    // 7. Pay relayer fee (if relayer is not recipient)
+    if relayer_fee > 0 && relayer != recipient {
+        require(transfer(relayer, relayer_fee, asset), "relayerfail")
+    }
+
+    // 8. Protocol fee to treasury
+    if protocol_fee > 0 {
+        let treasury_opt: optional<Hash> = s.load(TREASURY_KEY)
+        if treasury_opt.is_some() {
+            let treasury_hash: Hash = treasury_opt.expect("err")
+            let treasury: Contract = Contract::new(treasury_hash).expect("err")
+            let _ = transfer_contract(treasury_hash, protocol_fee, asset)
+        }
+    }
+
+    emit_event("MixerWithdraw", recipient.to_string() + "_" + denomination_id.to_string(10u32))
+    release_reentrancy()
     return 0
 }
 
-// ID 2: get_merkle_root_entry
-// get merkle root entry.
-// @caller: user / authorized caller
-// @returns: H
-// @security: standard access control
+// Entry 2: get_merkle_root_entry
 entry get_merkle_root_entry() -> Hash {
     return Storage::new().load(MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
 }
 
-// ID 3: get_deposit_count_entry
-// get deposit count entry.
-// @caller: any user
-// @returns: u
-// @security: standard access control
+// Entry 3: get_deposit_count_entry
 entry get_deposit_count_entry() -> u64 {
     return Storage::new().load(LEAF_COUNT_KEY).unwrap_or(0)
 }
 
-// ID 4: is_nullifier_used_entry
-// is nullifier used entry.
-// @caller: user / authorized caller
-// @params: nullifier - Hash
-// @returns: b
-// @security: standard access control
+// Entry 4: is_nullifier_used_entry
 entry is_nullifier_used_entry(nullifier: Hash) -> bool {
     return Storage::new().load(NULLIFIER_PREFIX + nullifier.to_hex()).unwrap_or(false)
 }
 
-// ID 5: get_denomination_amount_entry
-// get denomination amount entry.
-// @caller: user / authorized caller
-// @params: denom_id - u64
-// @returns: u
-// @security: standard access control
+// Entry 5: get_denomination_amount_entry
 entry get_denomination_amount_entry(denom_id: u64) -> u64 {
     return get_denom_amount(denom_id)
 }
 
-// ID 6: get_deposit_count_for_denom_entry
-// get deposit count for denom entry.
-// @caller: any user
-// @params: asset - Hash
-// @params: denom_id - u64
-// @returns: u
-// @security: standard access control
+// Entry 6: get_deposit_count_for_denom_entry
 entry get_deposit_count_for_denom_entry(asset: Hash, denom_id: u64) -> u64 {
     let key: string = DENOM_DEPOSITS_PREFIX + asset.to_hex() + "_" + denom_id.to_string(10u32)
     return Storage::new().load(key).unwrap_or(0)
 }
 
-// ID 7: get_merkle_leaf_entry
-// get merkle leaf entry.
-// @caller: user / authorized caller
-// @params: level - u64
-// @params: index - u64
-// @returns: H
-// @security: only_admin
+// Entry 7: get_merkle_leaf_entry (for constructing Merkle proofs off-chain)
 entry get_merkle_leaf_entry(level: u64, index: u64) -> Hash {
     let key: string = LEAF_PREFIX + level.to_string(10u32) + "_" + index.to_string(10u32)
     return Storage::new().load(key).unwrap_or(Hash::zero())
 }
 
-// ID 8: set_zk_verifier
-// set zk verifier.
-// @caller: guardian or admin
-// @params: zv - Hash
-// @returns: u
-// @security: only_admin
+// Entry 8: set_zk_verifier
 entry set_zk_verifier(zv: Hash) -> u64 {
     only_admin()
     Storage::new().store(ZK_VERIFIER_KEY, zv)
     return 0
 }
 
-// ID 9: set_registry
-// set registry.
-// @caller: guardian or admin
-// @params: reg - Hash
-// @returns: u
-// @security: only_admin
+// Entry 9: set_relayer_fee_bps
+entry set_relayer_fee_bps(bps: u64) -> u64 {
+    only_admin()
+    require(bps <= 500, "toohigh")  // max 5%
+    Storage::new().store(RELAYER_FEE_BPS_KEY, bps)
+    return 0
+}
+
+// Entry 10: set_withdraw_fee_bps
+entry set_withdraw_fee_bps(bps: u64) -> u64 {
+    only_admin()
+    require(bps <= 500, "toohigh")  // max 5%
+    Storage::new().store(WITHDRAW_FEE_BPS_KEY, bps)
+    return 0
+}
+
+// Entry 11: set_registry
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
     Storage::new().store(REGISTRY_KEY, reg)
     return 0
 }
 
-// ID 10: set_timelock
-// set timelock.
-// @caller: guardian or admin
-// @params: tl - Hash
-// @returns: u
-// @security: only_admin
+// Entry 12: set_timelock
 entry set_timelock(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
     return 0
 }
 
-// ID 11: set_guardian
-// set guardian.
-// @caller: guardian or admin
-// @params: g - Address
-// @returns: u
-// @security: only_admin, only_guardian_or_admin
+// Entry 13: set_guardian
 entry set_guardian(g: Address) -> u64 {
-    only_admin()
+    only_guardian_or_admin()
     Storage::new().store(GUARDIAN_KEY, g)
     return 0
 }
 
-// ID 12: pause
-// pause.
-// @caller: guardian or admin
-// @params: reason - string
-// @returns: u
-// @security: only_admin, only_guardian_or_admin
+// Entry 14: pause
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, true)
+    emit_event("MixerPaused", reason)
     return 0
 }
 
-// ID 13: unpause
-// unpause.
-// @caller: admin (or timelock)
-// @returns: u
-// @security: only_admin
+// Entry 15: unpause
 entry unpause() -> u64 {
-    only_admin()
+    only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, false)
     return 0
 }
 
-// ID 14: transfer_admin
-// transfer admin.
-// @caller: admin (or timelock)
-// @params: new_admin - Address
-// @returns: u
-// @security: only_admin
+// Entry 16: transfer_admin
 entry transfer_admin(new_admin: Address) -> u64 {
     only_admin()
     Storage::new().store(ADMIN_KEY, new_admin)
     return 0
 }
 
-// ID 15: get_version
-// get version.
-// @caller: user / authorized caller
-// @returns: s
-// @security: only_admin, 2-step withdraw (24h delay)
+// Entry 17: get_version
 entry get_version() -> string {
     return VERSION
 }
 
-// ID 16: request_emergency_withdraw (admin-only)
-// request emergency withdraw.
-// @caller: any user
-// @returns: u
-// @security: only_admin, 2-step withdraw (24h delay)
+// Entry 18: request_emergency_withdraw
 entry request_emergency_withdraw() -> u64 {
     only_admin()
     Storage::new().store(EMERGENCY_REQUEST_TOPO_KEY, get_current_topoheight())
     return 0
 }
 
-// ID 17: execute_emergency_withdraw (admin-only)
-// execute emergency withdraw.
-// @caller: any user
-// @params: asset - Hash
-// @returns: u
-// @security: 2-step withdraw (24h delay)
+// Entry 19: execute_emergency_withdraw
 entry execute_emergency_withdraw(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
@@ -386,85 +445,7 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
     return 0
 }
 
-// ============================================================================
-// pub fn (read-only) — not counted for entry IDs
-// ============================================================================
-
-// get merkle root.
-// @caller: anyone (read-only)
-// @returns: H
-// @security: standard access control
-pub fn get_merkle_root() -> Hash {
-    return Storage::new().load(MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
-}
-
-// get deposit count.
-// @caller: anyone (read-only)
-// @returns: u
-// @security: standard access control
-pub fn get_deposit_count() -> u64 {
-    return Storage::new().load(LEAF_COUNT_KEY).unwrap_or(0)
-}
-
-// is nullifier used.
-// @caller: anyone (read-only)
-// @params: nullifier - Hash
-// @returns: b
-// @security: standard access control
-pub fn is_nullifier_used(nullifier: Hash) -> bool {
-    return Storage::new().load(NULLIFIER_PREFIX + nullifier.to_hex()).unwrap_or(false)
-}
-
-// get denomination amount.
-// @caller: anyone (read-only)
-// @params: denom_id - u64
-// @returns: u
-// @security: standard access control
-pub fn get_denomination_amount(denom_id: u64) -> u64 {
-    return get_denom_amount(denom_id)
-}
-
-// get deposit count for denom.
-// @caller: anyone (read-only)
-// @params: asset - Hash
-// @params: denom_id - u64
-// @returns: u
-// @security: standard access control
-pub fn get_deposit_count_for_denom(asset: Hash, denom_id: u64) -> u64 {
-    let key: string = DENOM_DEPOSITS_PREFIX + asset.to_hex() + "_" + denom_id.to_string(10u32)
-    return Storage::new().load(key).unwrap_or(0)
-}
-
-// get merkle leaf.
-// @caller: anyone (read-only)
-// @params: level - u64
-// @params: index - u64
-// @returns: H
-// @security: only_admin
-pub fn get_merkle_leaf(level: u64, index: u64) -> Hash {
-    let key: string = LEAF_PREFIX + level.to_string(10u32) + "_" + index.to_string(10u32)
-    return Storage::new().load(key).unwrap_or(Hash::zero())
-}
-
-// set timelock tl.
-// @caller: anyone (read-only)
-// @params: tl - Hash
-// @returns: u
-// @security: only_admin
-pub fn set_timelock_tl(tl: Hash) -> u64 {
-    only_admin()
-    Storage::new().store(TIMELOCK_KEY, tl)
-    return 0
-}
-
-// ============================================================================
-// v6.0: Dynamic denominations (governance-configurable)
-// ============================================================================
-
-const DENOM_AMOUNT_PREFIX: string = "damt_"
-const DENOM_COUNT_KEY: string = "dcnt"
-const MAX_DYNAMIC_DENOMS: u64 = 16
-
+// Entry 20: set_denomination (governance can change existing denom amount)
 entry set_denomination(denom_id: u8, amount: u64) -> u64 {
     only_admin()
     require(amount > 0, "badamt")
@@ -473,6 +454,7 @@ entry set_denomination(denom_id: u8, amount: u64) -> u64 {
     return 0
 }
 
+// Entry 21: add_denomination (governance can add new denomination)
 entry add_denomination(amount: u64) -> u64 {
     only_admin()
     require(amount > 0, "badamt")
@@ -484,10 +466,54 @@ entry add_denomination(amount: u64) -> u64 {
     return count
 }
 
+// ============================================================================
+// pub fn (read-only, callable cross-contract)
+// ============================================================================
+
+pub fn get_merkle_root() -> Hash {
+    return Storage::new().load(MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
+}
+
+pub fn get_deposit_count() -> u64 {
+    return Storage::new().load(LEAF_COUNT_KEY).unwrap_or(0)
+}
+
+pub fn is_nullifier_used(nullifier: Hash) -> bool {
+    return Storage::new().load(NULLIFIER_PREFIX + nullifier.to_hex()).unwrap_or(false)
+}
+
+pub fn get_denomination_amount(denom_id: u64) -> u64 {
+    return get_denom_amount(denom_id)
+}
+
+pub fn get_deposit_count_for_denom(asset: Hash, denom_id: u64) -> u64 {
+    let key: string = DENOM_DEPOSITS_PREFIX + asset.to_hex() + "_" + denom_id.to_string(10u32)
+    return Storage::new().load(key).unwrap_or(0)
+}
+
+pub fn get_merkle_leaf(level: u64, index: u64) -> Hash {
+    let key: string = LEAF_PREFIX + level.to_string(10u32) + "_" + index.to_string(10u32)
+    return Storage::new().load(key).unwrap_or(Hash::zero())
+}
+
 pub fn get_denomination_count() -> u64 {
     return Storage::new().load(DENOM_COUNT_KEY).unwrap_or(3)
 }
 
 pub fn get_dynamic_denomination(denom_id: u64) -> u64 {
     return Storage::new().load(DENOM_AMOUNT_PREFIX + denom_id.to_string(10u32)).unwrap_or(0)
+}
+
+pub fn get_relayer_fee_bps() -> u64 {
+    return Storage::new().load(RELAYER_FEE_BPS_KEY).unwrap_or(DEFAULT_RELAYER_FEE_BPS)
+}
+
+pub fn get_withdraw_fee_bps() -> u64 {
+    return Storage::new().load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS)
+}
+
+pub fn set_timelock_tl(tl: Hash) -> u64 {
+    only_admin()
+    Storage::new().store(TIMELOCK_KEY, tl)
+    return 0
 }

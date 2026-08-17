@@ -308,7 +308,7 @@ All protocol fees are split automatically:
 ### xUSD Stablecoin
 
 - **Peg mechanism**: PSM (Peg Stability Module) — mint/redeem xUSD 1:1 with XEL at oracle price
-- **Collateral**: VaultEngine CDPs — deposit XEL, borrow xUSD (150% min collateral ratio)
+- **Collateral**: VaultEngine CDPs — deposit XEL, borrow xUSD (200% min collateral ratio, governance adjustable)
 - **Stability fee**: 2% APR on borrows (accrues continuously via global index)
 - **Burn mechanisms**: 50% of all slashes burned + 50% of protocol fees burned
 

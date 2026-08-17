@@ -18,7 +18,7 @@ it on-chain via `StakedOracle.submit_price(feed_id, price)` (entry ID **5**).
 
 In v5.0 the terminology is:
 
-- **Miner** — registered on `XelisVaultMiner` (entry ID 0), locks 100 VLT
+- **Miner** — registered on `XelisVaultMiner` (entry ID 0), locks 1,000 VLT
   stake, sends heartbeats (entry ID 6), can be slashed (entry ID 7). Earns
   rewards through `distribute_reward` (entry ID 8) which is called by the
   oracle / chat contracts.
@@ -240,7 +240,7 @@ registered (entry ID 9 must return 1) and not paused.
 
 ### 6.3 Best practice: use a dedicated mining wallet
 
-Set up a fresh XELIS wallet **just for mining**. Send it exactly 100 VLT +
+Set up a fresh XELIS wallet **just for mining**. Send it exactly 1,000 VLT +
 a small XEL balance for gas. This way:
 
 - Your main holdings aren't linked to your miner identity.
@@ -460,7 +460,7 @@ Yes, as long as both share the same wallet (same XELIS address). Use
 `xelis_wallet`'s remote RPC mode to share a single wallet across machines.
 
 ### Q4. What's the minimum stake to be a provider?
-100 VLT (the miner minimum). There is no separate provider stake — your
+1,000 VLT (the miner minimum). There is no separate provider stake — your
 miner stake covers it.
 
 ### Q5. How are rewards credited?

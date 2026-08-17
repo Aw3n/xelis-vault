@@ -1,6 +1,6 @@
 # Miner Guide — XELIS Vault v5.0
 
-> Complete guide for becoming a XELIS Vault miner: stake 100 VLT, choose your
+> Complete guide for becoming a XELIS Vault miner: stake 1,000 VLT, choose your
 > services (oracle, chat, or both), and earn rewards through the unified
 > `XelisVaultMiner` contract.
 
@@ -15,7 +15,7 @@ miners produce blocks and earn XEL; Vault miners run **protocol services** and
 earn **VLT** rewards. The two roles are independent — you can be one, the
 other, or both.
 
-A Vault miner signs up with the `XelisVaultMiner` contract, locks **100 VLT**
+A Vault miner signs up with the `XelisVaultMiner` contract, locks **1,000 VLT**
 as stake, picks one or more services from a bitmask, and then keeps a daemon
 process running that submits proofs/heartbeats every few minutes. In return
 the protocol mints VLT to the miner address on every valid action.
@@ -44,7 +44,7 @@ dynamic_reward = BASE_REWARD_ORACLE (0.4756 VLT)
                × budget_factor / 10000      (starts at 1.0×, auto-adjusts)
 ```
 
-| Miners active | Est. reward/miner/day | ROI on 100 VLT stake |
+| Miners active | Est. reward/miner/day | ROI on 1,000 VLT stake |
 |---------------|------------------------|-----------------------|
 | 10            | ~55 VLT                | < 2 days              |
 | 50            | ~11 VLT                | ~9 days               |
@@ -73,7 +73,7 @@ blocks so the 6,000,000 VLT reward pool always lasts ~10 years.
 - **`requests`** + **`python-dotenv`** (auto-installed by `install.py`)
 - **XELIS daemon** synced on testnet or mainnet
   (`xelis_daemon --network testnet --rpc-server`)
-- **XELIS wallet** with at least **100 VLT** balance (testnet faucet or
+- **XELIS wallet** with at least **1,000 VLT** balance (testnet faucet or
   mainnet purchase — see §3)
 - A public endpoint URL reachable from the internet (e.g.
   `https://my-miner.example.com:8080`). This is the `endpoint_url` you will
@@ -92,8 +92,8 @@ blocks so the 6,000,000 VLT reward pool always lasts ~10 years.
 
 ## 3. Step 1 — Get VLT tokens
 
-You need **at least 100 VLT** (10,000,000,000 atomic units at 8 decimals) to
-register. Anything beyond 100 VLT is not staked automatically — call
+You need **at least 1,000 VLT** (10,000,000,000 atomic units at 8 decimals) to
+register. Anything beyond 1,000 VLT is not staked automatically — call
 `increase_stake` (entry ID 3) if you want a larger stake to absorb any
 slashing.
 
@@ -138,7 +138,7 @@ xelis_wallet --network testnet
 #   → xet1abc...   ← this is your miner address
 
 > get-balance
-#   → confirm you have ≥ 100 VLT and some XEL for gas
+#   → confirm you have ≥ 1,000 VLT and some XEL for gas
 ```
 
 > **Privacy note:** The miner script never logs your mnemonic or private key.
@@ -240,7 +240,7 @@ register_miner(endpoint_url: String, miner_pubkey: Hash, services_mask: u64)
 | `2`   | Chat only                                |
 | `3`   | Both oracle and chat (maximum rewards)   |
 
-You must also send **100 VLT** as deposit in the same transaction (this
+You must also send **1,000 VLT** as deposit in the same transaction (this
 becomes your stake).
 
 ```bash
@@ -256,7 +256,7 @@ xelis_wallet call-contract <XelisVaultMiner> register_miner \
   as an empty string `""` if you only run oracle.
 - `miner_pubkey`: X25519 public key for chat verification. Use `Hash::zero()`
   (32 zero bytes) if you are not running chat.
-- The deposit (100 VLT) is locked as your stake and returned on deregistration
+- The deposit (1,000 VLT) is locked as your stake and returned on deregistration
   (entry ID 5).
 
 ### Verify registration
@@ -285,7 +285,7 @@ The daemon will:
 1. Load config from `~/.xelis-vault/config/config.json` (created by
    `install.py`).
 2. Connect to the XELIS daemon RPC.
-3. Verify your wallet has ≥ 100 VLT (calls `VLTToken` entry **11**
+3. Verify your wallet has ≥ 1,000 VLT (calls `VLTToken` entry **11**
    `get_asset_hash_entry`, then checks balance).
 4. If you are not yet registered, call `register_miner` (entry ID **0**).
 5. Loop:
@@ -361,7 +361,7 @@ xelis_wallet call-contract <XelisVaultMiner> get_miner_reputation_entry xet1abc.
 
 # Stake (entry ID 10)
 xelis_wallet call-contract <XelisVaultMiner> get_miner_stake_entry xet1abc...
-# → 10000000000   (= 100 VLT)
+# → 10000000000   (= 1,000 VLT)
 
 # Active? (entry ID 9)  — pass service_id=1 for oracle
 xelis_wallet call-contract <XelisVaultMiner> is_miner_active_entry xet1abc... 1
@@ -493,7 +493,7 @@ infraction in the last 1,000 blocks (~83 min):
 3. **Monitor heartbeat** — the daemon sends one every 100 blocks; alert if
    `last_heartbeat_block` falls behind by more than 300 blocks.
 4. Run the daemon under systemd with `Restart=always`.
-5. Keep your stake topped up (≥ 100 VLT) so a few slashes don't de-activate
+5. Keep your stake topped up (≥ 1,000 VLT) so a few slashes don't de-activate
    you.
 
 ---
@@ -545,7 +545,7 @@ xelis_wallet call-contract <XelisVaultMiner> deregister_miner --signer mywallet
 
 ### What happens to your stake?
 
-- Your **full stake** (100 VLT minus any accumulated slash) is transferred
+- Your **full stake** (1,000 VLT minus any accumulated slash) is transferred
   back to your wallet address.
 - Your miner entry is removed from the registry (subsequent heartbeats will
   revert with `notreg`).
@@ -555,7 +555,7 @@ xelis_wallet call-contract <XelisVaultMiner> deregister_miner --signer mywallet
   on-chain forever for transparency.
 
 If you ever want to come back, just call `register_miner` again with a fresh
-100 VLT deposit. Your reputation resets to 10,000.
+1,000 VLT deposit. Your reputation resets to 10,000.
 
 ---
 
@@ -563,8 +563,8 @@ If you ever want to come back, just call `register_miner` again with a fresh
 
 ### 14.1 `insstake` error on `register_miner`
 
-You don't have 100 VLT deposited. The `register_miner` call expects a
-`--deposit` of at least 10,000,000,000 atomic units (100 VLT) of the VLT
+You don't have 1,000 VLT deposited. The `register_miner` call expects a
+`--deposit` of at least 10,000,000,000 atomic units (1,000 VLT) of the VLT
 asset.
 
 ```bash
@@ -653,7 +653,7 @@ a Vault miner on a $5 VPS without ever mining a block.
 ### Q6. Can I run oracle without chat?
 Yes — set `services_mask = 1` (or pass `--services 1` to the daemon).
 
-### Q7. What happens if my stake drops below 100 VLT?
+### Q7. What happens if my stake drops below 1,000 VLT?
 After cumulative slashing, you are auto-deactivated. Call
 `increase_stake(amount)` (entry ID 3) to top up and re-activate.
 

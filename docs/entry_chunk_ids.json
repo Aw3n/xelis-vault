@@ -1,8157 +1,1065 @@
 {
  "VLTToken": {
-  "entries": [
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   27
-  ],
-  "chunks": [
-   {
-    "idx": 3,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Array(Opaque(9)), Array(Number(U64))]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(8), Bool]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(8), Bool]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 21,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 22,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 23,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 25,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 26,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   }
-  ]
+  "burn_own": 5,
+  "mint_batch": 6,
+  "set_minter": 7,
+  "set_burner": 8,
+  "create_asset": 9,
+  "set_registry": 10,
+  "set_timelock": 11,
+  "transfer_admin": 12,
+  "set_emergency": 13,
+  "get_version": 14,
+  "get_asset_hash_entry": 15,
+  "get_max_supply_entry": 16,
+  "get_total_burned_entry": 17,
+  "get_circulating_supply_entry": 18,
+  "request_emergency_withdraw": 19,
+  "execute_emergency_withdraw": 20,
+  "mint_to_entry": 27
  },
  "FeeDistributor": {
-  "entries": [
-   7,
-   8,
-   9,
-   10,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25
-  ],
-  "chunks": [
-   {
-    "idx": 2,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 14,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "collect_fee": 7,
+  "claim_founder_share": 8,
+  "claim_treasury_share": 9,
+  "burn_deflationary_share": 10,
+  "set_founder": 15,
+  "set_treasury": 16,
+  "set_vlt_contract": 17,
+  "set_vlt_asset": 18,
+  "set_registry": 19,
+  "set_timelock": 20,
+  "set_guardian": 21,
+  "pause": 22,
+  "unpause": 23,
+  "transfer_admin": 24,
+  "get_version": 25
  },
  "FounderVesting": {
-  "entries": [
-   6,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19
-  ],
-  "chunks": [
-   {
-    "idx": 2,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 7,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 8,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "claim_founder_tokens": 6,
+  "set_founder": 10,
+  "set_vlt_contract": 11,
+  "set_vlt_asset": 12,
+  "set_registry": 13,
+  "set_timelock": 14,
+  "set_guardian": 15,
+  "pause": 16,
+  "unpause": 17,
+  "transfer_admin": 18,
+  "get_version": 19
  },
  "RevenueShareDelegation": {
-  "entries": [
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28,
-   29,
-   30
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 16,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 17,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 21,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 30,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "set_share": 8,
+  "revoke_share": 9,
+  "update_share_percentage": 10,
+  "extend_share_duration": 11,
+  "claim_founder_revenue": 12,
+  "claim_contributor_revenue": 13,
+  "receive_fee": 14,
+  "set_vlt_contract": 22,
+  "set_xel_asset": 23,
+  "set_registry": 24,
+  "set_timelock": 25,
+  "set_guardian": 26,
+  "pause": 27,
+  "unpause": 28,
+  "transfer_admin": 29,
+  "get_version": 30
  },
  "CreditScore": {
-  "entries": [
-   7,
-   8,
-   9,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "record_loan_opened": 7,
+  "record_loan_repaid": 8,
+  "record_loan_defaulted": 9,
+  "set_registry": 15,
+  "set_timelock": 16,
+  "set_guardian": 17,
+  "pause": 18,
+  "unpause": 19,
+  "transfer_admin": 20,
+  "get_version": 21
  },
  "InterestRateModel": {
-  "entries": [
-   3,
-   5,
-   7,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 3,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 16,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 17,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 18,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "get_borrow_rate_entry": 3,
+  "get_supply_rate_entry": 5,
+  "annual_to_per_block_entry": 7,
+  "get_rates_entry": 9,
+  "set_rates": 10,
+  "set_reserve_factor": 11,
+  "set_timelock": 12,
+  "transfer_admin": 13,
+  "get_version": 14
  },
  "SealedBidAuction": {
-  "entries": [
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28,
-   29,
-   30,
-   31,
-   32,
-   33
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64), Opaque(8), Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 30,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 31,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 32,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 33,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 34,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 35,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 36,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "create_auction": 13,
+  "commit": 14,
+  "reveal": 15,
+  "settle": 16,
+  "declare_winner": 17,
+  "refund_bid": 18,
+  "claim_asset": 19,
+  "claim_proceeds": 20,
+  "get_auction_entry": 21,
+  "get_auctions_count_entry": 22,
+  "pause": 23,
+  "unpause": 24,
+  "set_registry": 25,
+  "set_treasury": 26,
+  "set_timelock": 27,
+  "set_guardian": 28,
+  "set_emergency": 29,
+  "transfer_admin": 30,
+  "get_version": 31,
+  "request_emergency_withdraw": 32,
+  "execute_emergency_withdraw": 33
  },
  "AssetVault": {
-  "entries": [
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[String, String, Number(U8), Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 20,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 22,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 23,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "create_asset": 4,
+  "mint": 5,
+  "transfer_asset": 6,
+  "pause": 7,
+  "unpause": 8,
+  "set_compliance": 9,
+  "set_registry": 10,
+  "set_timelock": 11,
+  "set_emergency": 12,
+  "transfer_admin": 13,
+  "get_asset_info_entry": 14,
+  "get_asset_hash_entry": 15,
+  "get_total_supply_entry": 16,
+  "get_version": 17,
+  "request_emergency_withdraw": 18,
+  "execute_emergency_withdraw": 19
  },
  "SavingsRate": {
-  "entries": [
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28
-  ],
-  "chunks": [
-   {
-    "idx": 2,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 29,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 30,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 31,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 32,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "deposit": 8,
+  "withdraw": 9,
+  "claim_interest": 10,
+  "set_apy_bps": 11,
+  "pause": 12,
+  "unpause": 13,
+  "set_xusd_contract": 14,
+  "set_xusd_asset": 15,
+  "set_treasury": 16,
+  "set_registry": 17,
+  "set_timelock": 18,
+  "set_guardian": 19,
+  "set_emergency": 20,
+  "transfer_admin": 21,
+  "get_balance_entry": 23,
+  "get_total_deposits_entry": 24,
+  "get_apy_entry": 25,
+  "get_version": 26,
+  "request_emergency_withdraw": 27,
+  "execute_emergency_withdraw": 28
  },
  "PrivacyMixer": {
-  "entries": [
-   5,
-   6,
-   7,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Opaque(9), Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 8,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 29,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "deposit": 5,
+  "execute_mix": 6,
+  "execute_refund": 7,
+  "set_min_threshold": 13,
+  "set_max_threshold": 14,
+  "set_timeout_blocks": 15,
+  "set_withdraw_fee_bps": 16,
+  "set_admin_fee_bps": 17,
+  "set_admin_fee_addr": 18,
+  "set_treasury": 19,
+  "set_registry": 20,
+  "set_timelock": 21,
+  "set_guardian": 22,
+  "pause": 23,
+  "unpause": 24,
+  "transfer_admin": 25,
+  "request_emergency_withdraw": 26,
+  "execute_emergency_withdraw": 27,
+  "get_version": 28
  },
  "ContractRegistry": {
-  "entries": [
-   2,
-   3,
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 2,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 3,
-    "kind": "Entry",
-    "params": "[String, Opaque(8)]"
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[String, Opaque(8)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "All",
-    "params": "[String]"
-   },
-   {
-    "idx": 17,
-    "kind": "All",
-    "params": "[String]"
-   },
-   {
-    "idx": 18,
-    "kind": "All",
-    "params": "[String]"
-   },
-   {
-    "idx": 19,
-    "kind": "All",
-    "params": "[String]"
-   },
-   {
-    "idx": 20,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "get_entry": 2,
+  "register": 3,
+  "upgrade": 4,
+  "rollback": 5,
+  "list_names_entry": 6,
+  "get_name_at_entry": 7,
+  "get_version_entry": 8,
+  "get_previous_entry": 9,
+  "set_timelock": 10,
+  "transfer_admin": 11,
+  "set_emergency": 12,
+  "get_version_str": 13,
+  "request_emergency_withdraw": 14,
+  "execute_emergency_withdraw": 15
  },
  "VaultChat": {
-  "entries": [
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28,
-   38,
-   42,
-   43,
-   45,
-   46,
-   47,
-   48,
-   51,
-   55,
-   56,
-   57,
-   59,
-   60,
-   63,
-   66,
-   69,
-   71,
-   72,
-   73,
-   74,
-   75,
-   78,
-   81,
-   82,
-   83,
-   87,
-   93,
-   95,
-   97,
-   99,
-   101,
-   102,
-   103,
-   106,
-   107,
-   108,
-   112,
-   115,
-   116,
-   118,
-   119,
-   120,
-   122,
-   123,
-   127,
-   130,
-   132
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9), Bytes]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64), Number(U64), Number(U8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9), Bool]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 29,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 30,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 31,
-    "kind": "All",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 32,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 33,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 34,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 35,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 36,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 37,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 38,
-    "kind": "Entry",
-    "params": "[Opaque(9), Bytes, Number(U64)]"
-   },
-   {
-    "idx": 39,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 40,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 41,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 42,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 43,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 44,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 45,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 46,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 47,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 48,
-    "kind": "Entry",
-    "params": "[Number(U64), Bytes, Number(U64)]"
-   },
-   {
-    "idx": 49,
-    "kind": "All",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 50,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 51,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U8)]"
-   },
-   {
-    "idx": 52,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 53,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 55,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 56,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 57,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(8)]"
-   },
-   {
-    "idx": 58,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 59,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9), Bytes]"
-   },
-   {
-    "idx": 60,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 61,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 62,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 63,
-    "kind": "Entry",
-    "params": "[Opaque(9), Bytes, Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 64,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 65,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 66,
-    "kind": "Entry",
-    "params": "[String, Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 67,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 68,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 69,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 70,
-    "kind": "All",
-    "params": "[Opaque(9), Opaque(9)]"
-   },
-   {
-    "idx": 71,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 72,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 73,
-    "kind": "Entry",
-    "params": "[Number(U8), Number(U64), Number(U64), Number(U64), Number(U8)]"
-   },
-   {
-    "idx": 74,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 75,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 76,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 77,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 78,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 79,
-    "kind": "All",
-    "params": "[Opaque(9), Opaque(9)]"
-   },
-   {
-    "idx": 80,
-    "kind": "All",
-    "params": "[Opaque(9), Opaque(9)]"
-   },
-   {
-    "idx": 81,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 82,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 83,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 84,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 85,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 86,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 87,
-    "kind": "Entry",
-    "params": "[Opaque(9), String]"
-   },
-   {
-    "idx": 88,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 89,
-    "kind": "All",
-    "params": "[Opaque(9), Opaque(9)]"
-   },
-   {
-    "idx": 90,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 92,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 93,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 94,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 95,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 96,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 97,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 98,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 99,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 100,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 101,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Opaque(8), String]"
-   },
-   {
-    "idx": 102,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 103,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 104,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 105,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 106,
-    "kind": "Entry",
-    "params": "[String, Number(U64), Number(U64), Opaque(8)]"
-   },
-   {
-    "idx": 107,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 108,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 109,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 110,
-    "kind": "All",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 111,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 112,
-    "kind": "Entry",
-    "params": "[Opaque(9), Bytes, Number(U64)]"
-   },
-   {
-    "idx": 113,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 114,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 115,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 116,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 117,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 118,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 119,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 120,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 121,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 122,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), String]"
-   },
-   {
-    "idx": 123,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 125,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 126,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 127,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U8)]"
-   },
-   {
-    "idx": 128,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 129,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 130,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9), Number(U8)]"
-   },
-   {
-    "idx": 131,
-    "kind": "All",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 132,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 133,
-    "kind": "All",
-    "params": "[Number(U64), Opaque(9)]"
-   }
-  ]
+  "register_session": 7,
+  "create_group": 8,
+  "add_group_member": 9,
+  "remove_group_member": 10,
+  "anchor_messages": 11,
+  "revoke_session": 12,
+  "get_session_entry": 13,
+  "get_group_entry": 14,
+  "get_group_member_key_entry": 15,
+  "is_session_active_entry": 16,
+  "get_last_anchor_entry": 17,
+  "get_groups_count_entry": 18,
+  "get_group_members_count_entry": 19,
+  "set_relayer": 20,
+  "set_timelock": 21,
+  "set_guardian": 22,
+  "pause": 23,
+  "unpause": 24,
+  "transfer_admin": 25,
+  "get_version": 26,
+  "request_emergency_withdraw": 27,
+  "execute_emergency_withdraw": 28,
+  "store_message": 38,
+  "delete_message": 42,
+  "delete_conversation": 43,
+  "set_group_admin": 45,
+  "admin_delete_group_message": 46,
+  "admin_kick_member": 47,
+  "store_group_message": 48,
+  "set_relayer_fee": 51,
+  "pay_premium_message": 55,
+  "claim_relayer_fees": 56,
+  "rotate_group_key": 57,
+  "distribute_new_key": 59,
+  "mark_read": 60,
+  "store_ephemeral_message": 63,
+  "register_as_relayer": 66,
+  "claim_free_slot": 69,
+  "consume_free_message": 71,
+  "report_free_usage": 72,
+  "create_plan": 73,
+  "update_plan": 74,
+  "delete_plan": 75,
+  "buy_plan": 78,
+  "consume_credit": 81,
+  "set_batch_interval": 82,
+  "anchor_batch": 83,
+  "blacklist_relayer": 87,
+  "set_protocol_fee_bps": 93,
+  "set_treasury": 95,
+  "set_prune_interval": 97,
+  "report_storage_stats": 99,
+  "create_payment_request": 101,
+  "fulfill_payment_request": 102,
+  "cancel_payment_request": 103,
+  "create_giveaway": 106,
+  "claim_giveaway": 107,
+  "cancel_giveaway": 108,
+  "send_direct_message": 112,
+  "delete_direct_message": 115,
+  "toggle_relayer_paused": 116,
+  "update_relayer_endpoint": 118,
+  "update_free_tier": 119,
+  "stake_relayer_bond": 120,
+  "slash_relayer_bond": 122,
+  "withdraw_relayer_bond": 123,
+  "rate_relayer_weighted": 127,
+  "set_member_role": 130,
+  "mute_member": 132
  },
  "VaultNFT": {
-  "entries": [
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 16,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 17,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 18,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "mint_nft": 4,
+  "transfer_nft": 5,
+  "burn_nft": 6,
+  "list_for_sale": 7,
+  "cancel_sale": 8,
+  "buy_nft": 9,
+  "make_offer": 10,
+  "cancel_offer": 11,
+  "accept_offer": 12,
+  "fractionalize": 13,
+  "set_vault_engine": 19,
+  "set_registry": 20,
+  "set_timelock": 21,
+  "set_guardian": 22,
+  "pause": 23,
+  "unpause": 24,
+  "transfer_admin": 25,
+  "get_version": 26
  },
  "LiquidationMarket": {
-  "entries": [
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "All",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "register_liquidator": 4,
+  "stake_for_priority": 5,
+  "unstake": 6,
+  "record_liquidation": 7,
+  "report_inactive": 8,
+  "claim_rewards": 9,
+  "set_registry": 14,
+  "set_timelock": 15,
+  "set_guardian": 16,
+  "pause": 17,
+  "unpause": 18,
+  "transfer_admin": 19,
+  "get_version": 20
  },
  "VaultBounties": {
-  "entries": [
-   5,
-   6,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 9,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "report_unhealthy_vault": 5,
+  "claim_bounty": 6,
+  "set_vault_engine": 10,
+  "set_registry": 11,
+  "set_timelock": 12,
+  "set_guardian": 13,
+  "pause": 14,
+  "unpause": 15,
+  "transfer_admin": 16,
+  "get_version": 17
  },
  "StakedOracle": {
-  "entries": [
-   15,
-   16,
-   29,
-   30,
-   31,
-   32,
-   40,
-   41,
-   42,
-   43,
-   44,
-   45,
-   46,
-   47,
-   48,
-   49,
-   50,
-   51,
-   52,
-   53,
-   54,
-   55,
-   56,
-   57,
-   58
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 8,
-    "kind": "All",
-    "params": "[String, Opaque(8), Number(U8), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "All",
-    "params": "[Number(U64), Number(U64), Number(U64), Number(U8)]"
-   },
-   {
-    "idx": 10,
-    "kind": "All",
-    "params": "[Number(U64), Bool]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Number(U64), String]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 19,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 20,
-    "kind": "All",
-    "params": "[String]"
-   },
-   {
-    "idx": 21,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "All",
-    "params": "[String]"
-   },
-   {
-    "idx": 23,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 25,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 26,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 27,
-    "kind": "All",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 28,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 30,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 31,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 32,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 33,
-    "kind": "All",
-    "params": "[String]"
-   },
-   {
-    "idx": 34,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 35,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 36,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 37,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 38,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 39,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 40,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 41,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 42,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 43,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 44,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 45,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 46,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 47,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 48,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 49,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 50,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 51,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 52,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 53,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 54,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 55,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 56,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 57,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 58,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   }
-  ]
+  "add_feed_entry": 10,
+  "submit_price": 16,
+  "aggregate_now": 17,
+  "get_price_by_feed_entry": 30,
+  "get_price_entry": 31,
+  "get_price_for_asset_entry": 32,
+  "get_feed_id_entry": 33,
+  "disable_bootstrap": 41,
+  "set_bootstrap_min_providers": 42,
+  "set_min_providers": 43,
+  "set_miner_contract": 44,
+  "set_delegation_contract": 45,
+  "set_registry": 46,
+  "set_timelock": 47,
+  "set_guardian": 48,
+  "set_emergency": 49,
+  "transfer_admin": 50,
+  "get_version": 51,
+  "set_max_deviation_bps_entry": 52,
+  "set_cb_threshold_bps_entry": 53,
+  "set_aggregation_blocks_entry": 54,
+  "set_max_stale_blocks_entry": 55,
+  "set_hard_stale_blocks_entry": 56,
+  "pause_entry": 57,
+  "unpause_entry": 58,
+  "force_update_price": 59
  },
  "FlashCallback": {
-  "entries": [
-   3,
-   4,
-   5,
-   6,
-   7
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 2,
-    "kind": "All",
-    "params": "[Opaque(8), Number(U64), Number(U64), Opaque(9), Bytes]"
-   },
-   {
-    "idx": 3,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "claim_profit": 3,
+  "set_flash_loan": 4,
+  "set_registry": 5,
+  "transfer_admin": 6,
+  "get_version": 7
  },
  "FlashLoan": {
-  "entries": [
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   23,
-   24
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64), Opaque(8), Bytes]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 25,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "flash_loan": 6,
+  "get_fee_bps_entry": 7,
+  "get_total_earned_entry": 8,
+  "get_available_liquidity_entry": 9,
+  "set_fee_bps": 10,
+  "pause": 11,
+  "unpause": 12,
+  "set_treasury": 13,
+  "set_registry": 14,
+  "set_timelock": 15,
+  "set_guardian": 16,
+  "set_emergency": 17,
+  "transfer_admin": 18,
+  "get_version": 19,
+  "request_emergency_withdraw": 20,
+  "execute_emergency_withdraw": 21,
+  "verify_callback": 23,
+  "revoke_callback": 24
  },
  "ComplianceModule": {
-  "entries": [
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 3,
-    "kind": "All",
-    "params": "[Opaque(9), Opaque(9), Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Opaque(8), Opaque(8)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(9), Bool]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(8), Bool]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "All",
-    "params": "[Opaque(8), Opaque(8)]"
-   },
-   {
-    "idx": 21,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 22,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 23,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "verify_proof_entry": 5,
+  "is_compliant_entry": 6,
+  "get_current_root_entry": 7,
+  "get_verifiers_count_entry": 8,
+  "update_merkle_root": 9,
+  "mark_compliant": 10,
+  "add_verifier": 11,
+  "remove_verifier": 12,
+  "set_compliance_required": 13,
+  "set_registry": 14,
+  "set_timelock": 15,
+  "pause": 16,
+  "unpause": 17,
+  "transfer_admin": 18,
+  "get_version": 19
  },
  "PSM": {
-  "entries": [
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28,
-   29,
-   30
-  ],
-  "chunks": [
-   {
-    "idx": 1,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 30,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 31,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 32,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 33,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 34,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 35,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "mint": 8,
+  "redeem": 9,
+  "get_reserves_entry": 10,
+  "get_mint_fee_entry": 11,
+  "get_redeem_fee_entry": 12,
+  "get_daily_usage_entry": 13,
+  "set_mint_fee_bps": 14,
+  "set_redeem_fee_bps": 15,
+  "set_daily_caps": 16,
+  "pause": 17,
+  "unpause": 18,
+  "request_emergency_withdraw": 19,
+  "execute_emergency_withdraw": 20,
+  "set_xusd_contract": 21,
+  "set_xusd_asset": 22,
+  "set_oracle": 23,
+  "set_treasury": 24,
+  "set_registry": 25,
+  "set_timelock": 26,
+  "set_guardian": 27,
+  "set_emergency": 28,
+  "transfer_admin": 29,
+  "get_version": 30
  },
  "VaultSwapV2": {
-  "entries": [
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28,
-   29,
-   30,
-   31,
-   32,
-   33,
-   34,
-   35,
-   36,
-   37,
-   38,
-   39,
-   40,
-   41,
-   42,
-   43,
-   44,
-   45,
-   46
-  ],
-  "chunks": [
-   {
-    "idx": 1,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8), Opaque(8), Bool]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8), Opaque(8), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8), Opaque(8), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(8), Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(8), Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Opaque(8), Opaque(8)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Opaque(8), Opaque(8)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 30,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 31,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 32,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 33,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 34,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 35,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 36,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 37,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 38,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 39,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 40,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 41,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 42,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 43,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 44,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 45,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 46,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 47,
-    "kind": "All",
-    "params": "[Opaque(8), Opaque(8)]"
-   },
-   {
-    "idx": 48,
-    "kind": "All",
-    "params": "[Opaque(8), Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 49,
-    "kind": "All",
-    "params": "[Opaque(8), Opaque(8)]"
-   },
-   {
-    "idx": 50,
-    "kind": "All",
-    "params": "[Opaque(8), Opaque(8)]"
-   },
-   {
-    "idx": 51,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 52,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 53,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 54,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "create_pool": 16,
+  "add_liquidity": 17,
+  "swap": 18,
+  "psm_mint": 19,
+  "psm_redeem": 20,
+  "get_pool_entry": 21,
+  "get_amount_out_view_entry": 22,
+  "get_twap_entry": 23,
+  "get_volatility_bps_entry": 24,
+  "get_pools_count_entry": 25,
+  "get_pool_by_index_entry": 26,
+  "get_fees_entry": 27,
+  "pause": 28,
+  "unpause": 29,
+  "set_base_fee_bps": 30,
+  "set_treasury_fee_bps": 31,
+  "set_max_volatility_bps": 32,
+  "set_max_swap_pct_bps": 33,
+  "set_psm_mint_fee_bps": 34,
+  "set_psm_redeem_fee_bps": 35,
+  "set_registry": 36,
+  "set_oracle": 37,
+  "set_xusd_asset": 38,
+  "set_xusd_contract": 39,
+  "set_treasury": 40,
+  "set_timelock": 41,
+  "set_guardian": 42,
+  "set_emergency": 43,
+  "transfer_admin": 44,
+  "get_version": 45,
+  "request_emergency_withdraw": 46,
+  "execute_emergency_withdraw": 47
  },
  "EmergencyShutdown": {
-  "entries": [
-   5,
-   6,
-   7,
-   8,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "All",
-    "params": "[Number(U8)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "trigger_soft_pause": 5,
+  "trigger_full_shutdown": 6,
+  "propose_recovery": 7,
+  "execute_recovery": 8,
+  "set_registry": 14,
+  "set_timelock": 15,
+  "set_guardian": 16,
+  "set_governor": 17,
+  "transfer_admin": 18,
+  "get_version": 19
  },
  "LendingMarket": {
-  "entries": [
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28,
-   29,
-   30,
-   31,
-   32,
-   33,
-   34,
-   35,
-   36,
-   37,
-   38
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8), Opaque(8), Number(U64), Number(U64), Number(U64), Number(U64), Opaque(8)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 30,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 31,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 32,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 33,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 34,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 35,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 36,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 37,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 38,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 39,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 40,
-    "kind": "All",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 41,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 42,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "create_pool": 18,
+  "supply": 19,
+  "borrow": 20,
+  "repay": 21,
+  "withdraw": 22,
+  "liquidate": 23,
+  "get_pool_info_entry": 24,
+  "get_user_position_entry": 25,
+  "get_pools_count_entry": 26,
+  "pause": 27,
+  "unpause": 28,
+  "set_oracle": 29,
+  "set_treasury": 30,
+  "set_registry": 31,
+  "set_timelock": 32,
+  "set_guardian": 33,
+  "set_emergency": 34,
+  "transfer_admin": 35,
+  "get_version": 36,
+  "request_emergency_withdraw": 37,
+  "execute_emergency_withdraw": 38
  },
  "PeerLoan": {
-  "entries": [
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64), Number(U64), Number(U64), Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 25,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 26,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 27,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "create_offer": 6,
+  "cancel_offer": 7,
+  "accept_offer": 8,
+  "repay": 9,
+  "claim_collateral": 10,
+  "get_offer_entry": 11,
+  "get_offers_count_entry": 12,
+  "pause": 13,
+  "unpause": 14,
+  "set_oracle": 15,
+  "set_treasury": 16,
+  "set_registry": 17,
+  "set_timelock": 18,
+  "set_guardian": 19,
+  "set_emergency": 20,
+  "transfer_admin": 21,
+  "get_version": 22,
+  "request_emergency_withdraw": 23,
+  "execute_emergency_withdraw": 24
  },
  "SyndicatePool": {
-  "entries": [
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64), Number(U64), Number(U64), Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 29,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 30,
-    "kind": "All",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 31,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 32,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "create_pool": 8,
+  "supply": 9,
+  "withdraw_supply": 10,
+  "activate_pool": 11,
+  "repay": 12,
+  "claim": 13,
+  "get_pool_entry": 14,
+  "get_lender_position_entry": 15,
+  "get_pools_count_entry": 16,
+  "pause": 17,
+  "unpause": 18,
+  "set_oracle": 19,
+  "set_treasury": 20,
+  "set_registry": 21,
+  "set_timelock": 22,
+  "set_guardian": 23,
+  "set_emergency": 24,
+  "transfer_admin": 25,
+  "get_version": 26,
+  "request_emergency_withdraw": 27,
+  "execute_emergency_withdraw": 28
  },
  "SocialTrading": {
-  "entries": [
-   4,
-   5,
-   6,
-   7,
-   8,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U8), Number(U64), Opaque(8)]"
-   },
-   {
-    "idx": 9,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 10,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "make_vault_public": 4,
+  "make_vault_private": 5,
+  "follow_leader": 6,
+  "stop_follow": 7,
+  "emit_leader_action": 8,
+  "set_registry": 13,
+  "set_timelock": 14,
+  "set_guardian": 15,
+  "pause": 16,
+  "unpause": 17,
+  "transfer_admin": 18,
+  "get_version": 19
  },
  "xUSD": {
-  "entries": [
-   2,
-   6,
-   8,
-   9,
-   10,
-   12,
-   13,
-   14,
-   15,
-   16,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 2,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 3,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 4,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64), Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "All",
-    "params": "[Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8), Bool]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(8), Bool]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 27,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 28,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 29,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   }
-  ]
+  "create_asset": 2,
+  "transfer_tokens": 6,
+  "get_asset_info": 8,
+  "set_vault_contract": 9,
+  "set_timelock": 10,
+  "transfer_admin": 12,
+  "set_psm": 13,
+  "set_emergency": 14,
+  "emergency_withdraw": 15,
+  "set_savings": 16,
+  "set_minter": 18,
+  "set_burner": 19,
+  "set_registry": 20,
+  "get_version": 21,
+  "get_asset_hash_entry": 22,
+  "get_asset_info_entry": 23,
+  "get_balance_entry": 24,
+  "request_emergency_withdraw": 25,
+  "execute_emergency_withdraw": 26
  },
  "GovernanceDelegation": {
-  "entries": [
-   6,
-   7,
-   8,
-   9,
-   10,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U8), Opaque(9)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U8)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(9), Bool]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 15,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "delegate": 6,
+  "undelegate": 7,
+  "delegate_by_topic": 8,
+  "undelegate_by_topic": 9,
+  "record_vote": 10,
+  "set_governance_vault": 16,
+  "set_registry": 17,
+  "set_timelock": 18,
+  "set_guardian": 19,
+  "pause": 20,
+  "unpause": 21,
+  "transfer_admin": 22,
+  "get_version": 23
  },
  "GovernanceVault": {
-  "entries": [
-   4,
-   5,
-   6,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 7,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 8,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(8), Bool]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 25,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 26,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 27,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 28,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 29,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 30,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 31,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 32,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 33,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 34,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 35,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 36,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64), Number(U64)]"
-   }
-  ]
+  "stake": 4,
+  "unstake": 5,
+  "claim_rewards": 6,
+  "get_total_staked_entry": 9,
+  "get_user_staked_entry": 10,
+  "get_stakes_count_entry": 11,
+  "notify_reward_amount": 12,
+  "set_reward_distributor": 13,
+  "set_vlt_contract": 14,
+  "set_vlt_asset": 15,
+  "set_registry": 16,
+  "set_timelock": 17,
+  "pause": 18,
+  "unpause": 19,
+  "transfer_admin": 20,
+  "set_emergency": 21,
+  "get_version": 22,
+  "request_emergency_withdraw": 23,
+  "execute_emergency_withdraw": 24
  },
  "Governor": {
-  "entries": [
-   3,
-   4,
-   5,
-   6,
-   7,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 3,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U16), Bytes, String]"
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U8)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 8,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 18,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "All",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 20,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 22,
-    "kind": "All",
-    "params": "[]"
-   }
-  ]
+  "propose": 3,
+  "vote": 4,
+  "queue": 5,
+  "cancel": 6,
+  "get_proposal_count_entry": 7,
+  "set_governance_vault": 10,
+  "set_timelock": 11,
+  "set_voting_period": 12,
+  "set_quorum_bps": 13,
+  "set_approval_bps": 14,
+  "set_proposal_threshold": 15,
+  "transfer_admin": 16,
+  "get_version": 17
  },
  "GuardianMultisig": {
-  "entries": [
-   3,
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 3,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U8), Bytes]"
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(9), Bytes]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(9), Bytes]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64), Bytes]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 18,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 20,
-    "kind": "All",
-    "params": "[]"
-   }
-  ]
+  "propose_emergency_action": 3,
+  "confirm": 4,
+  "execute": 5,
+  "add_guardian_via_proposal": 6,
+  "remove_guardian_via_proposal": 7,
+  "set_quorum_via_proposal": 8,
+  "get_proposal_entry": 9,
+  "get_guardians_info_entry": 10,
+  "is_guardian_entry": 11,
+  "set_timelock": 12,
+  "transfer_admin": 13,
+  "get_version": 14,
+  "request_emergency_withdraw": 15,
+  "execute_emergency_withdraw": 16
  },
  "OracleGovernance": {
-  "entries": [
-   3,
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 3,
-    "kind": "Entry",
-    "params": "[String, Opaque(8), Number(U8), Number(U64), Number(U64), String]"
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64), Number(U64), Number(U8), String]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64), String]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U8), Number(U64), String]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64), String]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64), String]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64), String]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64), Bool]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 25,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 26,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 27,
-    "kind": "All",
-    "params": "[Number(U64), Opaque(9)]"
-   }
-  ]
+  "propose_add_feed": 3,
+  "propose_update_feed": 4,
+  "propose_remove_feed": 5,
+  "propose_set_param": 6,
+  "propose_set_reward": 7,
+  "propose_emergency_cb": 8,
+  "propose_reset_feed": 9,
+  "vote": 10,
+  "execute_proposal": 12,
+  "cancel_proposal": 13,
+  "set_voting_period": 14,
+  "set_quorum_bps": 15,
+  "set_approval_bps": 16,
+  "set_execution_delay": 17,
+  "set_oracle": 18,
+  "set_governance_vault": 19,
+  "set_miner_contract": 20,
+  "set_timelock": 21,
+  "set_guardian": 22,
+  "transfer_admin": 23,
+  "get_version": 24
  },
  "Timelock": {
-  "entries": [
-   6,
-   7,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 5,
-    "kind": "All",
-    "params": "[Opaque(8), Number(U16), Bytes, Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "All",
-    "params": "[Opaque(8), Number(U16), Bytes]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 19,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 20,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "All",
-    "params": "[]"
-   }
-  ]
+  "execute_proposal": 6,
+  "cancel_proposal": 7,
+  "set_min_delay": 9,
+  "set_max_delay": 10,
+  "set_governor": 11,
+  "set_guardian": 12,
+  "set_guardian_contract": 13,
+  "set_emergency": 14,
+  "transfer_admin": 15,
+  "get_version": 16,
+  "request_emergency_withdraw": 17,
+  "execute_emergency_withdraw": 18
  },
  "FaucetContract": {
-  "entries": [
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   20,
-   21,
-   22
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Array(Opaque(9))]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "refill_xel": 4,
+  "refill_vlt": 5,
+  "distribute": 6,
+  "set_claim_amounts": 7,
+  "set_cooldown_blocks": 8,
+  "set_lifetime_caps": 9,
+  "pause": 10,
+  "unpause": 11,
+  "set_vlt_contract": 12,
+  "set_vlt_asset": 13,
+  "set_registry": 14,
+  "set_timelock": 15,
+  "set_guardian": 16,
+  "transfer_admin": 17,
+  "get_version": 20,
+  "request_emergency_withdraw": 21,
+  "execute_emergency_withdraw": 22
  },
  "TreasuryVault": {
-  "entries": [
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28,
-   29
-  ],
-  "chunks": [
-   {
-    "idx": 2,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Opaque(8), Opaque(9), Number(U64), Bytes]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 30,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 31,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 32,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 33,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 34,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 35,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "propose": 9,
+  "confirm": 10,
+  "revoke": 11,
+  "execute": 12,
+  "add_signer": 13,
+  "remove_signer": 14,
+  "set_quorum": 15,
+  "deposit": 16,
+  "pause": 17,
+  "unpause": 18,
+  "set_timelock": 19,
+  "set_emergency": 20,
+  "transfer_admin": 21,
+  "get_proposal_entry": 22,
+  "get_signers_entry": 23,
+  "is_signer_entry": 24,
+  "get_balance_entry": 25,
+  "get_proposals_count_entry": 26,
+  "get_version": 27,
+  "request_emergency_withdraw": 28,
+  "execute_emergency_withdraw": 29
  },
  "Payroll": {
-  "entries": [
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   17,
-   18,
-   19,
-   20,
-   21
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Opaque(9), Opaque(8), Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "add_employee": 4,
+  "update_employee": 5,
+  "remove_employee": 6,
+  "claim": 7,
+  "set_treasury": 8,
+  "set_registry": 9,
+  "set_timelock": 10,
+  "set_emergency": 11,
+  "pause": 12,
+  "unpause": 13,
+  "transfer_admin": 14,
+  "deposit_funds": 15,
+  "get_pending_entry": 17,
+  "get_employees_count_entry": 18,
+  "get_version": 19,
+  "request_emergency_withdraw": 20,
+  "execute_emergency_withdraw": 21
  },
  "RevenueShare": {
-  "entries": [
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21
-  ],
-  "chunks": [
-   {
-    "idx": 2,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9), Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 22,
-    "kind": "All",
-    "params": "[Opaque(9), Opaque(8)]"
-   },
-   {
-    "idx": 23,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 24,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 25,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "deposit_revenue": 6,
+  "claim": 7,
+  "set_share_token": 8,
+  "set_total_supply": 9,
+  "set_registry": 10,
+  "set_timelock": 11,
+  "set_emergency": 12,
+  "pause": 13,
+  "unpause": 14,
+  "transfer_admin": 15,
+  "get_claimable_entry": 16,
+  "get_total_distributed_entry": 17,
+  "get_accum_per_token_entry": 18,
+  "get_version": 19,
+  "request_emergency_withdraw": 20,
+  "execute_emergency_withdraw": 21
  },
  "InsurancePool": {
-  "entries": [
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(8)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 26,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 27,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 28,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "stake": 6,
+  "unstake": 7,
+  "claim_premium": 8,
+  "submit_claim": 9,
+  "approve_claim": 10,
+  "reject_claim": 11,
+  "pay_premium": 12,
+  "get_pool_info_entry": 13,
+  "get_staker_entry": 14,
+  "set_asset": 15,
+  "set_registry": 16,
+  "set_timelock": 17,
+  "set_guardian": 18,
+  "set_emergency": 19,
+  "pause": 20,
+  "unpause": 21,
+  "transfer_admin": 22,
+  "get_version": 23,
+  "request_emergency_withdraw": 24,
+  "execute_emergency_withdraw": 25
  },
  "PrivateInsurance": {
-  "entries": [
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23
-  ],
-  "chunks": [
-   {
-    "idx": 2,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64), Number(U64), Number(U64), Opaque(8)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(8)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 24,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 25,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 26,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "create_policy": 7,
+  "buy_policy": 8,
+  "claim": 9,
+  "approve_claim": 10,
+  "cancel_policy": 11,
+  "expire_policy": 12,
+  "get_policy_entry": 13,
+  "get_policies_count_entry": 14,
+  "set_registry": 15,
+  "set_timelock": 16,
+  "set_emergency": 17,
+  "pause": 18,
+  "unpause": 19,
+  "transfer_admin": 20,
+  "get_version": 21,
+  "request_emergency_withdraw": 22,
+  "execute_emergency_withdraw": 23
  },
  "VaultInsurance": {
-  "entries": [
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "insure_vault": 4,
+  "cancel_insurance": 5,
+  "trigger_auto_repay": 6,
+  "claim_residual_collateral": 7,
+  "stake_to_pool": 8,
+  "unstake_from_pool": 9,
+  "claim_staker_rewards": 10,
+  "set_vault_engine": 14,
+  "set_registry": 15,
+  "set_timelock": 16,
+  "set_guardian": 17,
+  "pause": 18,
+  "unpause": 19,
+  "transfer_admin": 20,
+  "get_version": 21
  },
  "AirdropClaim": {
-  "entries": [
-   8,
-   9,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23
-  ],
-  "chunks": [
-   {
-    "idx": 2,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(9), Opaque(9), Number(U64), Array(Opaque(8))]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 10,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "claim": 8,
+  "emergency_withdraw_unclaimed": 9,
+  "set_vlt_contract": 15,
+  "set_merkle_root": 16,
+  "set_registry": 17,
+  "set_timelock": 18,
+  "set_guardian": 19,
+  "pause": 20,
+  "unpause": 21,
+  "transfer_admin": 22,
+  "get_version": 23
  },
  "AirdropTracker": {
-  "entries": [
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   51,
-   52,
-   53,
-   54,
-   55,
-   56,
-   57,
-   58,
-   65,
-   66,
-   67,
-   68,
-   69,
-   70,
-   71,
-   72,
-   73
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U8)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U8), Number(U64), String]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 26,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 27,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 28,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 29,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 30,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 31,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 32,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 33,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 34,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 35,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 36,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 37,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 38,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 39,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 40,
-    "kind": "All",
-    "params": "[Number(U8)]"
-   },
-   {
-    "idx": 41,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 42,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 43,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 44,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 45,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 46,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 47,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 48,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 49,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 50,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 51,
-    "kind": "Entry",
-    "params": "[Array(Opaque(9)), Number(U8), Number(U64), String]"
-   },
-   {
-    "idx": 52,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U8), Number(U64), String]"
-   },
-   {
-    "idx": 53,
-    "kind": "Entry",
-    "params": "[Opaque(9), String]"
-   },
-   {
-    "idx": 54,
-    "kind": "Entry",
-    "params": "[Opaque(9), String]"
-   },
-   {
-    "idx": 55,
-    "kind": "Entry",
-    "params": "[Opaque(9), String]"
-   },
-   {
-    "idx": 56,
-    "kind": "Entry",
-    "params": "[Opaque(9), String]"
-   },
-   {
-    "idx": 57,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), String]"
-   },
-   {
-    "idx": 58,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 59,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 60,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 61,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 62,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 63,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 64,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 65,
-    "kind": "Entry",
-    "params": "[Opaque(9), Bool]"
-   },
-   {
-    "idx": 66,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 67,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 68,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 69,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 70,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 71,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 72,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 73,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "record_mining_activity": 13,
+  "record_relayer_activity": 14,
+  "record_governance_vote": 15,
+  "record_governance_proposal": 16,
+  "record_chat_message": 17,
+  "record_chat_group_created": 18,
+  "record_liquidity_provided": 19,
+  "record_bug_bounty": 20,
+  "record_manual_attribution": 21,
+  "record_mainnet_address": 22,
+  "freeze_points": 23,
+  "finalize_distribution": 24,
+  "set_merkle_root": 25,
+  "record_manual_attribution_batch": 51,
+  "deduct_points": 52,
+  "disqualify_user": 53,
+  "revoke_disqualification": 54,
+  "force_qualify_user": 55,
+  "revoke_force_qualification": 56,
+  "set_user_bonus_multiplier": 57,
+  "set_manual_attribution_cap": 58,
+  "set_authorized_recorder": 65,
+  "set_vlt_contract": 66,
+  "set_registry": 67,
+  "set_timelock": 68,
+  "set_guardian": 69,
+  "pause": 70,
+  "unpause": 71,
+  "transfer_admin": 72,
+  "get_version": 73
  },
  "NotificationCenter": {
-  "entries": [
-   4,
-   5,
-   6,
-   7,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Bytes, Opaque(8), Bytes, Number(U8), Number(U8), Number(U8), Number(U32), Number(U32)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Bytes, Bytes]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U8), Number(U8), Number(U8), Number(U32), Number(U32)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 8,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 9,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U8), Number(U8), Bytes]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "register_preferences": 4,
+  "update_contact_info": 5,
+  "update_notification_prefs": 6,
+  "unsubscribe": 7,
+  "emit_notification_event": 10,
+  "set_registry": 11,
+  "set_timelock": 12,
+  "set_guardian": 13,
+  "pause": 14,
+  "unpause": 15,
+  "transfer_admin": 16,
+  "get_version": 17
  },
  "MultiCollateralVault": {
-  "entries": [
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(8), Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(8), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[Number(U64), Opaque(8)]"
-   },
-   {
-    "idx": 13,
-    "kind": "All",
-    "params": "[String]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[String, Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "create_multi_vault": 4,
+  "add_collateral": 5,
+  "remove_collateral": 6,
+  "borrow_multi": 7,
+  "repay_multi": 8,
+  "liquidate_multi": 9,
+  "set_asset_ltv": 14,
+  "set_registry": 15,
+  "set_timelock": 16,
+  "set_guardian": 17,
+  "pause": 18,
+  "unpause": 19,
+  "transfer_admin": 20,
+  "get_version": 21
  },
  "VaultEngineV3": {
-  "entries": [
-   17,
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28,
-   29,
-   30,
-   31,
-   32,
-   33,
-   34,
-   35,
-   36,
-   37,
-   38,
-   39,
-   40,
-   41,
-   42,
-   43,
-   44,
-   45,
-   46,
-   47,
-   48,
-   49,
-   50,
-   51,
-   52,
-   70,
-   71,
-   72,
-   74
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8), Number(U64), Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 30,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 31,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 32,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 33,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 34,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 35,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 36,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 37,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 38,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 39,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 40,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 41,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 42,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 43,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 44,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 45,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 46,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 47,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 48,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 49,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 50,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 51,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 52,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 53,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 54,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 55,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 56,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 57,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 58,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 59,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 60,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 61,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 62,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 63,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 64,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 65,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 66,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 67,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 68,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 69,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 70,
-    "kind": "Entry",
-    "params": "[Opaque(11), Opaque(17)]"
-   },
-   {
-    "idx": 71,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(11), Opaque(17), Opaque(17)]"
-   },
-   {
-    "idx": 72,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(11), Opaque(17)]"
-   },
-   {
-    "idx": 73,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 74,
-    "kind": "Entry",
-    "params": "[Number(U64), Tuples([Opaque(11), Opaque(11), Opaque(11)])]"
-   },
-   {
-    "idx": 75,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   }
-  ]
+  "deposit": 17,
+  "borrow": 18,
+  "repay": 19,
+  "withdraw": 20,
+  "liquidate": 21,
+  "redeem": 22,
+  "get_health_factor_entry": 23,
+  "total_vaults_entry": 24,
+  "redemption_queue_size_entry": 25,
+  "get_vault_entry": 26,
+  "get_accrued_borrow_entry": 27,
+  "get_config_public_entry": 28,
+  "get_stability_fee_index_entry": 29,
+  "pause": 30,
+  "unpause": 31,
+  "set_min_cr_bps": 32,
+  "set_liq_penalty_bps": 33,
+  "set_protocol_fee_bps": 34,
+  "set_insurance_fee_bps": 35,
+  "set_redemption_fee_bps": 36,
+  "set_grace_period_blocks": 37,
+  "set_stability_fee_bps": 38,
+  "set_queue_cap": 39,
+  "set_registry": 40,
+  "set_xusd_contract": 41,
+  "set_xusd_asset": 42,
+  "set_treasury": 43,
+  "set_insurance_pool": 44,
+  "set_timelock": 45,
+  "set_guardian": 46,
+  "transfer_admin": 47,
+  "set_emergency": 48,
+  "get_version": 49,
+  "is_paused": 50,
+  "request_emergency_withdraw": 51,
+  "execute_emergency_withdraw": 52,
+  "deposit_confidential": 70,
+  "borrow_confidential": 71,
+  "repay_confidential": 72,
+  "update_channel_meta": 74
  },
  "VaultTemplates": {
-  "entries": [
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   12,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Number(U8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "execute_safe_vault": 5,
+  "execute_leverage_loop": 6,
+  "execute_yield_farmer": 7,
+  "execute_psm_arbitrage": 8,
+  "execute_lp_strategy": 9,
+  "emergency_exit": 10,
+  "set_vault_engine": 12,
+  "set_psm": 13,
+  "set_vault_swap": 14,
+  "set_savings_rate": 15,
+  "set_registry": 16,
+  "set_timelock": 17,
+  "set_guardian": 18,
+  "pause": 19,
+  "unpause": 20,
+  "transfer_admin": 21,
+  "get_version": 22
  },
  "YieldOptimizer": {
-  "entries": [
-   4,
-   5,
-   6,
-   7,
-   8,
-   9,
-   13,
-   14,
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   22
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 4,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U8)]"
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U8)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 11,
-    "kind": "All",
-    "params": "[Number(U8), Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "opt_in": 4,
+  "opt_out": 5,
+  "set_strategy": 6,
+  "execute_strategy": 7,
+  "reinvest_rewards": 8,
+  "claim_rewards": 9,
+  "set_savings_rate": 13,
+  "set_lending_market": 14,
+  "set_gov_vault": 15,
+  "set_registry": 16,
+  "set_timelock": 17,
+  "set_guardian": 18,
+  "pause": 19,
+  "unpause": 20,
+  "transfer_admin": 21,
+  "get_version": 22
  },
  "AnalyticsCollector": {
-  "entries": [
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   17,
-   18,
-   19,
-   20,
-   21
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64), Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Number(U8)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "All",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "All",
-    "params": "[Number(U8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   }
-  ]
+  "record_tvl_snapshot": 5,
+  "record_swap_volume": 6,
+  "record_liquidation": 7,
+  "record_vault_opened": 8,
+  "record_vault_closed": 9,
+  "record_rewards_distributed": 10,
+  "record_health_factor_bucket": 11,
+  "record_active_user": 12,
+  "set_registry": 17,
+  "set_timelock": 18,
+  "set_guardian": 19,
+  "transfer_admin": 20,
+  "get_version": 21
  },
  "MinerDelegation": {
-  "entries": [
-   5,
-   6,
-   7,
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28,
-   29,
-   30,
-   31,
-   32,
-   33,
-   34,
-   35
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 5,
-    "kind": "Entry",
-    "params": "[String, String, Number(U64)]"
-   },
-   {
-    "idx": 6,
-    "kind": "Entry",
-    "params": "[String, String, Number(U64)]"
-   },
-   {
-    "idx": 7,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), Bool]"
-   },
-   {
-    "idx": 8,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 9,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 16,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 17,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 18,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 19,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 20,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 21,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 30,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 31,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 32,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 33,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 34,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 35,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 36,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64)]"
-   }
-  ]
+  "register_miner_profile": 5,
+  "update_miner_profile": 6,
+  "delegate": 7,
+  "undelegate": 8,
+  "execute_undelegate": 9,
+  "claim_delegator_rewards": 10,
+  "claim_miner_rewards": 11,
+  "distribute_rewards": 12,
+  "apply_slashing": 13,
+  "set_miner_own_stake": 14,
+  "set_miner_contract_hash": 22,
+  "set_min_commission": 23,
+  "set_max_commission": 24,
+  "set_undelegate_delay": 25,
+  "set_cap_stake": 26,
+  "set_vlt_asset": 27,
+  "set_registry": 28,
+  "set_timelock": 29,
+  "set_guardian": 30,
+  "pause": 31,
+  "unpause": 32,
+  "transfer_admin": 33,
+  "get_miner_total_stake_entry": 34,
+  "get_version": 35
  },
  "MinerPool": {
-  "entries": [
-   10,
-   11,
-   12,
-   13,
-   14,
-   15,
-   17,
-   18,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   27,
-   28,
-   29,
-   30,
-   31,
-   32,
-   33,
-   34,
-   35
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 10,
-    "kind": "Entry",
-    "params": "[String, String, Number(U64)]"
-   },
-   {
-    "idx": 11,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 12,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 13,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 14,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 22,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 23,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 24,
-    "kind": "Entry",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 27,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 30,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 31,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 32,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 33,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 34,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 35,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 36,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 37,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 38,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 39,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 40,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 41,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 42,
-    "kind": "All",
-    "params": "[Number(U64), Opaque(9)]"
-   },
-   {
-    "idx": 43,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   }
-  ]
+  "create_pool": 10,
+  "join_pool": 11,
+  "leave_pool": 12,
+  "kick_member": 13,
+  "distribute_pool_rewards_entry": 14,
+  "claim_pool_rewards": 15,
+  "get_pool_entry": 17,
+  "get_pool_members_entry": 18,
+  "get_pool_reputation_entry": 20,
+  "get_user_pool_entry": 21,
+  "get_pools_count_entry": 22,
+  "get_pool_pending_rewards_entry": 23,
+  "is_pool_member_entry": 24,
+  "set_miner_contract": 25,
+  "set_vlt_asset": 26,
+  "set_registry": 27,
+  "set_timelock": 28,
+  "set_emergency": 29,
+  "pause": 30,
+  "unpause": 31,
+  "transfer_admin": 32,
+  "get_version": 33,
+  "request_emergency_withdraw": 34,
+  "execute_emergency_withdraw": 35
  },
  "XelisVaultMiner": {
-  "entries": [
-   15,
-   16,
-   17,
-   18,
-   19,
-   20,
-   21,
-   25,
-   26,
-   28,
-   29,
-   30,
-   31,
-   32,
-   33,
-   34,
-   35,
-   37,
-   38,
-   39,
-   40,
-   41,
-   42,
-   43,
-   44,
-   45,
-   46,
-   47,
-   48,
-   49,
-   50,
-   51,
-   52,
-   53,
-   54,
-   63,
-   65,
-   75,
-   76,
-   77,
-   78,
-   79,
-   80,
-   81,
-   82,
-   83
-  ],
-  "chunks": [
-   {
-    "idx": 0,
-    "kind": "Hook",
-    "id": 0
-   },
-   {
-    "idx": 12,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 15,
-    "kind": "Entry",
-    "params": "[String, Opaque(8), Number(U8)]"
-   },
-   {
-    "idx": 16,
-    "kind": "Entry",
-    "params": "[Number(U8)]"
-   },
-   {
-    "idx": 17,
-    "kind": "Entry",
-    "params": "[Number(U8)]"
-   },
-   {
-    "idx": 18,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 19,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 20,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 21,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 22,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U8), Opaque(9)]"
-   },
-   {
-    "idx": 23,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U8), Bool]"
-   },
-   {
-    "idx": 24,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U8)]"
-   },
-   {
-    "idx": 25,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 26,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 27,
-    "kind": "All",
-    "params": "[Number(U8)]"
-   },
-   {
-    "idx": 28,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 29,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 30,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 31,
-    "kind": "Entry",
-    "params": "[Number(U8), Opaque(8)]"
-   },
-   {
-    "idx": 32,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 33,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 34,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 35,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 36,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 37,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 38,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 39,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 40,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 41,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 42,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 43,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 44,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 45,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 46,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 47,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 48,
-    "kind": "Entry",
-    "params": "[String]"
-   },
-   {
-    "idx": 49,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 50,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 51,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 52,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 53,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 54,
-    "kind": "Entry",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 55,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 56,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 57,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 58,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 59,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 60,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 61,
-    "kind": "All",
-    "params": "[Opaque(8)]"
-   },
-   {
-    "idx": 62,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 63,
-    "kind": "Entry",
-    "params": "[Bool]"
-   },
-   {
-    "idx": 64,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 65,
-    "kind": "Entry",
-    "params": "[Number(U64), Number(U64)]"
-   },
-   {
-    "idx": 66,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 67,
-    "kind": "All",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 69,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 70,
-    "kind": "All",
-    "params": "[Array(Number(U64)), Number(U64)]"
-   },
-   {
-    "idx": 71,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 72,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 73,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 74,
-    "kind": "All",
-    "params": "[]"
-   },
-   {
-    "idx": 75,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 76,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 77,
-    "kind": "Entry",
-    "params": "[Opaque(9), Number(U64), String]"
-   },
-   {
-    "idx": 78,
-    "kind": "Entry",
-    "params": "[Opaque(9), String]"
-   },
-   {
-    "idx": 79,
-    "kind": "Entry",
-    "params": "[Bool]"
-   },
-   {
-    "idx": 80,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 81,
-    "kind": "Entry",
-    "params": "[Number(U64)]"
-   },
-   {
-    "idx": 82,
-    "kind": "Entry",
-    "params": "[Opaque(9)]"
-   },
-   {
-    "idx": 83,
-    "kind": "Entry",
-    "params": "[]"
-   },
-   {
-    "idx": 84,
-    "kind": "All",
-    "params": "[Opaque(9), Number(U64), String]"
-   },
-   {
-    "idx": 85,
-    "kind": "All",
-    "params": "[Opaque(9), String]"
-   },
-   {
-    "idx": 86,
-    "kind": "All",
-    "params": "[Bool]"
-   },
-   {
-    "idx": 87,
-    "kind": "All",
-    "params": "[Number(U64)]"
-   }
-  ]
+  "register_miner": 15,
+  "enable_service": 16,
+  "disable_service": 17,
+  "increase_stake": 18,
+  "decrease_stake": 19,
+  "deregister_miner": 20,
+  "submit_heartbeat": 21,
+  "get_miner_stake_entry": 25,
+  "get_miner_reputation_entry": 26,
+  "get_miners_count_entry": 28,
+  "get_total_staked_entry": 29,
+  "get_base_reward_oracle_entry": 30,
+  "register_service": 31,
+  "unregister_service": 32,
+  "set_min_stake": 33,
+  "set_heartbeat_interval": 34,
+  "set_heartbeat_timeout": 35,
+  "set_base_reward_chat": 37,
+  "set_total_budget": 38,
+  "set_target_duration": 39,
+  "set_vlt_contract": 40,
+  "set_vlt_asset": 41,
+  "set_delegation_contract": 42,
+  "set_treasury": 43,
+  "set_registry": 44,
+  "set_timelock": 45,
+  "set_guardian": 46,
+  "set_emergency": 47,
+  "pause": 48,
+  "unpause": 49,
+  "transfer_admin": 50,
+  "get_version": 51,
+  "request_emergency_withdraw": 52,
+  "cancel_emergency_withdraw": 53,
+  "execute_emergency_withdraw": 54,
+  "set_compound": 63,
+  "set_rep_decay_params": 65,
+  "get_active_miners_count_entry": 75,
+  "get_miner_at_entry": 76,
+  "emergency_slash_miner": 77,
+  "emergency_ban_miner": 78,
+  "emergency_freeze_rewards": 79,
+  "set_min_stake_entry": 80,
+  "set_max_delegation_pct": 81,
+  "get_miner_own_stake_entry": 82,
+  "is_rewards_frozen_entry": 83
  }
 }

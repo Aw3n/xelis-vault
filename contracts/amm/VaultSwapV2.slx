@@ -476,7 +476,7 @@ entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     require(pool.is_psm, "notpsm")
 
     let oracle: Contract = get_oracle()
-    let xel_price: u64 = oracle.call(21u16, [Hash::zero()], {})
+    let xel_price: u64 = oracle.call(32u16, [Hash::zero()], {})
     require(xel_price > 0, "noprice")
 
     let gross_xusd: u64 = (xel_amount as u128 * xel_price as u128 / PRICE_DECIMALS as u128) as u64
@@ -528,7 +528,7 @@ entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     require(pool.is_psm, "notpsm")
 
     let oracle: Contract = get_oracle()
-    let xel_price: u64 = oracle.call(21u16, [Hash::zero()], {})
+    let xel_price: u64 = oracle.call(32u16, [Hash::zero()], {})
     require(xel_price > 0, "noprice")
 
     let gross_xel: u64 = (xusd_amount as u128 * PRICE_DECIMALS as u128 / xel_price as u128) as u64
@@ -798,7 +798,20 @@ entry set_psm_redeem_fee_bps(f: u64) -> u64 {
 // set registry.
 entry set_registry(reg: Hash) -> u64 {
     only_admin()
-    Storage::new().store(ORACLE_KEY, reg)
+    Storage::new().store(REGISTRY_KEY, reg)
+    return 0
+}
+
+// ID 20: set_oracle
+// Update the price oracle contract Hash used by PSM pools.
+// @caller: admin or timelock
+// @params: oracle - new oracle contract Hash
+// @returns: 0 on success
+// @security: only_admin, privileged configuration
+// set oracle.
+entry set_oracle(oracle: Hash) -> u64 {
+    only_admin()
+    Storage::new().store(ORACLE_KEY, oracle)
     return 0
 }
 

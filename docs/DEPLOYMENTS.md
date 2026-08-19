@@ -84,6 +84,22 @@ All contracts deployed as **V1** (version byte `01` embedded in module hex by th
 > Treasury is temporarily the admin wallet for VE/Savings/FlashLoan — swap to TreasuryVault when it deploys (Phase 8).
 > Registry count: 10.
 
-## Phase 5+ — Pending
+## Phase 5 — AMM
+
+| Step | Contract / Action | Address (tx hash) | Status | Topoheight |
+|------|-------------------|-------------------|--------|-----------|
+| 5.1a | **Patched VaultSwapV2**: added `set_oracle` entry (it had none — `set_registry` wrongly wrote the oracle key); fixed PSM-price calls 21→32 (`get_price_for_asset_entry` chunk in StakedOracle; 21 is the pub-fn `get_price(String)` → param mismatch revert). Same 21→32 fix in PSM. | `03d3adea88c15e41105814f3f67e58f2036f593ea96a307bfbf5336356f5782a` | ✅ | — |
+| 5.1b | VS.set_registry(36) / set_oracle(37) / set_xusd_asset(38) / set_xusd_contract(39) / set_treasury(40, temp=admin) | `9a3db6e3…` `894c5a54…` `f76c2431…` `d60e4753…` `6c3fdbad…` | ✅ verified | 151210-151225 |
+| 5.1c | xUSD.set_minter / set_burner → VaultSwap | `d3024130…` `0d37d201…` | ✅ | 151226-151231 |
+| 5.1d | Registry.register "VaultSwap" | `38a729bbbf8bbc60026c1197bc10dd8c319c51b40f58998ffeb4f6bfe7965603` | ✅ | 151233 |
+| 5.2a | Deploy PSM | `fb8609b547e52e1364776457d88ba9b3a84d80ecf60d28ac34700626c2d7c0a6` | ✅ | — |
+| 5.2b | PSM.set_registry(25) / set_oracle(23) / set_xusd_contract(21) / set_xusd_asset(22) / set_treasury(24, temp=admin) | `5a21026d…` `d40b191e…` `e718edc2…` `09642f0c…` `56487b90…` | ✅ verified | 151237-151246 |
+| 5.2c | xUSD.set_minter / set_burner → PSM | `df4838b8…` `7f14c096…` | ✅ | 151249-151254 |
+| 5.2d | Registry.register "PSM" | `d0f55a7cdb8776358e9b8d076da68fe0cdaeeaf78defba26a7e000c2757a66db` | ✅ | 151257 |
+
+> Both AMM oracle calls now target StakedOracle chunk 32 `get_price_for_asset_entry(Hash::zero())` = XEL/USD feed price.
+> Registry count: 12.
+
+## Phase 6+ — Pending
 
 Following `docs/DEPLOYMENT_GUIDE.md`.

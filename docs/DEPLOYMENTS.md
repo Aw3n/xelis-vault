@@ -59,6 +59,31 @@ All contracts deployed as **V1** (version byte `01` embedded in module hex by th
 > StakedOracle (chunk 10); `set_authorized_service` → `register_service` (chunk 31).
 > Registry count: 5.
 
-## Phase 4+ — Pending
+## Phase 4 — Lending Core
+
+| Step | Contract / Action | Address (tx hash) | Status | Topoheight |
+|------|-------------------|-------------------|--------|-----------|
+| 4.1a | Deploy InterestRateModel | `172214c5d10f967f73e3c12832b74a6b17ce05aa9d656936ce4be0d1fbd6e2de` | ✅ | — |
+| 4.1b | IRM.set_rates (chunk 10): base=50, multiplier=1000, jump=5000, kink=8000 | `f77f9e3992d2b34b36c3f4557d244ee8388a7f2951e366a80d4c40cc205c27d1` | ✅ | 150988 |
+| 4.1c | Registry.register "InterestRateModel" | `ed6d1ab019e290bf2572367d1dd419c315a0a936b230e988e769abb37978707c` | ✅ | 150994 |
+| 4.2a | Deploy VaultEngineV3 | `1a818effa8a4eb5bac9ed4675e1be8abe93d438cc14d6297635bbeb75e471a53` | ✅ | — |
+| 4.2b | VE.set_registry / set_xusd_contract / set_xusd_asset (chunks 40/41/42) | `f0758c00…` `c6dc8e44…` `d50ccfe9…` | ✅ verified | 151004-151008 |
+| 4.2c | VE.set_treasury (chunk 43) — **temp = admin wallet** (TreasuryVault arrives Phase 8; mutable via set_treasury) | `e8046723…` | ✅ | 151013 |
+| 4.2d | Registry.register "VaultEngine" | `61e05447988d41ffd347dca7e84a04506ef77113baa0bf74d1a57a91b5c0e742` | ✅ | 151016 |
+| 4.2e | xUSD.set_minter / set_burner → VaultEngine (chunks 18/19) | `ab3d5d30…` `655c9240…` | ✅ `mi_`/`bu_` = true | 151017-151020 |
+| 4.3a | Deploy SavingsRate | `a275a8e2cc97db7d5fb519c5d9a952fcaa9c36e55a5870339b468c7acc68c043` | ✅ | — |
+| 4.3b | Savings.set_registry / set_xusd_contract / set_xusd_asset (chunks 17/14/15) | `d76557f6…` `f996b572…` `ef5a99c2…` | ✅ | 151036-151040 |
+| 4.3c | Savings.set_treasury (chunk 16, temp=admin) | `38bcbcdb…` | ✅ | 151042 |
+| 4.3d | xUSD.set_minter → SavingsRate | `76c3e250…` | ✅ `mi_`=true | 151048 |
+| 4.3e | Registry.register "SavingsRate" | `014dc32aa2a91f317eb816269ec8eb6a1b1665ab75f8521ad729536480e487b3` | ✅ | 151050 |
+| 4.4a | Deploy FlashCallback / FlashLoan | `f151220561b7d956fbd32b236111b6fc6c152c6a1d384c94b8bd5ea4fc76ea60` / `7dcbf096f4d6f30366316e38736eb75124a9b8054624a974d4cadae7f5edf729` | ✅ | — |
+| 4.4b | FlashLoan.set_registry / set_treasury (chunks 14/13) | `75562737…` `34d785d2…` | ✅ | 151058-151062 |
+| 4.4c | FlashLoan.verify_callback → FlashCallback (chunk 23) | `64c077dd…` | ✅ `vcb_`=true | 151068 |
+| 4.4d | Registry.register "FlashLoan" / "FlashCallback" | `19a4452a…` `22d3c0f1…` | ✅ | 151069-151072 |
+
+> Treasury is temporarily the admin wallet for VE/Savings/FlashLoan — swap to TreasuryVault when it deploys (Phase 8).
+> Registry count: 10.
+
+## Phase 5+ — Pending
 
 Following `docs/DEPLOYMENT_GUIDE.md`.

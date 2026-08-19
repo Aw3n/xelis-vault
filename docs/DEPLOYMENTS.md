@@ -177,6 +177,59 @@ struct lacks an entry_id field; documented, not reachable in normal flow.
   PeerLoan (15) `8cacb8ed…`, SyndicatePool (19) `e643919a…`. Verified `or` keys + `fd_0`/`fg_0`/`la_0`.
 - xUSD: old VE1 minter/burner revoked (`9f958f71…` `e89e4268…`, mi_/bu_ false); VE2 mi_/bu_ still true.
 
-## Phase 9+ — Pending
+## Phase 9 — Insurance
 
-Following `docs/DEPLOYMENT_GUIDE.md`.
+| Step | Contract / Action | Address (tx hash) | Status |
+|------|-------------------|-------------------|--------|
+| 9.1a | Deploy InsurancePool | `24bbde405c556e3b5b7eec8535f74f95ea1c8eee957731e63ca40000537bb9cb` | ✅ |
+| 9.1b | IP.set_registry (16) / set_asset xUSD (15) | `7e18025a…` `f521058f…` | ✅ |
+| 9.1c | Registry.register "InsurancePool" | `bca59285…` | ✅ |
+| 9.2a | Deploy PrivateInsurance | `7e313998ccba0651bfeab12c8d6ff7153cfcf14c0e7486c51194430dc045e20f` | ✅ |
+| 9.2b | PI.set_registry (15) | `5caf1f24…` | ✅ |
+| 9.2c | Registry.register "PrivateInsurance" | `56cf839d…` | ✅ |
+
+## Phase 10 — Governance
+
+| Step | Contract / Action | Address (tx hash) | Status |
+|------|-------------------|-------------------|--------|
+| 10.1 | GovernanceVault `65138ab1…`; set_registry(16)/set_vlt_contract(14)/set_vlt_asset(15); register | `cc92b3ce…` `3d8f05d5…` `6edab0dc…` `b024ff3c…` | ✅ |
+| 10.2 | Timelock `0c4742be…`; register; set_governor(11)→Governor; set_guardian_contract(13)→GuardianMultisig | `dcf7e115…` `0e220379…` `6821dda4…` | ✅ |
+| 10.3 | Governor `bfdbbf77…`; set_governance_vault(10)/set_timelock(11); register | `bf96d662…` `397b4528…` `58d79cc9…` | ✅ |
+| 10.4 | GuardianMultisig `435e001c…`; set_timelock(12); register | `35cb4039…` `19d1ee7c…` | ✅ |
+| 10.5 | OracleGovernance `97f51a64…` (patched); set_gov_vault(19)/set_oracle(18)/set_timelock(21); register | `f52ab33e…` `0e9e1b65…` `d9c767ab…` `13e13809…` | ✅ |
+
+> Deferred (needs multisig proposal flow): add 4 more guardians + set_quorum 3 on GuardianMultisig.
+
+## Phase 11 — Chat
+
+| Step | Contract / Action | Address (tx hash) | Status |
+|------|-------------------|-------------------|--------|
+| 11.1 | VaultChat `7560b5e3…` (patched); set_relayer(20, admin); register | `e9e04cb2…` `6d1b587b…` | ✅ |
+
+> Deferred: `set_miner_contract` (reward relaying) is a pub-fn (All chunk) → not externally
+> invokable; requires the governance proposal path (Governor/Timelock cross-contract call).
+> VaultChat has no registry reference (guide's set_registry is stale).
+
+## Phase 12 — Founder & Fees
+
+| Step | Contract / Action | Address (tx hash) | Status |
+|------|-------------------|-------------------|--------|
+| 12.1 | FounderVesting 4y `99ee7012…`; set_founder(10)/set_vlt_contract(11)/set_vlt_asset(12); funded 500k VLT (deposit); register "FounderVesting4y" | `5a0845c9…` `a7e86e73…` `b864f281…` `ca539aff…` `99edd9d5…` | ✅ |
+| 12.2 | FounderVesting 10y `d919ca28…`; same config; funded 500k VLT; register "FounderVesting10y" | `7b93c2d9…` `26109eb4…` `1dc168c0…` `885520a1…` `c054ca76…` | ✅ |
+| 12.3 | FeeDistributor `29fb3abf…`; set_founder(15)/set_treasury(16→TreasuryVault hash)/set_vlt_contract(17)/set_vlt_asset(18)/set_registry(19); register | `0e001f8e…` `057d9dd7…` `211be9b9…` `64c53fe4…` `bac7a434…` `9ad2cc5c…` | ✅ |
+| 12.4 | MinerDelegation `e3c2f0f7…`; set_vlt_asset(27)/set_miner_contract_hash(22)/set_registry(28); register | `ba9f55ea…` `eaa2bd7f…` `5939a5fe…` `2ea77b9e…` | ✅ |
+
+> Note: VLT minted via `mint_to_entry` (VLTToken entry 27) goes to an ADDRESS only — vesting
+> contracts were funded via invoke deposit (deposits `{<asset>: {"amount": N}}`). MAX_SUPPLY = 1e15.
+> Fee routing to FeeDistributor deferred: fee destinations are Address-typed (xUSD mint_split);
+> FeeDistributor is a contract (Hash) — needs a future funding mechanism.
+> MinerDelegation own-stake push (miner → MD.set_miner_own_stake entry 14) deferred (only_miner_contract).
+
+## Phase 13 — Airdrop
+
+SKIPPED by design: airdrop share (500k VLT) minted to admin for manual distribution.
+
+## Registry count — 33 registered names; remaining guide checks:
+
+- VaultEngine v2 live (`2c22a613…`), StakedOracle v3 live (`159594c8…`).
+- Guarded/All-chunk configs deferred to governance path (documented above).

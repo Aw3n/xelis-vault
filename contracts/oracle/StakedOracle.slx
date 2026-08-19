@@ -201,6 +201,13 @@ pub fn update_feed(feed_id: u64, min_price: u64, max_price: u64, decimals: u8) -
     return 0
 }
 
+// ID 1b: add_feed_entry
+// Entry wrapper around add_feed so the feed can be configured externally
+// (pub fn chunks are not invokable via wallet invoke_contract).
+entry add_feed_entry(name: string, asset: Hash, decimals: u8, min_price: u64, max_price: u64) -> u64 {
+    return add_feed(name, asset, decimals, min_price, max_price)
+}
+
 // ID 2: set_feed_active
 // Enable or disable a feed (disabled feeds reject new submissions).
 // @caller: admin (or timelock as contract caller)

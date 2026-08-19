@@ -138,29 +138,24 @@ entry report_unhealthy_vault(vault_id: u64, vault_owner: Address, collateral_amo
     require(current_health_bps < 10000, "healthy")
 
     // Vault must not already have a bounty
-    let existing_opt: optional<Bounty> = s.load(BOUNTY_PREFIX + vault_id.to_string())
+    let existing_opt: optional<Bounty> = s.load(BOUNTY_PREFIX + vault_id.to_string(10u32))
     require(existing_opt.is_none(), "already")
 
     // Check daily limit for watcher
     let stats_opt: optional<WatcherStats> = s.load(WATCHER_PREFIX + caller.to_string())
-    let stats: WatcherStats
     let today: u64 = get_day(get_current_topoheight())
-    if stats_opt.is_some() {
-        stats = stats_opt.expect("err")
-        if stats.last_report_day != today {
-            stats.last_report_day = today
-            stats.daily_count = 0
-        }
-        require(stats.daily_count < DAILY_LIMIT, "dailylimit")
-    } else {
-        stats = WatcherStats {
-            bounties_reported: 0,
-            bounties_claimed: 0,
-            total_earned: 0,
-            last_report_day: today,
-            daily_count: 0
-        }
+    let stats: WatcherStats = stats_opt.unwrap_or(WatcherStats {
+        bounties_reported: 0,
+        bounties_claimed: 0,
+        total_earned: 0,
+        last_report_day: today,
+        daily_count: 0
+    })
+    if stats.last_report_day != today {
+        stats.last_report_day = today
+        stats.daily_count = 0
     }
+    require(stats.daily_count < DAILY_LIMIT, "dailylimit")
 
     // Calculate bounty
     let bounty: u64 = (collateral_amount * BOUNTY_BPS) / 10000
@@ -175,13 +170,13 @@ entry report_unhealthy_vault(vault_id: u64, vault_owner: Address, collateral_amo
         reported_at: get_current_topoheight(),
         claimed: false
     }
-    s.store(BOUNTY_PREFIX + vault_id.to_string(), b)
+    s.store(BOUNTY_PREFIX + vault_id.to_string(10u32), b)
 
     stats.bounties_reported += 1
     stats.daily_count += 1
     s.store(WATCHER_PREFIX + caller.to_string(), stats)
 
-    emit_event("BountyReported", vault_id.to_string())
+    emit_event(0u64, ["BountyReported", vault_id.to_string(10u32)])
     return bounty
 }
 
@@ -190,12 +185,12 @@ entry claim_bounty(vault_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let b: Bounty = s.load(BOUNTY_PREFIX + vault_id.to_string()).expect("notfound")
+    let b: Bounty = s.load(BOUNTY_PREFIX + vault_id.to_string(10u32)).expect("notfound")
     require(b.watcher == caller, "notwatcher")
     require(!b.claimed, "alreadyclaimed")
 
     b.claimed = true
-    s.store(BOUNTY_PREFIX + vault_id.to_string(), b)
+    s.store(BOUNTY_PREFIX + vault_id.to_string(10u32), b)
 
     // Update watcher stats
     let stats: WatcherStats = s.load(WATCHER_PREFIX + caller.to_string()).expect("nostats")
@@ -208,14 +203,14 @@ entry claim_bounty(vault_id: u64) -> u64 {
     s.store(TOTAL_BOUNTIES_KEY, total + b.bounty_amount)
 
     // In production: transfer bounty tokens to watcher
-    emit_event("BountyClaimed", vault_id.to_string())
+    emit_event(0u64, ["BountyClaimed", vault_id.to_string(10u32)])
     return b.bounty_amount
 }
 
 // Pub fn 2: Get bounty info for a vault
 pub fn get_bounty_info(vault_id: u64) -> (Address, u64, u64, u64, bool) {
     let s: Storage = Storage::new()
-    let b: Bounty = s.load(BOUNTY_PREFIX + vault_id.to_string()).expect("notfound")
+    let b: Bounty = s.load(BOUNTY_PREFIX + vault_id.to_string(10u32)).expect("notfound")
     return (b.watcher, b.collateral_at_report, b.bounty_amount, b.reported_at, b.claimed)
 }
 

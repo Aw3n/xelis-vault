@@ -281,7 +281,7 @@ pub fn get_leaderboard_top(rank: u64) -> (Address, u64, u64, u64) {
     let i: u64 = 0
     let found_idx: u64 = 0
     while i < count {
-        let liq_opt: optional<Liquidator> = s.load(LIQUIDATOR_PREFIX + i.to_string())
+        let liq_opt: optional<Liquidator> = s.load(LIQUIDATOR_PREFIX + i.to_string(10u32))
         if liq_opt.is_some() {
             found_idx += 1
             if found_idx == rank {
@@ -292,7 +292,7 @@ pub fn get_leaderboard_top(rank: u64) -> (Address, u64, u64, u64) {
         i += 1
     }
     require(false, "notfound")
-    return (Address::zero(), 0, 0, 0)
+    return (Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), 0, 0, 0)
 }
 
 // Pub fn 8: Get next liquidator in queue (highest priority that hasn't acted yet)
@@ -303,11 +303,11 @@ pub fn get_next_in_queue() -> Address {
     require(count > 0, "noliq")
 
     // Find highest-priority liquidator (max stake * reputation)
-    let best_addr: Address = Address::zero()
+    let best_addr: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
     let best_score: u64 = 0
     let i: u64 = 0
     while i < count {
-        let liq_opt: optional<Liquidator> = s.load(LIQUIDATOR_PREFIX + i.to_string())
+        let liq_opt: optional<Liquidator> = s.load(LIQUIDATOR_PREFIX + i.to_string(10u32))
         if liq_opt.is_some() {
             let liq: Liquidator = liq_opt.expect("err")
             if liq.active && liq.staked > 0 {

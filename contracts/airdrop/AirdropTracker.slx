@@ -280,14 +280,14 @@ fn get_or_init_user(user: Address) -> UserPoints {
         total_with_bonus: 0,
         days_active: 0,
         last_active_day: 0,
-        mainnet_address: Address::zero(),
+        mainnet_address: Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")),
         qualified: false,
         registered: true
     }
     s.store(key, up)
     // Add to user list
     let count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
-    s.store(USER_LIST_PREFIX + count.to_string(), user)
+    s.store(USER_LIST_PREFIX + count.to_string(10u32), user)
     s.store(USER_COUNT_KEY, count + 1)
     return up
 }
@@ -303,7 +303,7 @@ fn update_day_activity(up: UserPoints, current_day: u64) -> UserPoints {
 fn check_daily_cap(user: Address, category: u8, points_to_add: u64, cap: u64) -> u64 {
     let s: Storage = Storage::new()
     let current_day: u64 = get_day(get_current_topoheight())
-    let key: string = DAILY_PREFIX + user.to_string() + "_" + category.to_string() + "_" + current_day.to_string()
+    let key: string = DAILY_PREFIX + user.to_string() + "_" + category.to_string(10u32) + "_" + current_day.to_string(10u32)
     let current: u64 = s.load(key).unwrap_or(0)
     if current + points_to_add > cap {
         // Cap reached — only add up to cap
@@ -331,7 +331,7 @@ fn log_admin_action(action_type: u8, target: Address, category: u8, amount: u64,
         reason: reason,
         topo: get_current_topoheight()
     }
-    s.store(ADMIN_LOG_PREFIX + idx.to_string(), entry)
+    s.store(ADMIN_LOG_PREFIX + idx.to_string(10u32), entry)
     s.store(ADMIN_LOG_COUNT_KEY, count + 1)
 }
 
@@ -375,7 +375,7 @@ fn deduct_points_internal(user: Address, category: u8, points: u64) {
     }
 
     // Update category total
-    let cat_key: string = CAT_TOTAL_PREFIX + category.to_string()
+    let cat_key: string = CAT_TOTAL_PREFIX + category.to_string(10u32)
     let cat_total: u64 = s.load(cat_key).unwrap_or(0)
     if cat_total >= points {
         s.store(cat_key, cat_total - points)
@@ -414,7 +414,7 @@ fn add_points(user: Address, category: u8, points: u64) {
     s.store(TOTAL_POINTS_KEY, total + points)
 
     // Update category total (for stats dashboard)
-    let cat_key: string = CAT_TOTAL_PREFIX + category.to_string()
+    let cat_key: string = CAT_TOTAL_PREFIX + category.to_string(10u32)
     let cat_total: u64 = s.load(cat_key).unwrap_or(0)
     s.store(cat_key, cat_total + points)
 }
@@ -542,7 +542,7 @@ entry record_manual_attribution(user: Address, category: u8, points: u64, reason
 
     add_points(user, category, points)
     log_admin_action(1u8, user, category, points, 0u64, reason)
-    emit_event("ManualAttribution", user.to_string() + "_" + points.to_string() + "_" + reason)
+    emit_event(0u64, ["ManualAttribution", user.to_string() + "_" + points.to_string(10u32) + "_" + reason])
     return 0
 }
 
@@ -551,7 +551,7 @@ entry record_manual_attribution(user: Address, category: u8, points: u64, reason
 entry record_mainnet_address(mainnet_addr: Address) -> u64 {
     when_not_paused()
     when_not_frozen()
-    require(mainnet_addr != Address::zero(), "badaddr")
+    require(mainnet_addr != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
 
@@ -561,7 +561,7 @@ entry record_mainnet_address(mainnet_addr: Address) -> u64 {
 
     // If user had a previous mainnet address, clear the old reverse lookup
     let up: UserPoints = get_or_init_user(caller)
-    if up.mainnet_address != Address::zero() && up.mainnet_address != mainnet_addr {
+    if up.mainnet_address != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) && up.mainnet_address != mainnet_addr {
         s.delete(MAINNET_TO_TESTNET_PREFIX + up.mainnet_address.to_string())
     }
 
@@ -569,7 +569,7 @@ entry record_mainnet_address(mainnet_addr: Address) -> u64 {
     up.mainnet_address = mainnet_addr
     s.store(USER_PREFIX + caller.to_string(), up)
     s.store(MAINNET_TO_TESTNET_PREFIX + mainnet_addr.to_string(), caller)
-    emit_event("MainnetAddressRecorded", caller.to_string())
+    emit_event(0u64, ["MainnetAddressRecorded", caller.to_string()])
     return 0
 }
 
@@ -582,7 +582,7 @@ entry freeze_points() -> u64 {
     require(!frozen, "alreadyfrozen")
     s.store(FROZEN_KEY, true)
     s.store(FREEZE_TOPO_KEY, get_current_topoheight())
-    emit_event("PointsFrozen", "")
+    emit_event(0u64, ["PointsFrozen", ""])
     return 0
 }
 
@@ -593,7 +593,8 @@ entry finalize_distribution() -> u64 {
     only_admin()
     let s: Storage = Storage::new()
     require(s.load(FROZEN_KEY).unwrap_or(false), "notfrozen")
-    require(!s.load(FINALIZED_KEY).unwrap_or(false), "alreadyfinal")
+    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
+    require(!finalized, "alreadyfinal")
 
     let user_count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
     let i: u64 = 0
@@ -601,7 +602,7 @@ entry finalize_distribution() -> u64 {
     let qualified_count: u64 = 0
 
     while i < user_count {
-        let user_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string())
+        let user_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string(10u32))
         if user_opt.is_some() {
             let user: Address = user_opt.expect("err")
             let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("err")
@@ -620,7 +621,7 @@ entry finalize_distribution() -> u64 {
             let is_force_qualified: bool = s.load(FORCE_QUALIFIED_PREFIX + user.to_string()).unwrap_or(false)
 
             // Check standard qualification
-            let has_mainnet: bool = up.mainnet_address != Address::zero()
+            let has_mainnet: bool = up.mainnet_address != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
             let has_min_points: bool = up.total_raw >= MIN_POINTS_TO_QUALIFY
             let has_min_days: bool = up.days_active >= MIN_DAYS_ACTIVE
             let standard_qualified: bool = has_mainnet && has_min_points && has_min_days
@@ -667,7 +668,7 @@ entry finalize_distribution() -> u64 {
     s.store(QUALIFIED_COUNT_KEY, qualified_count)
     s.store(FINALIZED_KEY, true)
     s.store(FINALIZE_TOPO_KEY, get_current_topoheight())
-    emit_event("DistributionFinalized", qualified_count.to_string())
+    emit_event(0u64, ["DistributionFinalized", qualified_count.to_string(10u32)])
     return qualified_count
 }
 
@@ -679,7 +680,7 @@ entry set_merkle_root(root: Hash) -> u64 {
     require(s.load(FINALIZED_KEY).unwrap_or(false), "notfinal")
     require(root != Hash::zero(), "badroot")
     s.store(MERKLE_ROOT_KEY, root)
-    emit_event("MerkleRootSet", root.to_hex())
+    emit_event(0u64, ["MerkleRootSet", root.to_hex()])
     return 0
 }
 
@@ -770,7 +771,7 @@ pub fn get_qualified_users() -> u64 {
 // Returns the testnet address of the user at position `index` in the user list
 pub fn get_user_at_index(index: u64) -> Address {
     let s: Storage = Storage::new()
-    return s.load(USER_LIST_PREFIX + index.to_string()).expect("oob")
+    return s.load(USER_LIST_PREFIX + index.to_string(10u32)).expect("oob")
 }
 
 // Pub fn 24: Get user rank (position in leaderboard by total points)
@@ -794,7 +795,7 @@ pub fn get_user_rank(user: Address) -> u64 {
     let rank: u64 = 1
     let i: u64 = 0
     while i < count {
-        let addr_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string())
+        let addr_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string(10u32))
         if addr_opt.is_some() {
             let addr: Address = addr_opt.expect("err")
             if addr != user {
@@ -853,7 +854,7 @@ pub fn get_user_percentage(user: Address) -> u64 {
 // category: 1=mining, 2=relayer, 3=governance, 4=chat, 5=liquidity, 6=bounty, 7=community
 pub fn get_category_total(category: u8) -> u64 {
     let s: Storage = Storage::new()
-    return s.load(CAT_TOTAL_PREFIX + category.to_string()).unwrap_or(0)
+    return s.load(CAT_TOTAL_PREFIX + category.to_string(10u32)).unwrap_or(0)
 }
 
 // Pub fn 28: Get all category totals in one call
@@ -872,11 +873,11 @@ pub fn get_all_category_totals() -> (u64, u64, u64, u64, u64, u64, u64) {
 }
 
 // Pub fn 29: Reverse lookup — get testnet address from mainnet address
-// Returns Address::zero() if not found
+// Returns Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) if not found
 pub fn get_testnet_address(mainnet_addr: Address) -> Address {
     let s: Storage = Storage::new()
     let opt: optional<Address> = s.load(MAINNET_TO_TESTNET_PREFIX + mainnet_addr.to_string())
-    if opt.is_none() { return Address::zero() }
+    if opt.is_none() { return Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) }
     return opt.expect("err")
 }
 
@@ -896,7 +897,7 @@ pub fn get_snapshot_info() -> (u64, u64, u64, u64) {
 pub fn get_user_activity_summary(user: Address) -> (u64, u64, bool, bool) {
     let s: Storage = Storage::new()
     let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
-    let has_mainnet: bool = up.mainnet_address != Address::zero()
+    let has_mainnet: bool = up.mainnet_address != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
     return (up.days_active, up.last_active_day, up.qualified, has_mainnet)
 }
 
@@ -929,7 +930,7 @@ pub fn get_leaderboard_at_rank(rank: u64) -> Address {
     // Simple approach: scan all users, count how many have more points
     let i: u64 = 0
     while i < count {
-        let addr_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string())
+        let addr_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string(10u32))
         if addr_opt.is_some() {
             let addr: Address = addr_opt.expect("err")
             let up: UserPoints = s.load(USER_PREFIX + addr.to_string()).expect("err")
@@ -945,7 +946,7 @@ pub fn get_leaderboard_at_rank(rank: u64) -> Address {
             let j: u64 = 0
             while j < count {
                 if j != i {
-                    let other_opt: optional<Address> = s.load(USER_LIST_PREFIX + j.to_string())
+                    let other_opt: optional<Address> = s.load(USER_LIST_PREFIX + j.to_string(10u32))
                     if other_opt.is_some() {
                         let other_addr: Address = other_opt.expect("err")
                         let other: UserPoints = s.load(USER_PREFIX + other_addr.to_string()).expect("err")
@@ -970,15 +971,15 @@ pub fn get_leaderboard_at_rank(rank: u64) -> Address {
         }
         i += 1
     }
-    return Address::zero()
+    return Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
 }
 
 // Pub fn 34: Get leaderboard entry (full info for a rank)
 // Returns (testnet_addr, points, qualified, mainnet_addr, distribution)
 pub fn get_leaderboard_entry(rank: u64) -> (Address, u64, bool, Address, u64) {
     let addr: Address = get_leaderboard_at_rank(rank)
-    if addr == Address::zero() {
-        return (Address::zero(), 0, false, Address::zero(), 0)
+    if addr == Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) {
+        return (Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), 0, false, Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), 0)
     }
     let s: Storage = Storage::new()
     let up: UserPoints = s.load(USER_PREFIX + addr.to_string()).expect("err")
@@ -1052,7 +1053,7 @@ entry record_manual_attribution_batch(
     let cap: u64 = s.load(MANUAL_CAP_KEY).unwrap_or(DEFAULT_MANUAL_CAP)
     require(points <= cap, "toomuch")
 
-    let i: u64 = 0
+    let i: u32 = 0
     while i < users.len() {
         let user: Address = users[i]
         let is_disq: bool = s.load(DISQUALIFIED_PREFIX + user.to_string()).unwrap_or(false)
@@ -1062,9 +1063,9 @@ entry record_manual_attribution_batch(
         i += 1
     }
 
-    log_admin_action(6u8, Address::zero(), category, points, 0u64, reason + " (batch " + users.len().to_string() + " users)")
-    emit_event("BatchAttribution", users.len().to_string() + "_" + points.to_string() + "_" + reason)
-    return users.len()
+    log_admin_action(6u8, Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), category, points, 0u64, reason + " (batch " + users.len().to_string(10u32) + " users)")
+    emit_event(0u64, ["BatchAttribution", users.len().to_string(10u32) + "_" + points.to_string(10u32) + "_" + reason])
+    return users.len() as u64
 }
 
 // Entry 33: Deduct points from a user (admin, with reason)
@@ -1077,7 +1078,7 @@ entry deduct_points(user: Address, category: u8, points: u64, reason: string) ->
     require(points > 0, "zero")
     deduct_points_internal(user, category, points)
     log_admin_action(2u8, user, category, points, 0u64, reason)
-    emit_event("PointsDeducted", user.to_string() + "_" + points.to_string() + "_" + reason)
+    emit_event(0u64, ["PointsDeducted", user.to_string() + "_" + points.to_string(10u32) + "_" + reason])
     return 0
 }
 
@@ -1089,7 +1090,7 @@ entry disqualify_user(user: Address, reason: string) -> u64 {
     let s: Storage = Storage::new()
     s.store(DISQUALIFIED_PREFIX + user.to_string(), true)
     log_admin_action(3u8, user, 0u8, 0u64, 0u64, reason)
-    emit_event("UserDisqualified", user.to_string() + "_" + reason)
+    emit_event(0u64, ["UserDisqualified", user.to_string() + "_" + reason])
     return 0
 }
 
@@ -1100,7 +1101,7 @@ entry revoke_disqualification(user: Address, reason: string) -> u64 {
     let s: Storage = Storage::new()
     s.store(DISQUALIFIED_PREFIX + user.to_string(), false)
     log_admin_action(3u8, user, 0u8, 0u64, 0u64, "REVOKE: " + reason)
-    emit_event("DisqualificationRevoked", user.to_string())
+    emit_event(0u64, ["DisqualificationRevoked", user.to_string()])
     return 0
 }
 
@@ -1112,7 +1113,7 @@ entry force_qualify_user(user: Address, reason: string) -> u64 {
     let s: Storage = Storage::new()
     s.store(FORCE_QUALIFIED_PREFIX + user.to_string(), true)
     log_admin_action(4u8, user, 0u8, 0u64, 0u64, reason)
-    emit_event("UserForceQualified", user.to_string() + "_" + reason)
+    emit_event(0u64, ["UserForceQualified", user.to_string() + "_" + reason])
     return 0
 }
 
@@ -1122,7 +1123,7 @@ entry revoke_force_qualification(user: Address, reason: string) -> u64 {
     let s: Storage = Storage::new()
     s.store(FORCE_QUALIFIED_PREFIX + user.to_string(), false)
     log_admin_action(4u8, user, 0u8, 0u64, 0u64, "REVOKE: " + reason)
-    emit_event("ForceQualificationRevoked", user.to_string())
+    emit_event(0u64, ["ForceQualificationRevoked", user.to_string()])
     return 0
 }
 
@@ -1135,7 +1136,7 @@ entry set_user_bonus_multiplier(user: Address, multiplier_bps: u64, reason: stri
     let s: Storage = Storage::new()
     s.store(USER_BONUS_PREFIX + user.to_string(), multiplier_bps)
     log_admin_action(5u8, user, 0u8, 0u64, multiplier_bps, reason)
-    emit_event("BonusMultiplierSet", user.to_string() + "_" + multiplier_bps.to_string() + "_" + reason)
+    emit_event(0u64, ["BonusMultiplierSet", user.to_string() + "_" + multiplier_bps.to_string(10u32) + "_" + reason])
     return 0
 }
 
@@ -1177,7 +1178,7 @@ pub fn get_admin_log_count() -> u64 {
 // Returns (admin, action_type, target_user, category, amount, multiplier_bps, reason, topo)
 pub fn get_admin_log_entry(index: u64) -> (Address, u8, Address, u8, u64, u64, string, u64) {
     let s: Storage = Storage::new()
-    let entry: AdminLogEntry = s.load(ADMIN_LOG_PREFIX + index.to_string()).expect("oob")
+    let entry: AdminLogEntry = s.load(ADMIN_LOG_PREFIX + index.to_string(10u32)).expect("oob")
     return (
         entry.admin,
         entry.action_type,

@@ -170,7 +170,7 @@ entry record_tvl_snapshot(total_tvl: u64, xel_tvl: u64, xusd_supply: u64, vlt_st
         xusd_supply: xusd_supply,
         vlt_staked: vlt_staked
     }
-    s.store(TVL_HISTORY_PREFIX + idx.to_string(), snap)
+    s.store(TVL_HISTORY_PREFIX + idx.to_string(10u32), snap)
     s.store(TVL_HISTORY_COUNT_KEY, count + 1)
     return 0
 }
@@ -184,15 +184,9 @@ entry record_swap_volume(volume_atomic: u64) -> u64 {
 
     // Update daily stats
     let day: u64 = get_day(get_current_topoheight())
-    let key: string = DAILY_PREFIX + day.to_string()
+    let key: string = DAILY_PREFIX + day.to_string(10u32)
     let stats_opt: optional<DailyStats> = s.load(key)
-    let stats: DailyStats
-    if stats_opt.is_some() {
-        stats = stats_opt.expect("err")
-        stats.swap_volume += volume_atomic
-        stats.swap_count += 1
-    } else {
-        stats = DailyStats {
+    let stats: DailyStats = stats_opt.unwrap_or(DailyStats {
             day: day,
             swap_volume: volume_atomic,
             swap_count: 1,
@@ -203,7 +197,10 @@ entry record_swap_volume(volume_atomic: u64) -> u64 {
             rewards_distributed: 0,
             active_users: 0,
             avg_health_bps: 0
-        }
+        })
+    if stats_opt.is_some() {
+        stats.swap_volume += volume_atomic
+        stats.swap_count += 1
     }
     s.store(key, stats)
     return 0
@@ -217,13 +214,9 @@ entry record_liquidation(collateral_seized: u64) -> u64 {
     s.store(TOTAL_LIQUIDATIONS_KEY, total + 1)
 
     let day: u64 = get_day(get_current_topoheight())
-    let key: string = DAILY_PREFIX + day.to_string()
+    let key: string = DAILY_PREFIX + day.to_string(10u32)
     let stats_opt: optional<DailyStats> = s.load(key)
-    let stats: DailyStats
-    if stats_opt.is_some() {
-        stats = stats_opt.expect("err")
-    } else {
-        stats = DailyStats {
+    let stats: DailyStats = stats_opt.unwrap_or(DailyStats {
             day: day,
             swap_volume: 0,
             swap_count: 0,
@@ -234,8 +227,7 @@ entry record_liquidation(collateral_seized: u64) -> u64 {
             rewards_distributed: 0,
             active_users: 0,
             avg_health_bps: 0
-        }
-    }
+        })
     stats.liquidation_count += 1
     stats.liquidation_volume += collateral_seized
     s.store(key, stats)
@@ -250,13 +242,9 @@ entry record_vault_opened() -> u64 {
     s.store(TOTAL_VAULTS_OPENED_KEY, total + 1)
 
     let day: u64 = get_day(get_current_topoheight())
-    let key: string = DAILY_PREFIX + day.to_string()
+    let key: string = DAILY_PREFIX + day.to_string(10u32)
     let stats_opt: optional<DailyStats> = s.load(key)
-    let stats: DailyStats
-    if stats_opt.is_some() {
-        stats = stats_opt.expect("err")
-    } else {
-        stats = DailyStats {
+    let stats: DailyStats = stats_opt.unwrap_or(DailyStats {
             day: day,
             swap_volume: 0,
             swap_count: 0,
@@ -267,8 +255,7 @@ entry record_vault_opened() -> u64 {
             rewards_distributed: 0,
             active_users: 0,
             avg_health_bps: 0
-        }
-    }
+        })
     stats.vaults_opened += 1
     s.store(key, stats)
     return 0
@@ -282,13 +269,9 @@ entry record_vault_closed() -> u64 {
     s.store(TOTAL_VAULTS_CLOSED_KEY, total + 1)
 
     let day: u64 = get_day(get_current_topoheight())
-    let key: string = DAILY_PREFIX + day.to_string()
+    let key: string = DAILY_PREFIX + day.to_string(10u32)
     let stats_opt: optional<DailyStats> = s.load(key)
-    let stats: DailyStats
-    if stats_opt.is_some() {
-        stats = stats_opt.expect("err")
-    } else {
-        stats = DailyStats {
+    let stats: DailyStats = stats_opt.unwrap_or(DailyStats {
             day: day,
             swap_volume: 0,
             swap_count: 0,
@@ -299,8 +282,7 @@ entry record_vault_closed() -> u64 {
             rewards_distributed: 0,
             active_users: 0,
             avg_health_bps: 0
-        }
-    }
+        })
     stats.vaults_closed += 1
     s.store(key, stats)
     return 0
@@ -321,7 +303,7 @@ entry record_health_factor_bucket(bucket: u8) -> u64 {
     only_protocol_contract()
     require(bucket < HEALTH_BUCKET_COUNT, "badbucket")
     let s: Storage = Storage::new()
-    let key: string = HEALTH_BUCKET_PREFIX + bucket.to_string()
+    let key: string = HEALTH_BUCKET_PREFIX + bucket.to_string(10u32)
     let count: u64 = s.load(key).unwrap_or(0)
     s.store(key, count + 1)
     return 0
@@ -332,13 +314,9 @@ entry record_active_user() -> u64 {
     only_protocol_contract()
     let s: Storage = Storage::new()
     let day: u64 = get_day(get_current_topoheight())
-    let key: string = DAILY_PREFIX + day.to_string()
+    let key: string = DAILY_PREFIX + day.to_string(10u32)
     let stats_opt: optional<DailyStats> = s.load(key)
-    let stats: DailyStats
-    if stats_opt.is_some() {
-        stats = stats_opt.expect("err")
-    } else {
-        stats = DailyStats {
+    let stats: DailyStats = stats_opt.unwrap_or(DailyStats {
             day: day,
             swap_volume: 0,
             swap_count: 0,
@@ -349,8 +327,7 @@ entry record_active_user() -> u64 {
             rewards_distributed: 0,
             active_users: 0,
             avg_health_bps: 0
-        }
-    }
+        })
     stats.active_users += 1
     s.store(key, stats)
     return 0
@@ -361,14 +338,14 @@ pub fn get_tvl_history(offset: u64, limit: u64) -> (u64, u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     let count: u64 = s.load(TVL_HISTORY_COUNT_KEY).unwrap_or(0)
     let actual_idx: u64 = (offset + count) % TVL_HISTORY_MAX  // adjust for ring buffer
-    let snap: TVLSnapshot = s.load(TVL_HISTORY_PREFIX + actual_idx.to_string()).expect("nosnap")
+    let snap: TVLSnapshot = s.load(TVL_HISTORY_PREFIX + actual_idx.to_string(10u32)).expect("nosnap")
     return (snap.topoheight, snap.total_tvl_atomic, snap.xel_tvl, snap.xusd_supply, snap.vlt_staked)
 }
 
 // Pub fn 9: Get daily stats for a specific day
 pub fn get_daily_stats(day: u64) -> (u64, u64, u64, u64, u64, u64, u64, u64, u64, u64) {
     let s: Storage = Storage::new()
-    let stats: DailyStats = s.load(DAILY_PREFIX + day.to_string()).expect("nodata")
+    let stats: DailyStats = s.load(DAILY_PREFIX + day.to_string(10u32)).expect("nodata")
     return (
         stats.day,
         stats.swap_volume,
@@ -386,7 +363,7 @@ pub fn get_daily_stats(day: u64) -> (u64, u64, u64, u64, u64, u64, u64, u64, u64
 // Pub fn 10: Get health factor distribution (returns all 11 buckets)
 pub fn get_health_distribution(bucket: u8) -> u64 {
     let s: Storage = Storage::new()
-    return s.load(HEALTH_BUCKET_PREFIX + bucket.to_string()).unwrap_or(0)
+    return s.load(HEALTH_BUCKET_PREFIX + bucket.to_string(10u32)).unwrap_or(0)
 }
 
 // Pub fn 11: Get protocol summary (totals)

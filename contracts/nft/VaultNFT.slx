@@ -160,14 +160,14 @@ entry mint_nft(vault_id: u64) -> u64 {
         is_fractionalized: false,
         total_shares: 1
     }
-    s.store(NFT_PREFIX + nft_id.to_string(), nft)
-    s.store(OWNER_PREFIX + nft_id.to_string(), caller)
+    s.store(NFT_PREFIX + nft_id.to_string(10u32), nft)
+    s.store(OWNER_PREFIX + nft_id.to_string(10u32), caller)
 
     let bal: u64 = s.load(BALANCE_PREFIX + caller.to_string()).unwrap_or(0)
     s.store(BALANCE_PREFIX + caller.to_string(), bal + 1)
     s.store(TOTAL_SUPPLY_KEY, nft_id)
 
-    emit_event("NFTMinted", nft_id.to_string())
+    emit_event(0u64, ["NFTMinted", nft_id.to_string(10u32)])
     return nft_id
 }
 
@@ -176,17 +176,17 @@ entry transfer_nft(nft_id: u64, to: Address) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let owner: Address = s.load(OWNER_PREFIX + nft_id.to_string()).expect("notminted")
+    let owner: Address = s.load(OWNER_PREFIX + nft_id.to_string(10u32)).expect("notminted")
     require(owner == caller, "notowner")
 
     // Check not listed for sale
-    let sale_opt: optional<Sale> = s.load(SALE_PREFIX + nft_id.to_string())
+    let sale_opt: optional<Sale> = s.load(SALE_PREFIX + nft_id.to_string(10u32))
     if sale_opt.is_some() {
         require(!sale_opt.expect("err").active, "listed")
     }
 
     // Update owner
-    s.store(OWNER_PREFIX + nft_id.to_string(), to)
+    s.store(OWNER_PREFIX + nft_id.to_string(10u32), to)
 
     // Update balances
     let from_bal: u64 = s.load(BALANCE_PREFIX + caller.to_string()).unwrap_or(0)
@@ -195,7 +195,7 @@ entry transfer_nft(nft_id: u64, to: Address) -> u64 {
     s.store(BALANCE_PREFIX + to.to_string(), to_bal + 1)
 
     // In production: transfer vault ownership in VaultEngine
-    emit_event("NFTTransferred", nft_id.to_string())
+    emit_event(0u64, ["NFTTransferred", nft_id.to_string(10u32)])
     return 0
 }
 
@@ -204,21 +204,21 @@ entry burn_nft(nft_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let owner: Address = s.load(OWNER_PREFIX + nft_id.to_string()).expect("notminted")
+    let owner: Address = s.load(OWNER_PREFIX + nft_id.to_string(10u32)).expect("notminted")
     require(owner == caller, "notowner")
 
-    let nft: VaultNFTData = s.load(NFT_PREFIX + nft_id.to_string()).expect("notminted")
+    let nft: VaultNFTData = s.load(NFT_PREFIX + nft_id.to_string(10u32)).expect("notminted")
     require(!nft.is_fractionalized, "fractional")
 
     // In production: transfer vault ownership from this contract back to caller
-    s.delete(OWNER_PREFIX + nft_id.to_string())
-    s.delete(NFT_PREFIX + nft_id.to_string())
-    s.delete(SALE_PREFIX + nft_id.to_string())
+    s.delete(OWNER_PREFIX + nft_id.to_string(10u32))
+    s.delete(NFT_PREFIX + nft_id.to_string(10u32))
+    s.delete(SALE_PREFIX + nft_id.to_string(10u32))
 
     let bal: u64 = s.load(BALANCE_PREFIX + caller.to_string()).unwrap_or(0)
     if bal > 0 { s.store(BALANCE_PREFIX + caller.to_string(), bal - 1) }
 
-    emit_event("NFTBurned", nft_id.to_string())
+    emit_event(0u64, ["NFTBurned", nft_id.to_string(10u32)])
     return nft.vault_id
 }
 
@@ -228,7 +228,7 @@ entry list_for_sale(nft_id: u64, price: u64) -> u64 {
     require(price >= MIN_SALE_PRICE, "toolow")
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let owner: Address = s.load(OWNER_PREFIX + nft_id.to_string()).expect("notminted")
+    let owner: Address = s.load(OWNER_PREFIX + nft_id.to_string(10u32)).expect("notminted")
     require(owner == caller, "notowner")
 
     let sale: Sale = Sale {
@@ -238,8 +238,8 @@ entry list_for_sale(nft_id: u64, price: u64) -> u64 {
         listed_at: get_current_topoheight(),
         active: true
     }
-    s.store(SALE_PREFIX + nft_id.to_string(), sale)
-    emit_event("NFTListed", nft_id.to_string())
+    s.store(SALE_PREFIX + nft_id.to_string(10u32), sale)
+    emit_event(0u64, ["NFTListed", nft_id.to_string(10u32)])
     return 0
 }
 
@@ -248,11 +248,11 @@ entry cancel_sale(nft_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let sale: Sale = s.load(SALE_PREFIX + nft_id.to_string()).expect("notlisted")
+    let sale: Sale = s.load(SALE_PREFIX + nft_id.to_string(10u32)).expect("notlisted")
     require(sale.seller == caller, "notowner")
     require(sale.active, "notactive")
     sale.active = false
-    s.store(SALE_PREFIX + nft_id.to_string(), sale)
+    s.store(SALE_PREFIX + nft_id.to_string(10u32), sale)
     return 0
 }
 
@@ -261,7 +261,7 @@ entry buy_nft(nft_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let sale: Sale = s.load(SALE_PREFIX + nft_id.to_string()).expect("notlisted")
+    let sale: Sale = s.load(SALE_PREFIX + nft_id.to_string(10u32)).expect("notlisted")
     require(sale.active, "notactive")
     require(caller != sale.seller, "selfbuy")
 
@@ -272,17 +272,17 @@ entry buy_nft(nft_id: u64) -> u64 {
     let seller_proceeds: u64 = sale.price - fee
 
     sale.active = false
-    s.store(SALE_PREFIX + nft_id.to_string(), sale)
+    s.store(SALE_PREFIX + nft_id.to_string(10u32), sale)
 
     // Transfer NFT
-    s.store(OWNER_PREFIX + nft_id.to_string(), caller)
+    s.store(OWNER_PREFIX + nft_id.to_string(10u32), caller)
     let from_bal: u64 = s.load(BALANCE_PREFIX + sale.seller.to_string()).unwrap_or(0)
     if from_bal > 0 { s.store(BALANCE_PREFIX + sale.seller.to_string(), from_bal - 1) }
     let to_bal: u64 = s.load(BALANCE_PREFIX + caller.to_string()).unwrap_or(0)
     s.store(BALANCE_PREFIX + caller.to_string(), to_bal + 1)
 
     // In production: transfer vault ownership in VaultEngine
-    emit_event("NFTSold", nft_id.to_string())
+    emit_event(0u64, ["NFTSold", nft_id.to_string(10u32)])
     return seller_proceeds
 }
 
@@ -292,7 +292,7 @@ entry make_offer(nft_id: u64, price: u64) -> u64 {
     require(price >= MIN_SALE_PRICE, "toolow")
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let owner: Address = s.load(OWNER_PREFIX + nft_id.to_string()).expect("notminted")
+    let owner: Address = s.load(OWNER_PREFIX + nft_id.to_string(10u32)).expect("notminted")
     require(caller != owner, "selfoffer")
 
     let offer_id: u64 = s.load(OFFER_COUNT_KEY).unwrap_or(0) + 1
@@ -304,7 +304,7 @@ entry make_offer(nft_id: u64, price: u64) -> u64 {
         created_at: get_current_topoheight(),
         active: true
     }
-    s.store(OFFER_PREFIX + offer_id.to_string(), offer)
+    s.store(OFFER_PREFIX + offer_id.to_string(10u32), offer)
     s.store(OFFER_COUNT_KEY, offer_id)
     return offer_id
 }
@@ -314,11 +314,11 @@ entry cancel_offer(offer_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let offer: Offer = s.load(OFFER_PREFIX + offer_id.to_string()).expect("notfound")
+    let offer: Offer = s.load(OFFER_PREFIX + offer_id.to_string(10u32)).expect("notfound")
     require(offer.buyer == caller, "notbuyer")
     require(offer.active, "notactive")
     offer.active = false
-    s.store(OFFER_PREFIX + offer_id.to_string(), offer)
+    s.store(OFFER_PREFIX + offer_id.to_string(10u32), offer)
     return 0
 }
 
@@ -327,33 +327,33 @@ entry accept_offer(offer_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let offer: Offer = s.load(OFFER_PREFIX + offer_id.to_string()).expect("notfound")
+    let offer: Offer = s.load(OFFER_PREFIX + offer_id.to_string(10u32)).expect("notfound")
     require(offer.active, "notactive")
-    let owner: Address = s.load(OWNER_PREFIX + offer.nft_id.to_string()).expect("notminted")
+    let owner: Address = s.load(OWNER_PREFIX + offer.nft_id.to_string(10u32)).expect("notminted")
     require(owner == caller, "notowner")
 
     offer.active = false
-    s.store(OFFER_PREFIX + offer_id.to_string(), offer)
+    s.store(OFFER_PREFIX + offer_id.to_string(10u32), offer)
 
     // Cancel any active sale
-    let sale_opt: optional<Sale> = s.load(SALE_PREFIX + offer.nft_id.to_string())
+    let sale_opt: optional<Sale> = s.load(SALE_PREFIX + offer.nft_id.to_string(10u32))
     if sale_opt.is_some() {
         let sale: Sale = sale_opt.expect("err")
         sale.active = false
-        s.store(SALE_PREFIX + offer.nft_id.to_string(), sale)
+        s.store(SALE_PREFIX + offer.nft_id.to_string(10u32), sale)
     }
 
     // Transfer NFT
     let fee: u64 = (offer.price * PROTOCOL_FEE_BPS) / 10000
     let seller_proceeds: u64 = offer.price - fee
 
-    s.store(OWNER_PREFIX + offer.nft_id.to_string(), offer.buyer)
+    s.store(OWNER_PREFIX + offer.nft_id.to_string(10u32), offer.buyer)
     let from_bal: u64 = s.load(BALANCE_PREFIX + caller.to_string()).unwrap_or(0)
     if from_bal > 0 { s.store(BALANCE_PREFIX + caller.to_string(), from_bal - 1) }
     let to_bal: u64 = s.load(BALANCE_PREFIX + offer.buyer.to_string()).unwrap_or(0)
     s.store(BALANCE_PREFIX + offer.buyer.to_string(), to_bal + 1)
 
-    emit_event("OfferAccepted", offer_id.to_string())
+    emit_event(0u64, ["OfferAccepted", offer_id.to_string(10u32)])
     return seller_proceeds
 }
 
@@ -364,50 +364,50 @@ entry fractionalize(nft_id: u64, share_count: u64) -> u64 {
     require(share_count >= 2 && share_count <= 10000, "badshare")
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let owner: Address = s.load(OWNER_PREFIX + nft_id.to_string()).expect("notminted")
+    let owner: Address = s.load(OWNER_PREFIX + nft_id.to_string(10u32)).expect("notminted")
     require(owner == caller, "notowner")
 
-    let nft: VaultNFTData = s.load(NFT_PREFIX + nft_id.to_string()).expect("notminted")
+    let nft: VaultNFTData = s.load(NFT_PREFIX + nft_id.to_string(10u32)).expect("notminted")
     require(!nft.is_fractionalized, "already")
 
     nft.is_fractionalized = true
     nft.total_shares = share_count
-    s.store(NFT_PREFIX + nft_id.to_string(), nft)
+    s.store(NFT_PREFIX + nft_id.to_string(10u32), nft)
 
     // In production: deploy an ERC-20 contract for the shares
     // Or store balances in this contract
-    s.store(FRACTION_PREFIX + nft_id.to_string() + "_caller", caller.to_string())
-    s.store(FRACTION_PREFIX + nft_id.to_string() + "_shares", share_count)
+    s.store(FRACTION_PREFIX + nft_id.to_string(10u32) + "_caller", caller.to_string())
+    s.store(FRACTION_PREFIX + nft_id.to_string(10u32) + "_shares", share_count)
 
-    emit_event("NFTFractionalized", nft_id.to_string())
+    emit_event(0u64, ["NFTFractionalized", nft_id.to_string(10u32)])
     return share_count
 }
 
 // Pub fn 10: Get NFT info
 pub fn get_nft_info(nft_id: u64) -> (u64, Address, u64, bool, u64) {
     let s: Storage = Storage::new()
-    let nft: VaultNFTData = s.load(NFT_PREFIX + nft_id.to_string()).expect("notminted")
+    let nft: VaultNFTData = s.load(NFT_PREFIX + nft_id.to_string(10u32)).expect("notminted")
     return (nft.vault_id, nft.original_owner, nft.minted_at, nft.is_fractionalized, nft.total_shares)
 }
 
 // Pub fn 11: Get current NFT owner
 pub fn get_nft_owner(nft_id: u64) -> Address {
     let s: Storage = Storage::new()
-    return s.load(OWNER_PREFIX + nft_id.to_string()).expect("notminted")
+    return s.load(OWNER_PREFIX + nft_id.to_string(10u32)).expect("notminted")
 }
 
 // Pub fn 12: Get sale info
 pub fn get_sale_info(nft_id: u64) -> (Address, u64, u64, bool) {
     let s: Storage = Storage::new()
-    let sale: Sale = s.load(SALE_PREFIX + nft_id.to_string()).expect("notlisted")
+    let sale: Sale = s.load(SALE_PREFIX + nft_id.to_string(10u32)).expect("notlisted")
     return (sale.seller, sale.price, sale.listed_at, sale.active)
 }
 
 // Pub fn 13: Get offer info
 pub fn get_offer_info(offer_id: u64) -> (u64, Address, Address, u64, u64, bool) {
     let s: Storage = Storage::new()
-    let offer: Offer = s.load(OFFER_PREFIX + offer_id.to_string()).expect("notfound")
-    return (offer.nft_id, offer.buyer, s.load(OWNER_PREFIX + offer.nft_id.to_string()).expect("err"), offer.price, offer.created_at, offer.active)
+    let offer: Offer = s.load(OFFER_PREFIX + offer_id.to_string(10u32)).expect("notfound")
+    return (offer.nft_id, offer.buyer, s.load(OWNER_PREFIX + offer.nft_id.to_string(10u32)).expect("err"), offer.price, offer.created_at, offer.active)
 }
 
 // Pub fn 14: Get total NFT supply

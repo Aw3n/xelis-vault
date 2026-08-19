@@ -404,7 +404,7 @@ entry transfer_admin(new_admin: Address) -> u64 {
 // @params: addr - Address
 // @returns: tuple: (
 // @security: standard access control
-entry get_balance_entry(addr: Address) -> (u64, u64) {
+fn get_balance_entry_impl(addr: Address) -> (u64, u64) {
     let s: Storage = Storage::new()
     let key: string = DEPOSITOR_PREFIX + addr.to_string()
     let position_opt: optional<DepositorPosition> = s.load(key)
@@ -420,6 +420,10 @@ entry get_balance_entry(addr: Address) -> (u64, u64) {
         delta_earned = 0
     }
     return ((position.principal as u128 * delta_earned as u128 / 1000000000000u128) as u64, position.principal)
+}
+
+entry get_balance_entry(addr: Address) -> (u64, u64) {
+    return get_balance_entry_impl(addr)
 }
 
 // ID 15: get_total_deposits_entry
@@ -493,7 +497,7 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // @returns: tuple: (
 // @security: standard access control
 pub fn get_balance(addr: Address) -> (u64, u64) {
-    return get_balance_entry(addr)
+    return get_balance_entry_impl(addr)
 }
 
 // get total deposits.

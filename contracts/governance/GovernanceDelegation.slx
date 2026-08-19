@@ -165,7 +165,7 @@ entry delegate(delegate_addr: Address) -> u64 {
     s.store(DELEGATE_PREFIX + caller.to_string(), delegate_addr)
     s.store(DELEGATORS_PREFIX + delegate_addr.to_string(), del_count + 1)
 
-    emit_event("Delegated", caller.to_string() + "_" + delegate_addr.to_string())
+    emit_event(0u64, ["Delegated", caller.to_string() + "_" + delegate_addr.to_string()])
     return 0
 }
 
@@ -195,7 +195,7 @@ entry delegate_by_topic(topic: u8, delegate_addr: Address) -> u64 {
     require(delegate_addr != caller, "selfdel")
     require(topic <= TOPIC_UPGRADE, "badtopic")
 
-    let key: string = TOPIC_DELEGATE_PREFIX + caller.to_string() + "_" + topic.to_string()
+    let key: string = TOPIC_DELEGATE_PREFIX + caller.to_string() + "_" + topic.to_string(10u32)
     s.store(key, delegate_addr)
     return 0
 }
@@ -205,7 +205,7 @@ entry undelegate_by_topic(topic: u8) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let key: string = TOPIC_DELEGATE_PREFIX + caller.to_string() + "_" + topic.to_string()
+    let key: string = TOPIC_DELEGATE_PREFIX + caller.to_string() + "_" + topic.to_string(10u32)
     s.delete(key)
     return 0
 }
@@ -246,7 +246,7 @@ pub fn get_voting_power(user: Address, own_stake: u64) -> u64 {
 pub fn get_delegate(user: Address) -> Address {
     let s: Storage = Storage::new()
     let del_opt: optional<Address> = s.load(DELEGATE_PREFIX + user.to_string())
-    if del_opt.is_none() { return Address::zero() }
+    if del_opt.is_none() { return Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) }
     return del_opt.expect("err")
 }
 
@@ -265,9 +265,9 @@ pub fn get_delegate_reputation(delegate_addr: Address) -> u64 {
 // Pub fn 9: Get topic-specific delegate
 pub fn get_topic_delegate(user: Address, topic: u8) -> Address {
     let s: Storage = Storage::new()
-    let key: string = TOPIC_DELEGATE_PREFIX + user.to_string() + "_" + topic.to_string()
+    let key: string = TOPIC_DELEGATE_PREFIX + user.to_string() + "_" + topic.to_string(10u32)
     let del_opt: optional<Address> = s.load(key)
-    if del_opt.is_none() { return Address::zero() }
+    if del_opt.is_none() { return Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) }
     return del_opt.expect("err")
 }
 

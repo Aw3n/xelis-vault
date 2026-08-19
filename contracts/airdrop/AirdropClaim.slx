@@ -125,14 +125,14 @@ fn only_guardian_or_admin() {
 // root: stored Merkle root
 fn verify_merkle_proof(proof: Hash[], leaf: Hash, root: Hash) -> bool {
     let computed: Hash = leaf
-    let i: u64 = 0
+    let i: u32 = 0
     while i < proof.len() {
         let sibling: Hash = proof[i]
         // Sort the pair to maintain canonical ordering (smaller hash first)
         if computed < sibling {
-            computed = Hash::new(computed.to_bytes() + sibling.to_bytes())
+            computed = Hash::blake3(computed.to_bytes() + sibling.to_bytes())
         } else {
-            computed = Hash::new(sibling.to_bytes() + computed.to_bytes())
+            computed = Hash::blake3(sibling.to_bytes() + computed.to_bytes())
         }
         i += 1
     }
@@ -142,8 +142,8 @@ fn verify_merkle_proof(proof: Hash[], leaf: Hash, root: Hash) -> bool {
 // Build the leaf hash from (testnet_addr, mainnet_addr, amount)
 // Format: keccak256(testnet_addr || mainnet_addr || amount_bytes)
 fn build_leaf(testnet_addr: Address, mainnet_addr: Address, amount: u64) -> Hash {
-    let data: bytes = testnet_addr.to_bytes() + mainnet_addr.to_bytes() + amount.to_bytes()
-    return Hash::new(data)
+    let data: bytes = testnet_addr.to_bytes() + mainnet_addr.to_bytes() + amount.to_string(10u32).to_bytes()
+    return Hash::blake3(data)
 }
 
 // Entry 0: Claim airdrop
@@ -194,7 +194,7 @@ entry claim(
     // VLTToken entry 4 = mint_to (mint tokens to an address)
     let _ = vlt.call(4u16, [mainnet_addr, amount], {})
 
-    emit_event("AirdropClaimed", testnet_addr.to_string() + "_" + amount.to_string())
+    emit_event(0u64, ["AirdropClaimed", testnet_addr.to_string() + "_" + amount.to_string(10u32)])
     release_reentrancy()
     return amount
 }
@@ -207,11 +207,11 @@ entry emergency_withdraw_unclaimed(to: Address) -> u64 {
     let deploy_topo: u64 = s.load(DEPLOY_TOPO_KEY).expect("err")
     let current: u64 = get_current_topoheight()
     require(current >= deploy_topo + EMERGENCY_DELAY_BLOCKS, "toosoon")
-    require(to != Address::zero(), "badaddr")
+    require(to != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
 
     // In production: calculate remaining = TOTAL_DISTRIBUTABLE - total_claimed
     // Then transfer remaining to `to`
-    emit_event("EmergencyWithdraw", to.to_string())
+    emit_event(0u64, ["EmergencyWithdraw", to.to_string()])
     return 0
 }
 
@@ -259,7 +259,7 @@ entry set_merkle_root(root: Hash) -> u64 {
     let s: Storage = Storage::new()
     require(root != Hash::zero(), "badroot")
     s.store(MERKLE_ROOT_KEY, root)
-    emit_event("MerkleRootUpdated", root.to_hex())
+    emit_event(0u64, ["MerkleRootUpdated", root.to_hex()])
     return 0
 }
 

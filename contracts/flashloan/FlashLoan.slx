@@ -24,6 +24,7 @@ const EMERGENCY_DELAY_BLOCKS: u64 = 17280
 const DEFAULT_FEE_BPS: u64 = 9
 const RG_NOT_ENTERED: u64 = 1
 const RG_ENTERED: u64 = 2
+const VERIFIED_CALLBACK_PREFIX: string = "vcb_"
 
 hook constructor() -> u64 {
     let s: Storage = Storage::new()
@@ -295,7 +296,6 @@ pub fn set_timelock_tl(tl: Hash) -> u64 { only_admin() Storage::new().store(TIME
 // v6.0: Callback verification
 // ============================================================================
 
-const VERIFIED_CALLBACK_PREFIX: string = "vcb_"
 
 entry verify_callback(callback_contract: Hash) -> u64 {
     only_admin()

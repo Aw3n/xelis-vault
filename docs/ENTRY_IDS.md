@@ -3,7 +3,7 @@
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
 
 Each `entry` function gets a sequential ID starting at 0 in declaration order.
-**Total entry functions across 51 contracts:** 962
+**Total entry functions across 51 contracts:** 959
 
 `pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.
 
@@ -220,27 +220,26 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 46 | `anchor_batch` | `merkle_root: Hash, message_count: u64` | `u` |
 | 47 | `blacklist_relayer` | `bad_relayer: Address, reason: string` | `u` |
 | 48 | `set_protocol_fee_bps` | `bps: u64` | `u` |
-| 49 | `claim_relayer_fees` | `—` | `u` |
-| 50 | `set_treasury` | `addr: Address` | `u` |
-| 51 | `set_prune_interval` | `blocks: u64` | `u` |
-| 52 | `report_storage_stats` | `total_gb: u64, used_gb: u64, messages_stored: u64` | `u` |
-| 53 | `create_payment_request` | `to: Address, amount: u64, asset: Hash, memo: string` | `u` |
-| 54 | `fulfill_payment_request` | `req_id: u64` | `u` |
-| 55 | `cancel_payment_request` | `req_id: u64` | `u` |
-| 56 | `create_giveaway` | `scope: string, amount_per_claim: u64, max_claims: u64, asset: Hash` | `u` |
-| 57 | `claim_giveaway` | `giveaway_id: u64` | `u` |
-| 58 | `cancel_giveaway` | `giveaway_id: u64` | `u` |
-| 59 | `send_direct_message` | `recipient: Address, encrypted_blob: bytes, timestamp: u64` | `u` |
-| 60 | `delete_direct_message` | `recipient: Address, slot: u64` | `u` |
-| 61 | `toggle_relayer_paused` | `—` | `u` |
-| 62 | `update_relayer_endpoint` | `new_endpoint: string` | `u` |
-| 63 | `update_free_tier` | `free_daily_limit: u64, free_wallet_slots: u64` | `u` |
-| 64 | `stake_relayer_bond` | `bond_amount: u64` | `u` |
-| 65 | `slash_relayer_bond` | `relayer: Address, slash_bps: u64, reason: string` | `u` |
-| 66 | `withdraw_relayer_bond` | `—` | `u` |
-| 67 | `rate_relayer_weighted` | `relayer: Address, score: u8` | `u` |
-| 68 | `set_member_role` | `group_id: u64, member: Address, new_role: u8` | `u` |
-| 69 | `mute_member` | `group_id: u64, member: Address, duration_blocks: u64` | `u` |
+| 49 | `set_treasury` | `addr: Address` | `u` |
+| 50 | `set_prune_interval` | `blocks: u64` | `u` |
+| 51 | `report_storage_stats` | `total_gb: u64, used_gb: u64, messages_stored: u64` | `u` |
+| 52 | `create_payment_request` | `to: Address, amount: u64, asset: Hash, memo: string` | `u` |
+| 53 | `fulfill_payment_request` | `req_id: u64` | `u` |
+| 54 | `cancel_payment_request` | `req_id: u64` | `u` |
+| 55 | `create_giveaway` | `scope: string, amount_per_claim: u64, max_claims: u64, asset: Hash` | `u` |
+| 56 | `claim_giveaway` | `giveaway_id: u64` | `u` |
+| 57 | `cancel_giveaway` | `giveaway_id: u64` | `u` |
+| 58 | `send_direct_message` | `recipient: Address, encrypted_blob: bytes, timestamp: u64` | `u` |
+| 59 | `delete_direct_message` | `recipient: Address, slot: u64` | `u` |
+| 60 | `toggle_relayer_paused` | `—` | `u` |
+| 61 | `update_relayer_endpoint` | `new_endpoint: string` | `u` |
+| 62 | `update_free_tier` | `free_daily_limit: u64, free_wallet_slots: u64` | `u` |
+| 63 | `stake_relayer_bond` | `bond_amount: u64` | `u` |
+| 64 | `slash_relayer_bond` | `relayer: Address, slash_bps: u64, reason: string` | `u` |
+| 65 | `withdraw_relayer_bond` | `—` | `u` |
+| 66 | `rate_relayer_weighted` | `relayer: Address, score: u8` | `u` |
+| 67 | `set_member_role` | `group_id: u64, member: Address, new_role: u8` | `u` |
+| 68 | `mute_member` | `group_id: u64, member: Address, duration_blocks: u64` | `u` |
 
 ## `compliance/ComplianceModule.slx`
 
@@ -800,17 +799,15 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 34 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
 | 35 | `set_compound` | `enabled: bool` | `u` |
 | 36 | `set_rep_decay_params` | `interval: u64, amount: u64` | `u` |
-| 37 | `get_miner_stake_entry` | `addr: Address` | `u` |
-| 38 | `get_miner_reputation_entry` | `addr: Address` | `u` |
-| 39 | `get_active_miners_count_entry` | `—` | `u` |
-| 40 | `get_miner_at_entry` | `index: u64` | `A` |
-| 41 | `emergency_slash_miner` | `miner_addr: Address, slash_bps: u64, reason: string` | `u` |
-| 42 | `emergency_ban_miner` | `miner_addr: Address, reason: string` | `u` |
-| 43 | `emergency_freeze_rewards` | `frozen: bool` | `u` |
-| 44 | `set_min_stake_entry` | `new_min_stake: u64` | `u` |
-| 45 | `set_max_delegation_pct` | `bps: u64` | `u` |
-| 46 | `get_miner_own_stake_entry` | `addr: Address` | `u` |
-| 47 | `is_rewards_frozen_entry` | `—` | `b` |
+| 37 | `get_active_miners_count_entry` | `—` | `u` |
+| 38 | `get_miner_at_entry` | `index: u64` | `A` |
+| 39 | `emergency_slash_miner` | `miner_addr: Address, slash_bps: u64, reason: string` | `u` |
+| 40 | `emergency_ban_miner` | `miner_addr: Address, reason: string` | `u` |
+| 41 | `emergency_freeze_rewards` | `frozen: bool` | `u` |
+| 42 | `set_min_stake_entry` | `new_min_stake: u64` | `u` |
+| 43 | `set_max_delegation_pct` | `bps: u64` | `u` |
+| 44 | `get_miner_own_stake_entry` | `addr: Address` | `u` |
+| 45 | `is_rewards_frozen_entry` | `—` | `b` |
 
 ## `nft/VaultNFT.slx`
 

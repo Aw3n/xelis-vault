@@ -1049,7 +1049,7 @@ entry deposit_confidential(
     
     // Verify the collateral proof (amount > 0 and < max)
     let transcript: Transcript = Transcript::new(b"deposit_conf")
-    require(collateral_proof.verify(transcript, collateral_cipher.commitment(), 1, 1000000000000000), "badproof")
+    require(collateral_proof.verify_single(collateral_cipher.commitment(), transcript, 50u8), "badproof")
     
     // Get XEL price for health check
     let price: u64 = get_xel_price()
@@ -1089,11 +1089,11 @@ entry borrow_confidential(
     
     // Verify proofs
     let transcript: Transcript = Transcript::new(b"borrow_conf")
-    require(borrow_proof.verify(transcript, borrow_cipher.commitment(), 1, 1000000000000000), "badborrow")
-    require(collateral_proof.verify(transcript, vault.collateral_cipher.commitment(), 1, 1000000000000000), "badcoll")
+    require(borrow_proof.verify_single(borrow_cipher.commitment(), transcript, 50u8), "badborrow")
+    require(collateral_proof.verify_single(vault.collateral_cipher.commitment(), transcript, 50u8), "badcoll")
     
     // Add borrow to existing (homomorphic addition)
-    vault.borrow_cipher.add(borrow_cipher)
+    vault.borrow_cipher.add_ct(borrow_cipher)
     
     // Note: Health factor check requires the oracle price + a proof that
     // collateral * price >= borrow * min_cr. This is done off-chain by the
@@ -1122,10 +1122,10 @@ entry repay_confidential(
     require(!vault.liquidated, "liqd")
     
     let transcript: Transcript = Transcript::new(b"repay_conf")
-    require(repay_proof.verify(transcript, repay_cipher.commitment(), 1, 1000000000000000), "badrepay")
+    require(repay_proof.verify_single(repay_cipher.commitment(), transcript, 50u8), "badrepay")
     
     // Homomorphic subtraction: borrow_cipher = borrow_cipher - repay_cipher
-    vault.borrow_cipher.sub(repay_cipher)
+    vault.borrow_cipher.sub_ct(repay_cipher)
     vault.last_update_topo = get_current_topoheight()
     s.store(CONF_VAULT_PREFIX + vault_id.to_string(10u32), vault)
     

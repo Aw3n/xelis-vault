@@ -161,81 +161,6 @@ fn only_guardian_or_admin() {
 //        so even different amounts are untraceable when batched together.
 // ============================================================================
 
-entry deposit(recipient: Address, asset: Hash, min_anonymity: u64) -> u64 {
-    when_not_paused()
-    require(recipient != Address::zero(), "badrecipient")
-
-    let s: Storage = Storage::new()
-    let caller: Address = get_caller().expect("err")
-
-    // Get attached deposit (ANY amount, not fixed denomination)
-    let dep: u64 = get_deposit_for_asset(asset).expect("err")
-    require(dep > 0, "insdep")
-
-    // Validate anonymity threshold
-    let min_thresh: u64 = s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
-    let max_thresh: u64 = s.load(MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MAX_THRESHOLD)
-    require(min_anonymity >= min_thresh, "toolow")
-    require(min_anonymity <= max_thresh, "toohigh")
-
-    // Refund excess (if user attached more than intended — but since amount is free,
-    // we accept whatever is attached as the amount to mix)
-    // Actually: the attached amount IS the amount to mix. No excess to refund.
-    // If user attached more than they wanted to mix, that's their mistake.
-
-    // Store deposit entry
-    let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
-    let entry: DepositEntry = DepositEntry {
-        sender: caller,
-        recipient: recipient,
-        asset: asset,
-        amount: dep,
-        min_anonymity: min_anonymity,
-        deposited_at: get_current_topoheight()
-    }
-    s.store(POOL_DEPOSIT_PREFIX + pool_count.to_string(10u32), entry)
-
-    // Track first deposit topo (for timeout)
-    if pool_count == 0 {
-        s.store(POOL_FIRST_TOPO_KEY, get_current_topoheight())
-    }
-
-    // Update pool max threshold (mix only when ALL users' thresholds are met)
-    let current_max: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
-    if min_anonymity > current_max {
-        s.store(POOL_MAX_THRESHOLD_KEY, min_anonymity)
-    }
-
-    s.store(POOL_COUNT_KEY, pool_count + 1)
-
-    emit_event("MixerDeposit", pool_count.to_string(10u32) + "_" + dep.to_string(10u32))
-
-    // Auto-mix if threshold reached
-    let pool_threshold: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
-    if pool_count + 1 >= pool_threshold {
-        let _ = do_mix(s)
-    }
-
-    return pool_count
-}
-
-// ============================================================================
-// ENTRY 1: execute_mix — send all pending funds to their recipients
-// @caller: anyone (keeper bot or user)
-// @returns: number of deposits mixed
-// ============================================================================
-
-entry execute_mix() -> u64 {
-    when_not_paused()
-    let s: Storage = Storage::new()
-    let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
-    require(pool_count > 0, "empty")
-
-    let pool_threshold: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
-    require(pool_count >= pool_threshold, "notenough")
-
-    return do_mix(s)
-}
 
 fn do_mix(s: Storage) -> u64 {
     let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
@@ -298,9 +223,86 @@ fn do_mix(s: Storage) -> u64 {
     let total_mixes: u64 = s.load(TOTAL_MIXES_KEY).unwrap_or(0)
     s.store(TOTAL_MIXES_KEY, total_mixes + 1)
 
-    emit_event("MixerExecuted", mixed_count.to_string(10u32))
+    emit_event(0u64, ["MixerExecuted", mixed_count.to_string(10u32)])
     return mixed_count
 }
+
+entry deposit(recipient: Address, asset: Hash, min_anonymity: u64) -> u64 {
+    when_not_paused()
+    require(recipient != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badrecipient")
+
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+
+    // Get attached deposit (ANY amount, not fixed denomination)
+    let dep: u64 = get_deposit_for_asset(asset).expect("err")
+    require(dep > 0, "insdep")
+
+    // Validate anonymity threshold
+    let min_thresh: u64 = s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
+    let max_thresh: u64 = s.load(MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MAX_THRESHOLD)
+    require(min_anonymity >= min_thresh, "toolow")
+    require(min_anonymity <= max_thresh, "toohigh")
+
+    // Refund excess (if user attached more than intended — but since amount is free,
+    // we accept whatever is attached as the amount to mix)
+    // Actually: the attached amount IS the amount to mix. No excess to refund.
+    // If user attached more than they wanted to mix, that's their mistake.
+
+    // Store deposit entry
+    let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
+    let entry: DepositEntry = DepositEntry {
+        sender: caller,
+        recipient: recipient,
+        asset: asset,
+        amount: dep,
+        min_anonymity: min_anonymity,
+        deposited_at: get_current_topoheight()
+    }
+    s.store(POOL_DEPOSIT_PREFIX + pool_count.to_string(10u32), entry)
+
+    // Track first deposit topo (for timeout)
+    if pool_count == 0 {
+        s.store(POOL_FIRST_TOPO_KEY, get_current_topoheight())
+    }
+
+    // Update pool max threshold (mix only when ALL users' thresholds are met)
+    let current_max: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
+    if min_anonymity > current_max {
+        s.store(POOL_MAX_THRESHOLD_KEY, min_anonymity)
+    }
+
+    s.store(POOL_COUNT_KEY, pool_count + 1)
+
+    emit_event(0u64, ["MixerDeposit", pool_count.to_string(10u32) + "_" + dep.to_string(10u32)])
+
+    // Auto-mix if threshold reached
+    let pool_threshold: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
+    if pool_count + 1 >= pool_threshold {
+        let _ = do_mix(s)
+    }
+
+    return pool_count
+}
+
+// ============================================================================
+// ENTRY 1: execute_mix — send all pending funds to their recipients
+// @caller: anyone (keeper bot or user)
+// @returns: number of deposits mixed
+// ============================================================================
+
+entry execute_mix() -> u64 {
+    when_not_paused()
+    let s: Storage = Storage::new()
+    let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
+    require(pool_count > 0, "empty")
+
+    let pool_threshold: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
+    require(pool_count >= pool_threshold, "notenough")
+
+    return do_mix(s)
+}
+
 
 // ============================================================================
 // ENTRY 2: execute_refund — refund all pending deposits if timeout reached
@@ -334,7 +336,7 @@ entry execute_refund() -> u64 {
     s.store(POOL_FIRST_TOPO_KEY, 0u64)
     s.store(POOL_MAX_THRESHOLD_KEY, s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD))
 
-    emit_event("MixerRefund", refunded.to_string(10u32))
+    emit_event(0u64, ["MixerRefund", refunded.to_string(10u32)])
     return refunded
 }
 
@@ -449,7 +451,7 @@ entry set_guardian(g: Address) -> u64 {
 entry pause(reason: string) -> u64 {
     only_guardian_or_admin()
     Storage::new().store(PAUSED_KEY, true)
-    emit_event("MixerPaused", reason)
+    emit_event(0u64, ["MixerPaused", reason])
     return 0
 }
 

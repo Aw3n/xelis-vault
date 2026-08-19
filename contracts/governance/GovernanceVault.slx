@@ -428,22 +428,6 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
     return 0
 }
 
-// Returns voting power for an address (read-only view).
-// @caller: anyone
-// @params: addr - address whose voting power to return
-// @returns: voting power in atomic units (0 if none)
-// @security: read-only, no access restrictions
-// pub fn (read-only)
-pub fn get_voting_power(addr: Address) -> u64 {
-    return Storage::new().load(USER_VP_PREFIX + addr.to_string()).unwrap_or(0)
-}
-// Returns the sum of all stakers' voting power (read-only view).
-// @caller: anyone
-// @returns: total voting power in atomic units
-// @security: read-only, no access restrictions
-pub fn get_total_voting_power() -> u64 {
-    return Storage::new().load(TOTAL_VP_KEY).unwrap_or(0)
-}
 // Returns the sum of all staked VLT principal (read-only view).
 // @caller: anyone
 // @returns: total staked VLT in atomic units

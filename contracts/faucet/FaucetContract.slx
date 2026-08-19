@@ -124,7 +124,7 @@ entry refill_xel() -> u64 {
     only_admin()
     // XEL attached automatically via get_deposit_for_asset(Hash::zero())
     // No explicit storage needed — balance is the contract's XEL balance
-    emit_event("FaucetRefilled", "XEL")
+    emit_event(0u64, ["FaucetRefilled", "XEL"])
     return 0
 }
 
@@ -141,7 +141,7 @@ entry refill_vlt(amount: u64) -> u64 {
     // Actually we use transfer_from if available, or assume admin pre-approved
     // For simplicity, admin calls VLTToken.transfer_to(faucet, amount) directly
     // This entry is just for accounting/event
-    emit_event("FaucetRefilled", "VLT_" + amount.to_string())
+    emit_event(0u64, ["FaucetRefilled", "VLT_" + amount.to_string(10u32)])
     return 0
 }
 
@@ -166,10 +166,10 @@ entry distribute(addresses: Address[]) -> u64 {
     let vlt_hash_opt: optional<Hash> = s.load(VLT_CONTRACT_KEY)
     let vlt_asset_opt: optional<Hash> = s.load(VLT_ASSET_KEY)
 
-    let i: u64 = 0
+    let i: u32 = 0
     while i < addresses.len() {
         let addr: Address = addresses[i]
-        if addr == Address::zero() {
+        if addr == Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) {
             i += 1
             continue
         }
@@ -206,8 +206,8 @@ entry distribute(addresses: Address[]) -> u64 {
         i += 1
     }
 
-    emit_event("FaucetDistributed", addresses.len().to_string())
-    return addresses.len()
+    emit_event(0u64, ["FaucetDistributed", addresses.len().to_string(10u32)])
+    return addresses.len() as u64
 }
 
 // Entry 3: Set claim amounts (admin only)
@@ -370,6 +370,6 @@ entry execute_emergency_withdraw() -> u64 {
     }
 
     s.delete(EMERGENCY_REQUEST_TOPO_KEY)
-    emit_event("EmergencyWithdraw", "")
+    emit_event(0u64, ["EmergencyWithdraw", ""])
     return 0
 }

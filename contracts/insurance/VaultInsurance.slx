@@ -145,7 +145,7 @@ entry insure_vault(vault_id: u64, borrow_amount: u64) -> u64 {
     let caller: Address = get_caller().expect("err")
 
     // Check vault isn't already insured
-    let existing_opt: optional<InsurancePolicy> = s.load(POLICY_PREFIX + vault_id.to_string())
+    let existing_opt: optional<InsurancePolicy> = s.load(POLICY_PREFIX + vault_id.to_string(10u32))
     require(existing_opt.is_none() || !existing_opt.expect("err").active, "alreadyinsured")
 
     // Calculate premium
@@ -165,7 +165,7 @@ entry insure_vault(vault_id: u64, borrow_amount: u64) -> u64 {
         auto_repaid_at_topo: 0,
         residual_collateral: 0
     }
-    s.store(POLICY_PREFIX + vault_id.to_string(), policy)
+    s.store(POLICY_PREFIX + vault_id.to_string(10u32), policy)
 
     // Update pool totals
     let pool_total: u64 = s.load(POOL_TOTAL_KEY).unwrap_or(0)
@@ -178,7 +178,7 @@ entry insure_vault(vault_id: u64, borrow_amount: u64) -> u64 {
     let count: u64 = s.load(POLICY_COUNT_KEY).unwrap_or(0)
     s.store(POLICY_COUNT_KEY, count + 1)
 
-    emit_event("VaultInsured", vault_id.to_string())
+    emit_event(0u64, ["VaultInsured", vault_id.to_string(10u32)])
     return 0
 }
 
@@ -187,13 +187,13 @@ entry cancel_insurance(vault_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let policy: InsurancePolicy = s.load(POLICY_PREFIX + vault_id.to_string()).expect("notinsured")
+    let policy: InsurancePolicy = s.load(POLICY_PREFIX + vault_id.to_string(10u32)).expect("notinsured")
     require(policy.vault_owner == caller, "notowner")
     require(policy.active, "notactive")
     require(!policy.auto_repaid, "alreadyrepaid")
 
     policy.active = false
-    s.store(POLICY_PREFIX + vault_id.to_string(), policy)
+    s.store(POLICY_PREFIX + vault_id.to_string(10u32), policy)
     // No refund — premium is non-refundable (covers risk period already elapsed)
     return 0
 }
@@ -203,7 +203,7 @@ entry cancel_insurance(vault_id: u64) -> u64 {
 entry trigger_auto_repay(vault_id: u64, current_health_bps: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
-    let policy_opt: optional<InsurancePolicy> = s.load(POLICY_PREFIX + vault_id.to_string())
+    let policy_opt: optional<InsurancePolicy> = s.load(POLICY_PREFIX + vault_id.to_string(10u32))
     require(policy_opt.is_some(), "notinsured")
     let policy: InsurancePolicy = policy_opt.expect("err")
     require(policy.active, "notactive")
@@ -234,8 +234,8 @@ entry trigger_auto_repay(vault_id: u64, current_health_bps: u64) -> u64 {
     let fee: u64 = (repay_amount * AUTO_REPAY_FEE_BPS) / 10000
     policy.residual_collateral = repay_amount - fee  // simplified
 
-    s.store(POLICY_PREFIX + vault_id.to_string(), policy)
-    emit_event("AutoRepayTriggered", vault_id.to_string())
+    s.store(POLICY_PREFIX + vault_id.to_string(10u32), policy)
+    emit_event(0u64, ["AutoRepayTriggered", vault_id.to_string(10u32)])
     return 0
 }
 
@@ -244,17 +244,17 @@ entry claim_residual_collateral(vault_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let policy: InsurancePolicy = s.load(POLICY_PREFIX + vault_id.to_string()).expect("notinsured")
+    let policy: InsurancePolicy = s.load(POLICY_PREFIX + vault_id.to_string(10u32)).expect("notinsured")
     require(policy.vault_owner == caller, "notowner")
     require(policy.auto_repaid, "notrepaid")
     require(policy.residual_collateral > 0, "nothing")
 
     let amount: u64 = policy.residual_collateral
     policy.residual_collateral = 0
-    s.store(POLICY_PREFIX + vault_id.to_string(), policy)
+    s.store(POLICY_PREFIX + vault_id.to_string(10u32), policy)
 
     // In production: transfer collateral to caller
-    emit_event("ResidualClaimed", vault_id.to_string())
+    emit_event(0u64, ["ResidualClaimed", vault_id.to_string(10u32)])
     return amount
 }
 
@@ -266,20 +266,18 @@ entry stake_to_pool(amount: u64) -> u64 {
     let caller: Address = get_caller().expect("err")
 
     let staker_opt: optional<StakerInfo> = s.load(STAKER_PREFIX + caller.to_string())
-    let staker: StakerInfo
-    if staker_opt.is_some() {
-        staker = staker_opt.expect("err")
-        staker.amount += amount
-    } else {
-        staker = StakerInfo {
-            amount: amount,
-            staked_at: get_current_topoheight(),
-            rewards_earned: 0,
-            rewards_claimed: 0
-        }
+    let staker: StakerInfo = staker_opt.unwrap_or(StakerInfo {
+        amount: 0,
+        staked_at: get_current_topoheight(),
+        rewards_earned: 0,
+        rewards_claimed: 0
+    })
+    let is_new_staker: bool = staker_opt.is_none()
+    if is_new_staker {
         let sc: u64 = s.load(STAKER_COUNT_KEY).unwrap_or(0)
         s.store(STAKER_COUNT_KEY, sc + 1)
     }
+    staker.amount += amount
     s.store(STAKER_PREFIX + caller.to_string(), staker)
 
     // In production: transfer tokens from caller to this contract
@@ -330,7 +328,7 @@ entry claim_staker_rewards() -> u64 {
 // Pub fn 7: Get insurance status for a vault
 pub fn get_insurance_status(vault_id: u64) -> (bool, u64, u64, u64, bool, u64, u64) {
     let s: Storage = Storage::new()
-    let policy: InsurancePolicy = s.load(POLICY_PREFIX + vault_id.to_string()).expect("notinsured")
+    let policy: InsurancePolicy = s.load(POLICY_PREFIX + vault_id.to_string(10u32)).expect("notinsured")
     return (
         policy.active,
         policy.borrow_amount_at_insurance,

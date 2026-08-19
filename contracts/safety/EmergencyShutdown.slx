@@ -138,7 +138,7 @@ entry trigger_soft_pause(reason: string) -> u64 {
     s.store(REASON_KEY, reason)
     s.store(TIMESTAMP_KEY, get_current_topoheight())
     s.store(TRIGGERED_BY_KEY, get_caller().expect("err"))
-    emit_event("SoftPauseTriggered", reason)
+    emit_event(0u64, ["SoftPauseTriggered", reason])
     return 0
 }
 
@@ -169,7 +169,7 @@ entry trigger_full_shutdown(reason: string) -> u64 {
     s.store(REASON_KEY, reason)
     s.store(TIMESTAMP_KEY, get_current_topoheight())
     s.store(TRIGGERED_BY_KEY, caller)
-    emit_event("FullShutdownTriggered", reason)
+    emit_event(0u64, ["FullShutdownTriggered", reason])
     return 0
 }
 
@@ -181,7 +181,7 @@ entry propose_recovery(proposal_id: u64) -> u64 {
     require(current == STATE_FULL_SHUTDOWN, "notsd")
     s.store(STATE_KEY, STATE_RECOVERY)
     s.store(RECOVERY_PROPOSAL_ID_KEY, proposal_id)
-    emit_event("RecoveryProposed", proposal_id.to_string())
+    emit_event(0u64, ["RecoveryProposed", proposal_id.to_string(10u32)()])
     return 0
 }
 
@@ -195,7 +195,7 @@ entry execute_recovery() -> u64 {
     s.store(REASON_KEY, "")
     s.store(TIMESTAMP_KEY, 0u64)
     s.store(RECOVERY_PROPOSAL_ID_KEY, 0u64)
-    emit_event("RecoveryExecuted", "")
+    emit_event(0u64, ["RecoveryExecuted", ""])
     return 0
 }
 

@@ -146,12 +146,7 @@ entry claim_founder_tokens() -> u64 {
 
     // Calculate vested amount
     let elapsed_after_cliff: u64 = current_topo - cliff_end
-    let vested: u64
-    if elapsed_after_cliff >= vesting_blocks {
-        vested = total  // fully vested
-    } else {
-        vested = (total * elapsed_after_cliff) / vesting_blocks
-    }
+    let vested: u64 = elapsed_after_cliff >= vesting_blocks ? total : (total * elapsed_after_cliff) / vesting_blocks
 
     let claimable: u64 = vested - claimed
     require(claimable > 0, "nothing")
@@ -167,7 +162,7 @@ entry claim_founder_tokens() -> u64 {
     // VLTToken entry 4 = transfer_to (transfer tokens to an address)
     let _ = vlt.call(4u16, [founder, claimable], {})
 
-    emit_event("FounderTokensClaimed", claimable.to_string())
+    emit_event(0u64, ["FounderTokensClaimed", claimable.to_string(10u32)])
     release_reentrancy_fv()
     return claimable
 }
@@ -204,12 +199,7 @@ pub fn get_claimable_amount() -> u64 {
     if current_topo < cliff_end { return 0 }
 
     let elapsed: u64 = current_topo - cliff_end
-    let vested: u64
-    if elapsed >= vesting_blocks {
-        vested = total
-    } else {
-        vested = (total * elapsed) / vesting_blocks
-    }
+    let vested: u64 = elapsed >= vesting_blocks ? total : (total * elapsed) / vesting_blocks
 
     if vested > claimed {
         return vested - claimed
@@ -227,10 +217,10 @@ pub fn get_claimed_amount() -> u64 {
 // Used if founder wants to transfer vesting to another address
 entry set_founder(new_founder: Address) -> u64 {
     only_admin()
-    require(new_founder != Address::zero(), "badaddr")
+    require(new_founder != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
     let s: Storage = Storage::new()
     s.store(FOUNDER_KEY, new_founder)
-    emit_event("FounderChanged", new_founder.to_string())
+    emit_event(0u64, ["FounderChanged", new_founder.to_string()])
     return 0
 }
 

@@ -175,7 +175,7 @@ entry opt_in(amount: u64, strategy: u8) -> u64 {
     s.store(TOTAL_MANAGED_KEY, tm + amount)
 
     // In production: transfer tokens from caller to this contract, then deposit to venues
-    emit_event("OptedIn", caller.to_string())
+    emit_event(0u64, ["OptedIn", caller.to_string()])
     return 0
 }
 

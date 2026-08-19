@@ -139,7 +139,7 @@ fn record_execution(template_id: u8, user: Address, initial: u64, final_col: u64
         executed_at: get_current_topoheight(),
         success: success
     }
-    s.store(EXECUTION_PREFIX + count.to_string(), exec)
+    s.store(EXECUTION_PREFIX + count.to_string(10u32), exec)
     s.store(EXECUTION_COUNT_KEY, count + 1)
 }
 
@@ -163,7 +163,7 @@ entry execute_safe_vault(collateral_amount: u64, min_borrow_out: u64) -> u64 {
     // 4. Transfer xUSD to caller
 
     record_execution(1u8, caller, collateral_amount, collateral_amount, borrow_amount, true)
-    emit_event("SafeVaultExecuted", caller.to_string())
+    emit_event(0u64, ["SafeVaultExecuted", caller.to_string()])
     return borrow_amount
 }
 
@@ -199,7 +199,7 @@ entry execute_leverage_loop(initial_collateral: u64, min_final_collateral: u64) 
 
     require(current_collateral >= min_final_collateral, "slippage")
     record_execution(2u8, caller, initial_collateral, current_collateral, total_borrowed, true)
-    emit_event("LeverageLoopExecuted", caller.to_string())
+    emit_event(0u64, ["LeverageLoopExecuted", caller.to_string()])
     return current_collateral
 }
 
@@ -222,7 +222,7 @@ entry execute_yield_farmer(collateral_amount: u64, min_borrow_out: u64) -> u64 {
     // 4. Return savings_position_id
 
     record_execution(3u8, caller, collateral_amount, collateral_amount, borrow_amount, true)
-    emit_event("YieldFarmerExecuted", caller.to_string())
+    emit_event(0u64, ["YieldFarmerExecuted", caller.to_string()])
     return borrow_amount
 }
 
@@ -237,15 +237,8 @@ entry execute_psm_arbitrage(amount: u64, current_xusd_price_cents: u64) -> u64 {
     let caller: Address = get_caller().expect("err")
 
     // Check if peg deviation is profitable
-    let deviation: u64
-    let is_premium: bool
-    if current_xusd_price_cents > 100 {
-        deviation = current_xusd_price_cents - 100
-        is_premium = true
-    } else {
-        deviation = 100 - current_xusd_price_cents
-        is_premium = false
-    }
+    let is_premium: bool = current_xusd_price_cents > 100
+    let deviation: u64 = is_premium ? current_xusd_price_cents - 100 : 100 - current_xusd_price_cents
     require(deviation >= PSM_ARBITRAGE_THRESHOLD_BPS / 10, "notprofitable")
 
     // In production:
@@ -254,7 +247,7 @@ entry execute_psm_arbitrage(amount: u64, current_xusd_price_cents: u64) -> u64 {
     let profit_estimate: u64 = (amount * deviation) / 10000
 
     record_execution(4u8, caller, amount, amount, profit_estimate, true)
-    emit_event("PSMArbitrageExecuted", caller.to_string())
+    emit_event(0u64, ["PSMArbitrageExecuted", caller.to_string()])
     return profit_estimate
 }
 
@@ -276,7 +269,7 @@ entry execute_lp_strategy(collateral_amount: u64, min_borrow_out: u64) -> u64 {
     // 3. vault_swap.add_liquidity(XEL, collateral_amount/2, xUSD, borrow_amount)
 
     record_execution(5u8, caller, collateral_amount, collateral_amount, borrow_amount, true)
-    emit_event("LPStrategyExecuted", caller.to_string())
+    emit_event(0u64, ["LPStrategyExecuted", caller.to_string()])
     return borrow_amount
 }
 
@@ -285,7 +278,7 @@ entry emergency_exit(execution_id: u64) -> u64 {
     when_not_paused()
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
-    let exec: TemplateExecution = s.load(EXECUTION_PREFIX + execution_id.to_string()).expect("notfound")
+    let exec: TemplateExecution = s.load(EXECUTION_PREFIX + execution_id.to_string(10u32)).expect("notfound")
     require(exec.user == caller, "notowner")
 
     // In production:
@@ -294,7 +287,7 @@ entry emergency_exit(execution_id: u64) -> u64 {
     // 3. Withdraw collateral
     // 4. Transfer everything to caller
 
-    emit_event("EmergencyExit", execution_id.to_string())
+    emit_event(0u64, ["EmergencyExit", execution_id.to_string(10u32)])
     return exec.final_collateral
 }
 

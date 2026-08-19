@@ -168,7 +168,7 @@ fn get_total_active_percentage() -> u64 {
     let total: u64 = 0
     let i: u64 = 0
     while i < count {
-        let addr_opt: optional<Address> = s.load(SHARE_LIST_PREFIX + i.to_string())
+        let addr_opt: optional<Address> = s.load(SHARE_LIST_PREFIX + i.to_string(10u32))
         if addr_opt.is_some() {
             let addr: Address = addr_opt.expect("err")
             let pct: u64 = get_effective_percentage(addr)
@@ -185,7 +185,7 @@ fn get_total_active_percentage() -> u64 {
 entry set_share(contributor: Address, percentage_bps: u64, duration_blocks: u64) -> u64 {
     when_not_paused()
     only_founder()
-    require(contributor != Address::zero(), "badaddr")
+    require(contributor != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
     require(contributor != get_caller().expect("err"), "selfshare")
     require(percentage_bps > 0 && percentage_bps <= MAX_SHARE_BPS, "badpct")
     require(duration_blocks >= BLOCKS_PER_DAY, "tooshort")  // min 1 day
@@ -227,11 +227,11 @@ entry set_share(contributor: Address, percentage_bps: u64, duration_blocks: u64)
     // Add to list if new
     if is_new {
         let count: u64 = s.load(SHARE_COUNT_KEY).unwrap_or(0)
-        s.store(SHARE_LIST_PREFIX + count.to_string(), contributor)
+        s.store(SHARE_LIST_PREFIX + count.to_string(10u32), contributor)
         s.store(SHARE_COUNT_KEY, count + 1)
     }
 
-    emit_event("ShareSet", contributor.to_string() + "_" + percentage_bps.to_string())
+    emit_event(0u64, ["ShareSet", contributor.to_string() + "_" + percentage_bps.to_string(10u32)])
     return 0
 }
 
@@ -246,7 +246,7 @@ entry revoke_share(contributor: Address) -> u64 {
     share.active = false
     share.end_topo = get_current_topoheight()  // end now
     s.store(SHARE_PREFIX + contributor.to_string(), share)
-    emit_event("ShareRevoked", contributor.to_string())
+    emit_event(0u64, ["ShareRevoked", contributor.to_string()])
     return 0
 }
 
@@ -267,7 +267,7 @@ entry update_share_percentage(contributor: Address, new_percentage_bps: u64) -> 
 
     share.percentage_bps = new_percentage_bps
     s.store(SHARE_PREFIX + contributor.to_string(), share)
-    emit_event("ShareUpdated", contributor.to_string() + "_" + new_percentage_bps.to_string())
+    emit_event(0u64, ["ShareUpdated", contributor.to_string() + "_" + new_percentage_bps.to_string(10u32)])
     return 0
 }
 
@@ -281,7 +281,7 @@ entry extend_share_duration(contributor: Address, additional_blocks: u64) -> u64
     require(share.active, "inactive")
     share.end_topo = share.end_topo + additional_blocks
     s.store(SHARE_PREFIX + contributor.to_string(), share)
-    emit_event("ShareExtended", contributor.to_string() + "_" + additional_blocks.to_string())
+    emit_event(0u64, ["ShareExtended", contributor.to_string() + "_" + additional_blocks.to_string(10u32)])
     return 0
 }
 
@@ -299,7 +299,7 @@ entry claim_founder_revenue() -> u64 {
     s.store(TOTAL_DISTRIBUTED_KEY, total_distributed + pending)
 
     // In production: transfer `pending` amount of XEL/VLT to founder
-    emit_event("FounderRevenueClaimed", pending.to_string())
+    emit_event(0u64, ["FounderRevenueClaimed", pending.to_string(10u32)])
     return pending
 }
 
@@ -321,7 +321,7 @@ entry claim_contributor_revenue() -> u64 {
     s.store(TOTAL_DISTRIBUTED_KEY, total_distributed + amount)
 
     // In production: transfer `amount` to caller
-    emit_event("ContributorRevenueClaimed", caller.to_string() + "_" + amount.to_string())
+    emit_event(0u64, ["ContributorRevenueClaimed", caller.to_string() + "_" + amount.to_string(10u32)])
     return amount
 }
 
@@ -347,7 +347,7 @@ entry receive_fee(asset: Hash, amount: u64) -> u64 {
     let i: u64 = 0
 
     while i < count {
-        let addr_opt: optional<Address> = s.load(SHARE_LIST_PREFIX + i.to_string())
+        let addr_opt: optional<Address> = s.load(SHARE_LIST_PREFIX + i.to_string(10u32))
         if addr_opt.is_some() {
             let addr: Address = addr_opt.expect("err")
             let pct: u64 = get_effective_percentage(addr)
@@ -415,7 +415,7 @@ pub fn get_total_distributed() -> u64 {
 // Pub fn 12: Get contributor address at index (for iteration)
 pub fn get_share_at_index(index: u64) -> Address {
     let s: Storage = Storage::new()
-    return s.load(SHARE_LIST_PREFIX + index.to_string()).expect("oob")
+    return s.load(SHARE_LIST_PREFIX + index.to_string(10u32)).expect("oob")
 }
 
 // Pub fn 13: Check if a share is currently active (not expired)

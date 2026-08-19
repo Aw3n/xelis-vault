@@ -277,6 +277,21 @@ const CONCENTRATION_SOFT_THRESHOLD_BPS: u64 = 800   // 8% — penalty starts
 const CONCENTRATION_HARD_THRESHOLD_BPS: u64 = 2000  // 20% — penalty maxed
 const CONCENTRATION_MIN_FACTOR_BPS: u64 = 3000      // 0.3x — minimum factor at hard threshold
 
+
+pub fn get_active_miners_count() -> u64 {
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(MINERS_COUNT_KEY).unwrap_or(0)
+    let active: u64 = 0
+    let i: u64 = 0
+    while i < count {
+        let addr: Address = s.load(MINER_LIST_PREFIX + i.to_string(10u32)).expect("err")
+        let miner: Miner = s.load(MINER_PREFIX + addr.to_string()).expect("err")
+        if miner.active { active += 1 }
+        i += 1
+    }
+    return active
+}
+
 fn get_dynamic_reward(base_reward: u64, miner_addr: Address) -> u64 {
     // v11.4: Bitcoin-style halving + STAKE_FLOOR + cap + time-proven rep + new miner bonus
     let s: Storage = Storage::new()
@@ -389,6 +404,8 @@ fn maybe_adjust_budget() {
 }
 
 // ============================================================================
+
+
 // ENTRIES (sequential IDs starting at 0)
 // ============================================================================
 // ID 0: register_miner
@@ -1130,19 +1147,6 @@ pub fn get_miner_at(index: u64) -> Address {
 // @caller: anyone (read-only)
 // @returns: number of miners whose active flag is true
 // @security: read-only, no access control; iterates the whole miner list
-pub fn get_active_miners_count() -> u64 {
-    let s: Storage = Storage::new()
-    let count: u64 = s.load(MINERS_COUNT_KEY).unwrap_or(0)
-    let active: u64 = 0
-    let i: u64 = 0
-    while i < count {
-        let addr: Address = s.load(MINER_LIST_PREFIX + i.to_string(10u32)).expect("err")
-        let miner: Miner = s.load(MINER_PREFIX + addr.to_string()).expect("err")
-        if miner.active { active += 1 }
-        i += 1
-    }
-    return active
-}
 
 // Read-only mapping from a raw reputation score (0..=10000) to a coarse tier.
 // @caller: anyone (read-only)
@@ -1396,15 +1400,15 @@ pub fn get_leaderboard() -> (Address, u64, Address, u64, Address, u64, Address, 
     
     // Simple: return top 5 miners by reputation (gas-efficient)
     // Full top-10 would be too expensive in a single call
-    let top1: Address = Address::zero()
+    let top1: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
     let top1_rep: u64 = 0
-    let top2: Address = Address::zero()
+    let top2: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
     let top2_rep: u64 = 0
-    let top3: Address = Address::zero()
+    let top3: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
     let top3_rep: u64 = 0
-    let top4: Address = Address::zero()
+    let top4: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
     let top4_rep: u64 = 0
-    let top5: Address = Address::zero()
+    let top5: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
     let top5_rep: u64 = 0
     
     let i: u64 = 0
@@ -1444,10 +1448,8 @@ pub fn get_leaderboard() -> (Address, u64, Address, u64, Address, u64, Address, 
 // ============================================================================
 
 // ID 36: get_miner_stake_entry
-entry get_miner_stake_entry(addr: Address) -> u64 { return get_miner_stake(addr) }
 
 // ID 37: get_miner_reputation_entry
-entry get_miner_reputation_entry(addr: Address) -> u64 { return get_miner_reputation(addr) }
 
 // ID 38: get_active_miners_count_entry
 entry get_active_miners_count_entry() -> u64 { return get_active_miners_count() }
@@ -1512,7 +1514,7 @@ entry emergency_slash_miner(miner_addr: Address, slash_bps: u64, reason: string)
     // Burn 50% of slashed amount, 10% to reporter (guardian), 40% to treasury
     // (simplified: just burn for now, full split in production)
 
-    emit_event("EmergencySlash", miner_addr.to_string() + "_" + actual_slash.to_string() + "_" + reason)
+    emit_event(0u64, ["EmergencySlash", miner_addr.to_string() + "_" + actual_slash.to_string(10u32) + "_" + reason])
     return actual_slash
 }
 
@@ -1536,7 +1538,7 @@ entry emergency_ban_miner(miner_addr: Address, reason: string) -> u64 {
     s.store("ban_" + miner_addr.to_string(), get_current_topoheight() + 518400)  // 30 days
     s.store(MINER_PREFIX + miner_addr.to_string(), miner)
 
-    emit_event("EmergencyBan", miner_addr.to_string() + "_" + reason)
+    emit_event(0u64, ["EmergencyBan", miner_addr.to_string() + "_" + reason])
     return 0
 }
 
@@ -1548,7 +1550,7 @@ entry emergency_freeze_rewards(frozen: bool) -> u64 {
     only_guardian_or_admin()
     let s: Storage = Storage::new()
     s.store("rewards_frozen", frozen)
-    emit_event("RewardsFrozen", frozen.to_string())
+    emit_event(0u64, ["RewardsFrozen", frozen ? "true" : "false"])
     return 0
 }
 
@@ -1560,7 +1562,7 @@ entry set_min_stake_entry(new_min_stake: u64) -> u64 {
     require(new_min_stake >= 1000000000, "toolow")  // min 10 VLT
     let s: Storage = Storage::new()
     s.store(MIN_STAKE_KEY, new_min_stake)
-    emit_event("MinStakeUpdated", new_min_stake.to_string())
+    emit_event(0u64, ["MinStakeUpdated", new_min_stake.to_string(10u32)])
     return 0
 }
 
@@ -1621,7 +1623,7 @@ pub fn emergency_slash_miner_cross(miner_addr: Address, slash_bps: u64, reason: 
     s.store(MINER_PREFIX + miner_addr.to_string(), miner)
     let total_staked: u64 = s.load(TOTAL_STAKED_KEY).unwrap_or(0)
     if total_staked >= actual_slash { s.store(TOTAL_STAKED_KEY, total_staked - actual_slash) }
-    emit_event("EmergencySlash", miner_addr.to_string() + "_" + actual_slash.to_string() + "_" + reason)
+    emit_event(0u64, ["EmergencySlash", miner_addr.to_string() + "_" + actual_slash.to_string(10u32) + "_" + reason])
     return actual_slash
 }
 
@@ -1636,7 +1638,7 @@ pub fn emergency_ban_miner_cross(miner_addr: Address, reason: string) -> u64 {
     miner.reputation = 0
     s.store("ban_" + miner_addr.to_string(), get_current_topoheight() + 518400)
     s.store(MINER_PREFIX + miner_addr.to_string(), miner)
-    emit_event("EmergencyBan", miner_addr.to_string() + "_" + reason)
+    emit_event(0u64, ["EmergencyBan", miner_addr.to_string() + "_" + reason])
     return 0
 }
 
@@ -1645,7 +1647,7 @@ pub fn emergency_freeze_rewards_cross(frozen: bool) -> u64 {
     only_guardian_or_admin()
     let s: Storage = Storage::new()
     s.store("rewards_frozen", frozen)
-    emit_event("RewardsFrozen", frozen.to_string())
+    emit_event(0u64, ["RewardsFrozen", frozen ? "true" : "false"])
     return 0
 }
 
@@ -1655,6 +1657,6 @@ pub fn set_min_stake_cross(new_min_stake: u64) -> u64 {
     require(new_min_stake >= 1000000000, "toolow")
     let s: Storage = Storage::new()
     s.store(MIN_STAKE_KEY, new_min_stake)
-    emit_event("MinStakeUpdated", new_min_stake.to_string())
+    emit_event(0u64, ["MinStakeUpdated", new_min_stake.to_string(10u32)])
     return 0
 }

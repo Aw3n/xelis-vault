@@ -172,6 +172,74 @@ fn user_borrow_key(pool_id: u64, addr: Address) -> string {
 }
 
 // ============================================================================
+
+
+
+
+// Internal helpers — interest accrual
+
+fn update_pool_interest(pool_id: u64, pool: Pool) {
+    let s: Storage = Storage::new()
+    let last_update: u64 = s.load(lu_key(pool_id)).unwrap_or(0)
+    let current_topo: u64 = get_current_topoheight()
+    if current_topo <= last_update { return }
+
+    let blocks_elapsed: u64 = current_topo - last_update
+    let total_supply: u64 = s.load(ts_key(pool_id)).unwrap_or(0)
+    let total_borrow: u64 = s.load(tb_key(pool_id)).unwrap_or(0)
+
+    if total_borrow == 0 || total_supply == 0 {
+        s.store(lu_key(pool_id), current_topo)
+        return
+    }
+
+    let utilization: u64 = (total_borrow as u128 * 10000u128 / total_supply as u128) as u64
+
+    let irm: Contract = Contract::new(pool.interest_rate_model).expect("irmnf")
+    let borrow_rate_bps: u64 = irm.call(11u16, [utilization], {})
+
+    let borrow_index: u64 = s.load(bi_key(pool_id)).unwrap_or(INITIAL_INDEX)
+    let interest_accumulated: u128 = ((borrow_rate_bps as u128 * blocks_elapsed as u128 * borrow_index as u128) / (BLOCKS_PER_YEAR as u128 * 10000u128)) as u64 as u128
+    let new_borrow_index: u128 = borrow_index as u128 + interest_accumulated
+    if new_borrow_index > u64::MAX as u128 {
+        s.store(bi_key(pool_id), u64::MAX)
+    } else {
+        s.store(bi_key(pool_id), new_borrow_index as u64)
+    }
+
+    let reserve_factor: u64 = pool.reserve_factor_bps
+    let supply_rate: u64 = irm.call(12u16, [utilization], {})
+    let supply_index: u64 = s.load(si_key(pool_id)).unwrap_or(INITIAL_INDEX)
+    let supply_acc: u128 = (supply_rate as u128 * blocks_elapsed as u128 * supply_index as u128) / (BLOCKS_PER_YEAR as u128 * 10000u128)
+    let new_supply_index: u128 = supply_index as u128 + supply_acc
+    if new_supply_index > u64::MAX as u128 {
+        s.store(si_key(pool_id), u64::MAX)
+    } else {
+        s.store(si_key(pool_id), new_supply_index as u64)
+    }
+
+    let reserves: u64 = s.load(res_key(pool_id)).unwrap_or(0)
+    let reserve_increment: u64 = (interest_accumulated * reserve_factor as u128 / 10000u128) as u64
+    s.store(res_key(pool_id), reserves + reserve_increment)
+
+    s.store(lu_key(pool_id), current_topo)
+}
+
+
+fn get_accrued_borrow(pool_id: u64, principal: u64, position_index: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let current_index: u64 = s.load(bi_key(pool_id)).unwrap_or(INITIAL_INDEX)
+    if position_index == 0 { return principal }
+    return (principal as u128 * current_index as u128 / position_index as u128) as u64
+}
+
+
+fn get_accrued_supply(pool_id: u64, principal: u64, position_index: u64) -> u64 {
+    let s: Storage = Storage::new()
+    let current_index: u64 = s.load(si_key(pool_id)).unwrap_or(INITIAL_INDEX)
+    if position_index == 0 { return principal }
+    return (principal as u128 * current_index as u128 / position_index as u128) as u64
+}
 // ENTRIES (sequential IDs starting at 0)
 // ============================================================================
 
@@ -661,72 +729,13 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
     }
     return 0
 }
-
 // ============================================================================
-// Internal helpers — interest accrual
-// ============================================================================
-
-fn update_pool_interest(pool_id: u64, pool: Pool) {
-    let s: Storage = Storage::new()
-    let last_update: u64 = s.load(lu_key(pool_id)).unwrap_or(0)
-    let current_topo: u64 = get_current_topoheight()
-    if current_topo <= last_update { return }
-
-    let blocks_elapsed: u64 = current_topo - last_update
-    let total_supply: u64 = s.load(ts_key(pool_id)).unwrap_or(0)
-    let total_borrow: u64 = s.load(tb_key(pool_id)).unwrap_or(0)
-
-    if total_borrow == 0 || total_supply == 0 {
-        s.store(lu_key(pool_id), current_topo)
-        return
-    }
-
-    let utilization: u64 = (total_borrow as u128 * 10000u128 / total_supply as u128) as u64
-
-    let irm: Contract = Contract::new(pool.interest_rate_model).expect("irmnf")
-    let borrow_rate_bps: u64 = irm.call(11u16, [utilization], {})
-
-    let borrow_index: u64 = s.load(bi_key(pool_id)).unwrap_or(INITIAL_INDEX)
-    let interest_accumulated: u128 = ((borrow_rate_bps as u128 * blocks_elapsed as u128 * borrow_index as u128) / (BLOCKS_PER_YEAR as u128 * 10000u128)) as u64 as u128
-    let new_borrow_index: u128 = borrow_index as u128 + interest_accumulated
-    if new_borrow_index > u64::MAX as u128 {
-        s.store(bi_key(pool_id), u64::MAX)
-    } else {
-        s.store(bi_key(pool_id), new_borrow_index as u64)
-    }
-
-    let reserve_factor: u64 = pool.reserve_factor_bps
-    let supply_rate: u64 = irm.call(12u16, [utilization], {})
-    let supply_index: u64 = s.load(si_key(pool_id)).unwrap_or(INITIAL_INDEX)
-    let supply_acc: u128 = ((supply_rate as u128 * blocks_elapsed as u128 * supply_index as u128) / (BLOCKS_PER_YEAR as u128 * 10000u128)) as u64 as u128
-    let new_supply_index: u128 = supply_index as u128 + supply_acc
-    if new_supply_index > u64::MAX as u128 {
-        s.store(si_key(pool_id), u64::MAX)
-    } else {
-        s.store(si_key(pool_id), new_supply_index as u64)
-    }
-
-    let reserves: u64 = s.load(res_key(pool_id)).unwrap_or(0)
-    let reserve_increment: u64 = (interest_accumulated as u128 * reserve_factor as u128 / 10000u128) as u64
-    s.store(res_key(pool_id), reserves + reserve_increment)
-
-    s.store(lu_key(pool_id), current_topo)
-}
 
 // N-01 FIX: accrued = principal * current_pool_index / position_index
-fn get_accrued_borrow(pool_id: u64, principal: u64, position_index: u64) -> u64 {
-    let s: Storage = Storage::new()
-    let current_index: u64 = s.load(bi_key(pool_id)).unwrap_or(INITIAL_INDEX)
-    if position_index == 0 { return principal }
-    return (principal as u128 * current_index as u128 / position_index as u128) as u64
-}
+// ============================================================================
 
-fn get_accrued_supply(pool_id: u64, principal: u64, position_index: u64) -> u64 {
-    let s: Storage = Storage::new()
-    let current_index: u64 = s.load(si_key(pool_id)).unwrap_or(INITIAL_INDEX)
-    if position_index == 0 { return principal }
-    return (principal as u128 * current_index as u128 / position_index as u128) as u64
-}
+
+
 
 // ============================================================================
 // pub fn (read-only) — not counted for entry IDs

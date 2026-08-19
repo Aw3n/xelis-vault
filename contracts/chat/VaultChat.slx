@@ -150,6 +150,29 @@ fn when_not_paused() {
 // @returns: 0 on success
 // @security: when_not_paused, rejects zero pubkey, creates new session or reactivates existing one
 // register session.
+fn parse_u64(s: string) -> u64 {
+    let n: u32 = s.len()
+    let result: u64 = 0
+    let i: u32 = 0
+    while i < n {
+        let c: string = s.char_at(i).expect("eof")
+        let digit: u64 = 0
+        if c == "0" { digit = 0 }
+        if c == "1" { digit = 1 }
+        if c == "2" { digit = 2 }
+        if c == "3" { digit = 3 }
+        if c == "4" { digit = 4 }
+        if c == "5" { digit = 5 }
+        if c == "6" { digit = 6 }
+        if c == "7" { digit = 7 }
+        if c == "8" { digit = 8 }
+        if c == "9" { digit = 9 }
+        result = result * 10 + digit
+        i += 1
+    }
+    return result
+}
+
 entry register_session(chat_pubkey: Hash) -> u64 {
     when_not_paused()
     require(chat_pubkey != Hash::zero(), "badpubkey")
@@ -806,7 +829,7 @@ entry delete_message(recipient: Address, slot: u64) -> u64 {
     let msg_data: string = msg_opt.expect("err")
     // Parse: blob|sender|timestamp
     let parts: string[] = msg_data.split("|")
-    let sender: Address = Address::from_string(parts[1]).expect("err")
+    let sender: Address = Address::from_string(parts[1])
     
     require(caller == recipient || caller == sender, "notauth")
     
@@ -838,7 +861,7 @@ entry delete_conversation(peer: Address) -> u64 {
             let msg_data: string = msg_opt.expect("err")
             let parts: string[] = msg_data.split("|")
             if parts.len() > 1 {
-                let sender: Address = Address::from_string(parts[1]).expect("err")
+                let sender: Address = Address::from_string(parts[1])
                 if sender == peer {
                     s.store(msg_key, "DELETED|" + peer.to_string() + "|0")
                 }
@@ -1071,22 +1094,39 @@ entry pay_premium_message(relayer: Address) -> u64 {
 }
 
 // Relayer claims their accumulated fees (if any held in contract)
+const PROTOCOL_FEE_BPS_KEY: string = "pfee"
+const DEFAULT_PROTOCOL_FEE_BPS: u64 = 500  // 5% of relayer fee goes to treasury
+const TREASURY_KEY: string = "tr"
+
 entry claim_relayer_fees() -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
     require(is_relayer, "notrelayer")
     
-    // Transfer all VLT balance to relayer
+    let fee_bps: u64 = s.load(PROTOCOL_FEE_BPS_KEY).unwrap_or(DEFAULT_PROTOCOL_FEE_BPS)
+    let treasury: Address = s.load(TREASURY_KEY).expect("notset")
+    
+    // VLT balance
     let vlt_asset: Hash = s.load(VLT_ASSET_KEY).unwrap_or(Hash::zero())
     if vlt_asset != Hash::zero() {
         let bal: u64 = get_balance_for_asset(vlt_asset).unwrap_or(0)
-        if bal > 0 { transfer(caller, bal, vlt_asset) }
+        if bal > 0 {
+            let protocol_cut: u64 = (bal as u128 * fee_bps as u128 / 10000u128) as u64
+            let relayer_share: u64 = bal - protocol_cut
+            if protocol_cut > 0 { transfer(treasury, protocol_cut, vlt_asset) }
+            if relayer_share > 0 { transfer(caller, relayer_share, vlt_asset) }
+        }
     }
     
-    // Transfer all XEL balance to relayer
+    // XEL balance
     let xel_bal: u64 = get_balance_for_asset(Hash::zero()).unwrap_or(0)
-    if xel_bal > 0 { transfer(caller, xel_bal, Hash::zero()) }
+    if xel_bal > 0 {
+        let protocol_cut: u64 = (xel_bal as u128 * fee_bps as u128 / 10000u128) as u64
+        let relayer_share: u64 = xel_bal - protocol_cut
+        if protocol_cut > 0 { transfer(treasury, protocol_cut, Hash::zero()) }
+        if relayer_share > 0 { transfer(caller, relayer_share, Hash::zero()) }
+    }
     
     return 0
 }
@@ -1233,6 +1273,8 @@ pub fn get_expiration(recipient: Address, slot: u64) -> u64 {
 // ── Relayer Registry ───────────────────────────────────────────────────────
 const RELAY_REG_PREFIX: string = "rlreg_"
 const RELAY_REG_COUNT_KEY: string = "rlregc"
+const RELAY_FREE_LIMIT_PREFIX: string = "rflim_"
+const RELAY_FREE_SLOTS_PREFIX: string = "rfslt_"
 const RELAY_BLACKLIST_PREFIX: string = "rblk_"
 const RELAY_BLACKLIST_COUNT_KEY: string = "rblkc"
 
@@ -1252,6 +1294,8 @@ entry register_as_relayer(endpoint: string, free_daily_limit: u64, free_wallet_s
     
     // Register
     s.store(reg_key, endpoint + "|" + free_daily_limit.to_string(10u32) + "|" + free_wallet_slots.to_string(10u32))
+    s.store(RELAY_FREE_LIMIT_PREFIX + caller.to_string(), free_daily_limit)
+    s.store(RELAY_FREE_SLOTS_PREFIX + caller.to_string(), free_wallet_slots)
     let count: u64 = s.load(RELAY_REG_COUNT_KEY).unwrap_or(0)
     s.store(RELAY_REG_PREFIX + "idx_" + count.to_string(10u32), caller.to_string())
     s.store(RELAY_REG_COUNT_KEY, count + 1)
@@ -1288,8 +1332,8 @@ entry claim_free_slot() -> u64 {
         let relayer_str: string = s.load(RELAY_REG_PREFIX + "idx_" + i.to_string(10u32)).expect("err")
         let details: string = s.load(RELAY_REG_PREFIX + relayer_str).expect("err")
         let parts: string[] = details.split("|")
-        let free_limit: u64 = parts[1].parse::<u64>().expect("err")
-        let free_slots: u64 = parts[2].parse::<u64>().expect("err")
+        let free_limit: u64 = parse_u64(parts[1])
+        let free_slots: u64 = parse_u64(parts[2])
         
         if free_limit > 0 && free_slots > 0 {
             // Check daily reset
@@ -1393,8 +1437,8 @@ entry update_plan(plan_id: u64, amount: u64, duration_blocks: u64, msg_count: u6
     
     let plan_data: string = plan_opt.expect("err")
     let parts: string[] = plan_data.split("|")
-    let plan_type: u8 = parts[0].parse::<u8>().expect("err")
-    let token: u8 = parts[4].parse::<u8>().expect("err")
+    let plan_type: u8 = parse_u64(parts[0]) as u8
+    let token: u8 = parse_u64(parts[4]) as u8
     
     let new_data: string = parts[0] + "|" + amount.to_string(10u32) + "|" + duration_blocks.to_string(10u32) + "|" + msg_count.to_string(10u32) + "|" + token.to_string(10u32)
     s.store(plan_key, new_data)
@@ -1434,11 +1478,11 @@ entry buy_plan(relayer: Address, plan_id: u64, recipient: Address) -> u64 {
     let plan_data: string = plan_opt.expect("err")
     let parts: string[] = plan_data.split("|")
     
-    let plan_type: u8 = parts[0].parse::<u8>().expect("err")
-    let amount: u64 = parts[1].parse::<u64>().expect("err")
-    let duration_blocks: u64 = parts[2].parse::<u64>().expect("err")
-    let msg_count: u64 = parts[3].parse::<u64>().expect("err")
-    let token: u8 = parts[4].parse::<u8>().expect("err")
+    let plan_type: u8 = parse_u64(parts[0]) as u8
+    let amount: u64 = parse_u64(parts[1])
+    let duration_blocks: u64 = parse_u64(parts[2])
+    let msg_count: u64 = parse_u64(parts[3])
+    let token: u8 = parse_u64(parts[4]) as u8
     
     // Transfer payment to relayer (from payer)
     if token == 0 {
@@ -1637,16 +1681,21 @@ pub fn verify_message_stored(recipient: Address, slot: u64) -> bool {
 }
 
 // ── Complete relayer profile ──────────────────────────────────────────────
+fn is_relayer_online(relayer: Address) -> bool {
+    let s: Storage = Storage::new()
+    return s.load(RELAYER_PREFIX + relayer.to_string()).unwrap_or(false)
+}
+
 pub fn get_relayer_profile(relayer: Address) -> (bool, bool, u64, u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     let is_reg: bool = s.load(RELAYER_PREFIX + relayer.to_string()).unwrap_or(false)
     let is_rel: bool = is_relayer_online(relayer)
-    let is_rel2: u64 = if is_rel { 1 } else { 0 }
+    let is_rel2: u64 = is_rel ? 1 : 0
     let batches: u64 = get_relayer_batch_count(relayer)
     let last_batch: u64 = get_relayer_last_batch(relayer)
     let plan_count: u64 = get_plan_count(relayer)
     let bl_count: u64 = get_blacklist_count(relayer)
-    let reliable: u64 = if is_relayer_reliable(relayer) { 1 } else { 0 }
+    let reliable: u64 = is_relayer_reliable(relayer) ? 1 : 0
     return (is_reg, is_rel2 > 0, batches, last_batch, plan_count, bl_count, reliable)
 }
 
@@ -1654,9 +1703,6 @@ pub fn get_relayer_profile(relayer: Address) -> (bool, bool, u64, u64, u64, u64,
 // v8.1: PROTOCOL FEE + STORAGE MANAGEMENT
 // ============================================================================
 
-const PROTOCOL_FEE_BPS_KEY: string = "pfee"
-const DEFAULT_PROTOCOL_FEE_BPS: u64 = 500  // 5% of relayer fee goes to treasury
-const TREASURY_KEY: string = "tr"
 const STORAGE_WARNING_THRESHOLD: u64 = 86400  // ~6 hours of messages before prune needed
 const PRUNE_INTERVAL_KEY: string = "prune_int"
 const DEFAULT_PRUNE_INTERVAL: u64 = 43200  // prune every ~6 hours
@@ -1683,38 +1729,6 @@ pub fn get_protocol_fee_bps() -> u64 {
 // updated in place. For now, the fee is taken when claim_relayer_fees is called.
 
 // Relayer claims accumulated fees — protocol takes its cut
-entry claim_relayer_fees() -> u64 {
-    let s: Storage = Storage::new()
-    let caller: Address = get_caller().expect("err")
-    let is_relayer: bool = s.load(RELAYER_PREFIX + caller.to_string()).unwrap_or(false)
-    require(is_relayer, "notrelayer")
-    
-    let fee_bps: u64 = s.load(PROTOCOL_FEE_BPS_KEY).unwrap_or(DEFAULT_PROTOCOL_FEE_BPS)
-    let treasury: Address = s.load(TREASURY_KEY).expect("notset")
-    
-    // VLT balance
-    let vlt_asset: Hash = s.load(VLT_ASSET_KEY).unwrap_or(Hash::zero())
-    if vlt_asset != Hash::zero() {
-        let bal: u64 = get_balance_for_asset(vlt_asset).unwrap_or(0)
-        if bal > 0 {
-            let protocol_cut: u64 = (bal as u128 * fee_bps as u128 / 10000u128) as u64
-            let relayer_share: u64 = bal - protocol_cut
-            if protocol_cut > 0 { transfer(treasury, protocol_cut, vlt_asset) }
-            if relayer_share > 0 { transfer(caller, relayer_share, vlt_asset) }
-        }
-    }
-    
-    // XEL balance
-    let xel_bal: u64 = get_balance_for_asset(Hash::zero()).unwrap_or(0)
-    if xel_bal > 0 {
-        let protocol_cut: u64 = (xel_bal as u128 * fee_bps as u128 / 10000u128) as u64
-        let relayer_share: u64 = xel_bal - protocol_cut
-        if protocol_cut > 0 { transfer(treasury, protocol_cut, Hash::zero()) }
-        if relayer_share > 0 { transfer(caller, relayer_share, Hash::zero()) }
-    }
-    
-    return 0
-}
 
 // Set treasury address (where protocol fees go)
 entry set_treasury(addr: Address) -> u64 {
@@ -1737,13 +1751,14 @@ entry set_treasury(addr: Address) -> u64 {
 pub fn get_storage_info(user: Address) -> (u64, u64, u64) {
     let s: Storage = Storage::new()
     let count: u64 = s.load(MSG_COUNT_PREFIX + user.to_string()).unwrap_or(0)
-    let onchain: u64 = if count > MAX_ONCHAIN_MESSAGES { MAX_ONCHAIN_MESSAGES } else { count }
+    let onchain: u64 = count > MAX_ONCHAIN_MESSAGES ? MAX_ONCHAIN_MESSAGES : count
     let deleted: u64 = 0
     // Count deleted messages
     let i: u64 = 0
     while i < onchain {
         let del_key: string = MSG_DELETED_PREFIX + user.to_string() + "_" + i.to_string(10u32)
-        if s.load(del_key).unwrap_or(false) { deleted += 1 }
+        let is_del: bool = s.load(del_key).unwrap_or(false)
+        if is_del { deleted += 1 }
         i += 1
     }
     return (count, onchain, deleted)
@@ -1854,11 +1869,11 @@ entry fulfill_payment_request(req_id: u64) -> u64 {
     let data: string = data_opt.expect("err")
     let parts: string[] = data.split("|")
     
-    let from: Address = Address::from_string(parts[0]).expect("err")
-    let to: Address = Address::from_string(parts[1]).expect("err")
-    let amount: u64 = parts[2].parse::<u64>().expect("err")
-    let asset: Hash = Hash::from_hex(parts[3].as_str()).expect("err")
-    let status: u64 = parts[5].parse::<u64>().expect("err")
+    let from: Address = Address::from_string(parts[0])
+    let to: Address = Address::from_string(parts[1])
+    let amount: u64 = parse_u64(parts[2])
+    let asset: Hash = Hash::from_hex(parts[3])
+    let status: u64 = parse_u64(parts[5])
     
     require(status == 0, "notpending")
     require(caller == to, "notrecipient")
@@ -1885,7 +1900,7 @@ entry cancel_payment_request(req_id: u64) -> u64 {
     
     let data: string = data_opt.expect("err")
     let parts: string[] = data.split("|")
-    let from: Address = Address::from_string(parts[0]).expect("err")
+    let from: Address = Address::from_string(parts[0])
     require(caller == from, "notrequester")
     
     // Update status to cancelled (2)
@@ -1969,12 +1984,12 @@ entry claim_giveaway(giveaway_id: u64) -> u64 {
     let data: string = data_opt.expect("err")
     let parts: string[] = data.split("|")
     
-    let creator: Address = Address::from_string(parts[0]).expect("err")
-    let amount_per_claim: u64 = parts[2].parse::<u64>().expect("err")
-    let max_claims: u64 = parts[3].parse::<u64>().expect("err")
-    let claimed: u64 = parts[4].parse::<u64>().expect("err")
-    let asset: Hash = Hash::from_hex(parts[5].as_str()).expect("err")
-    let active: u64 = parts[6].parse::<u64>().expect("err")
+    let creator: Address = Address::from_string(parts[0])
+    let amount_per_claim: u64 = parse_u64(parts[2])
+    let max_claims: u64 = parse_u64(parts[3])
+    let claimed: u64 = parse_u64(parts[4])
+    let asset: Hash = Hash::from_hex(parts[5])
+    let active: u64 = parse_u64(parts[6])
     
     require(active == 1, "notactive")
     require(claimed < max_claims, "soldout")
@@ -1993,7 +2008,7 @@ entry claim_giveaway(giveaway_id: u64) -> u64 {
     
     // Update claimed count
     let new_claimed: u64 = claimed + 1
-    let new_active: u64 = if new_claimed >= max_claims { 0 } else { 1 }
+    let new_active: u64 = new_claimed >= max_claims ? 0 : 1
     let new_data: string = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + new_claimed.to_string(10u32) + "|" + parts[5] + "|" + new_active.to_string(10u32)
     s.store(key, new_data)
     
@@ -2011,13 +2026,13 @@ entry cancel_giveaway(giveaway_id: u64) -> u64 {
     
     let data: string = data_opt.expect("err")
     let parts: string[] = data.split("|")
-    let creator: Address = Address::from_string(parts[0]).expect("err")
+    let creator: Address = Address::from_string(parts[0])
     require(caller == creator, "notcreator")
     
-    let amount_per_claim: u64 = parts[2].parse::<u64>().expect("err")
-    let max_claims: u64 = parts[3].parse::<u64>().expect("err")
-    let claimed: u64 = parts[4].parse::<u64>().expect("err")
-    let asset: Hash = Hash::from_hex(parts[5].as_str()).expect("err")
+    let amount_per_claim: u64 = parse_u64(parts[2])
+    let max_claims: u64 = parse_u64(parts[3])
+    let claimed: u64 = parse_u64(parts[4])
+    let asset: Hash = Hash::from_hex(parts[5])
     
     // Refund remaining
     let remaining: u64 = (amount_per_claim as u128 * (max_claims - claimed) as u128) as u64
@@ -2113,7 +2128,7 @@ entry delete_direct_message(recipient: Address, slot: u64) -> u64 {
     
     let msg_data: string = msg_opt.expect("err")
     let parts: string[] = msg_data.split("|")
-    let sender: Address = Address::from_string(parts[1]).expect("err")
+    let sender: Address = Address::from_string(parts[1])
     
     require(caller == recipient || caller == sender, "notauth")
     

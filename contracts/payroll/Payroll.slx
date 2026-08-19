@@ -330,7 +330,7 @@ entry deposit_funds(asset: Hash, amount: u64) -> u64 {
 // @params: addr - Address
 // @returns: u
 // @security: standard access control
-entry get_pending_entry(addr: Address) -> u64 {
+fn get_pending_entry_impl(addr: Address) -> u64 {
     let s: Storage = Storage::new()
     let employee_opt: optional<Employee> = s.load(EMPLOYEE_PREFIX + addr.to_string())
     if employee_opt.is_none() { return 0 }
@@ -353,6 +353,10 @@ entry get_pending_entry(addr: Address) -> u64 {
     if end <= start { return 0 }
     let blocks_elapsed: u64 = end - start
     return (blocks_elapsed as u128 * employee.rate_per_block as u128) as u64
+}
+
+entry get_pending_entry(addr: Address) -> u64 {
+    return get_pending_entry_impl(addr)
 }
 
 // ID 13: get_employees_count_entry
@@ -417,7 +421,7 @@ entry execute_emergency_withdraw(asset: Hash) -> u64 {
 // @returns: u
 // @security: only_admin
 pub fn get_pending(addr: Address) -> u64 {
-    return get_pending_entry(addr)
+    return get_pending_entry_impl(addr)
 }
 
 // get employees count.

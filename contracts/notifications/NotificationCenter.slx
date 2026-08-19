@@ -174,7 +174,7 @@ entry register_preferences(
     }
 
     // Emit event for notification bots to pick up
-    emit_event("NotificationRegistered", caller.to_string())
+    emit_event(0u64, ["NotificationRegistered", caller.to_string()])
     return 0
 }
 
@@ -303,8 +303,8 @@ entry emit_notification_event(
         let prefs: NotificationPreferences = prefs_opt.expect("err")
         if prefs.active && (prefs.notification_mask & notification_type) != 0 && severity >= prefs.min_severity {
             // Emit event — bots pick this up and deliver via preferred channel
-            let event_data: string = recipient.to_string() + "_" + notification_type.to_string() + "_" + severity.to_string()
-            emit_event("Notify", event_data)
+            let event_data: string = recipient.to_string() + "_" + notification_type.to_string(10u32) + "_" + severity.to_string(10u32)
+            emit_event(0u64, ["Notify", event_data])
         }
     }
     return 0

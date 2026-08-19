@@ -186,11 +186,11 @@ entry register_miner_profile(name: string, description: string, commission_bps: 
 
     if is_new {
         let count: u64 = s.load(MINER_COUNT_KEY).unwrap_or(0)
-        s.store(MINER_LIST_PREFIX + count.to_string(), caller)
+        s.store(MINER_LIST_PREFIX + count.to_string(10u32), caller)
         s.store(MINER_COUNT_KEY, count + 1)
     }
 
-    emit_event("MinerProfileRegistered", caller.to_string() + "_" + name)
+    emit_event(0u64, ["MinerProfileRegistered", caller.to_string() + "_" + name])
     return 0
 }
 
@@ -247,27 +247,25 @@ entry delegate(miner_addr: Address, amount: u64, auto_compound: bool) -> u64 {
 
     // Update or create delegation
     let existing_opt: optional<Delegation> = s.load(DELEGATION_PREFIX + caller.to_string())
-    let delegation: Delegation
     let is_new_delegator: bool = existing_opt.is_none()
+    let delegation: Delegation = existing_opt.unwrap_or(Delegation {
+        delegator: caller,
+        miner_addr: miner_addr,
+        amount: 0,
+        delegated_at: get_current_topoheight(),
+        index_snapshot: profile.reward_index,
+        auto_compound: auto_compound
+    })
     if is_new_delegator {
-        delegation = Delegation {
-            delegator: caller,
-            miner_addr: miner_addr,
-            amount: amount,
-            delegated_at: get_current_topoheight(),
-            index_snapshot: profile.reward_index,
-            auto_compound: auto_compound
-        }
         let dcount: u64 = profile.delegator_count
-        s.store(MINER_DELEGATOR_PREFIX + miner_addr.to_string() + "_" + dcount.to_string(), caller)
+        s.store(MINER_DELEGATOR_PREFIX + miner_addr.to_string() + "_" + dcount.to_string(10u32), caller)
         profile.delegator_count = dcount + 1
     } else {
-        delegation = existing_opt.expect("err")
         require(delegation.miner_addr == miner_addr, "alrdydel")
         // Sync index before adding
         delegation.index_snapshot = profile.reward_index
-        delegation.amount += amount
     }
+    delegation.amount += amount
     s.store(DELEGATION_PREFIX + caller.to_string(), delegation)
 
     // Update miner profile
@@ -279,7 +277,7 @@ entry delegate(miner_addr: Address, amount: u64, auto_compound: bool) -> u64 {
     let total_del: u64 = s.load(TOTAL_DELEGATED_KEY).unwrap_or(0)
     s.store(TOTAL_DELEGATED_KEY, total_del + amount)
 
-    emit_event("Delegated", caller.to_string() + "_" + miner_addr.to_string() + "_" + amount.to_string())
+    emit_event(0u64, ["Delegated", caller.to_string() + "_" + miner_addr.to_string() + "_" + amount.to_string(10u32)])
     return 0
 }
 
@@ -327,7 +325,7 @@ entry undelegate(amount: u64) -> u64 {
     delegation.amount -= amount
     s.store(DELEGATION_PREFIX + caller.to_string(), delegation)
 
-    emit_event("UndelegateRequested", caller.to_string() + "_" + amount.to_string())
+    emit_event(0u64, ["UndelegateRequested", caller.to_string() + "_" + amount.to_string(10u32)])
     return 0
 }
 
@@ -349,7 +347,7 @@ entry execute_undelegate() -> u64 {
 
     s.delete(UNDELEGATE_REQUEST_PREFIX + caller.to_string())
 
-    emit_event("UndelegateExecuted", caller.to_string() + "_" + request.amount.to_string())
+    emit_event(0u64, ["UndelegateExecuted", caller.to_string() + "_" + request.amount.to_string(10u32)])
     return request.amount
 }
 
@@ -398,7 +396,7 @@ entry claim_delegator_rewards() -> u64 {
         let _ = transfer(caller, total_pending, vlt_asset)
     }
 
-    emit_event("DelegatorRewardsClaimed", caller.to_string() + "_" + total_pending.to_string())
+    emit_event(0u64, ["DelegatorRewardsClaimed", caller.to_string() + "_" + total_pending.to_string(10u32)])
     return total_pending
 }
 
@@ -417,7 +415,7 @@ entry claim_miner_rewards() -> u64 {
     let vlt_asset: Hash = s.load(VLT_ASSET_KEY).expect("nova")
     let _ = transfer(caller, pending, vlt_asset)
 
-    emit_event("MinerRewardsClaimed", caller.to_string() + "_" + pending.to_string())
+    emit_event(0u64, ["MinerRewardsClaimed", caller.to_string() + "_" + pending.to_string(10u32)])
     return pending
 }
 
@@ -499,7 +497,7 @@ entry apply_slashing(miner_addr: Address, slash_amount: u64) -> u64 {
     profile.total_stake = profile.own_stake + profile.delegated_stake
     s.store(MINER_PROFILE_PREFIX + miner_addr.to_string(), profile)
 
-    emit_event("SlashingApplied", miner_addr.to_string() + "_" + slash_amount.to_string())
+    emit_event(0u64, ["SlashingApplied", miner_addr.to_string() + "_" + slash_amount.to_string(10u32)])
     return slash_amount
 }
 

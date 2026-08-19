@@ -105,10 +105,14 @@ pub fn check_transfer(from: Address, to: Address, asset: Hash, amount: u64) -> b
 // @returns: true if root matches current and proof is non-zero
 // @security: read-only view, no access control
 // verify proof entry.
-entry verify_proof_entry(merkle_proof: Hash, merkle_root: Hash) -> bool {
+fn verify_proof_impl(merkle_proof: Hash, merkle_root: Hash) -> bool {
     let s: Storage = Storage::new()
     let current_root: Hash = s.load(CURRENT_MERKLE_ROOT_KEY).unwrap_or(Hash::zero())
     return merkle_root == current_root && merkle_proof != Hash::zero()
+}
+
+entry verify_proof_entry(merkle_proof: Hash, merkle_root: Hash) -> bool {
+    return verify_proof_impl(merkle_proof, merkle_root)
 }
 
 // ID 2: is_compliant_entry
@@ -298,17 +302,6 @@ entry get_version() -> string {
 // pub fn (read-only) — not counted for entry IDs
 // ============================================================================
 
-// Return whether a transfer of `asset` from `from` to `to` is allowed under KYC rules (read-only wrapper).
-// @caller: anyone
-// @params: from - sender address
-// @params: to - recipient address
-// @params: asset - asset Hash being transferred
-// @params: amount - amount being transferred (reserved)
-// @returns: true if both parties are compliant or asset is not gated
-// @security: read-only view, no access control
-// check transfer.
-}
-
 // Verify a Merkle proof against the current compliance Merkle root (read-only wrapper).
 // @caller: anyone
 // @params: merkle_proof - proof Hash to verify
@@ -317,7 +310,7 @@ entry get_version() -> string {
 // @security: read-only view, no access control
 // verify proof.
 pub fn verify_proof(merkle_proof: Hash, merkle_root: Hash) -> bool {
-    return verify_proof_entry(merkle_proof, merkle_root)
+    return verify_proof_impl(merkle_proof, merkle_root)
 }
 
 // Return whether an address is currently marked compliant.

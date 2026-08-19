@@ -131,7 +131,7 @@ entry make_vault_public(vault_id: u64) -> u64 {
     let existing: optional<u64> = s.load(PUBLIC_VAULT_PREFIX + caller.to_string())
     require(existing.is_none(), "alreadypublic")
     s.store(PUBLIC_VAULT_PREFIX + caller.to_string(), vault_id)
-    emit_event("VaultMadePublic", caller.to_string())
+    emit_event(0u64, ["VaultMadePublic", caller.to_string()])
     return 0
 }
 
@@ -141,7 +141,7 @@ entry make_vault_private() -> u64 {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     s.delete(PUBLIC_VAULT_PREFIX + caller.to_string())
-    emit_event("VaultMadePrivate", caller.to_string())
+    emit_event(0u64, ["VaultMadePrivate", caller.to_string()])
     return 0
 }
 
@@ -171,7 +171,7 @@ entry follow_leader(leader: Address, ratio_bps: u64) -> u64 {
     s.store(FOLLOWER_COUNT_PREFIX + leader.to_string(), follower_count + 1)
     s.store(FOLLOWING_COUNT_PREFIX + caller.to_string(), following_count + 1)
 
-    emit_event("FollowStarted", caller.to_string() + "_" + leader.to_string())
+    emit_event(0u64, ["FollowStarted", caller.to_string() + "_" + leader.to_string()])
     return 0
 }
 
@@ -219,8 +219,8 @@ entry emit_leader_action(leader: Address, action_type: u8, amount: u64, asset: H
     }
 
     // Emit event with all info followers need
-    let event_data: string = leader.to_string() + "_" + action_type.to_string() + "_" + amount.to_string()
-    emit_event("LeaderAction", event_data)
+    let event_data: string = leader.to_string() + "_" + action_type.to_string(10u32) + "_" + amount.to_string(10u32)
+    emit_event(0u64, ["LeaderAction", event_data])
     return 0
 }
 

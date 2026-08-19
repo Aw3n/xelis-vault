@@ -229,6 +229,21 @@ struct lacks an entry_id field; documented, not reachable in normal flow.
 
 SKIPPED by design: airdrop share (500k VLT) minted to admin for manual distribution.
 
+## Final verification
+
+- **Registry**: 35 names registered (all guide core contracts except AirdropTracker, which is
+  skipped; ComplianceModule + FaucetContract registered retroactively: `cc730128…` `9073b881…`).
+- **VLT asset**: `9d074e1b…` owned by VLTToken, max supply 1e15 (10M VLT @8dp), decimals 8.
+  Supply minted: initial + 500k airdrop + 500k FV4y + 500k FV10y (within cap).
+- **Oracle v3**: feed 0 XEL/USD active, agg 5 blocks, max dev 500bps, cb 2000bps, max stale 30.
+- **VaultEngine v2** live in registry; VE1 mint/burn revoked on xUSD.
+- Key storage spot-checked on InsurancePool, PrivateInsurance, GovernanceVault, Governor,
+  GuardianMultisig, OracleGovernance, VaultChat, FeeDistributor, MinerDelegation — all correct.
+- Deposits to contracts use `deposits: {"<asset>": {"amount": N}}` (ContractDepositBuilder).
+- Remaining deferred items (documented above): GuardianMultisig +3 guardians + quorum 3,
+  VaultChat.set_miner_contract, FeeDistributor fee routing, MinerDelegation own-stake push.
+  All require the governance proposal path (All-chunk cross-contract calls via Governor/Timelock).
+
 ## Registry count — 33 registered names; remaining guide checks:
 
 - VaultEngine v2 live (`2c22a613…`), StakedOracle v3 live (`159594c8…`).

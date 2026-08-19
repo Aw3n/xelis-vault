@@ -3,7 +3,7 @@
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
 
 Each `entry` function gets a sequential ID starting at 0 in declaration order.
-**Total entry functions across 51 contracts:** 959
+**Total entry functions across 51 contracts:** 961
 
 `pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.
 
@@ -112,16 +112,17 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 | 18 | `set_psm_mint_fee_bps` | `f: u64` | `u` |
 | 19 | `set_psm_redeem_fee_bps` | `f: u64` | `u` |
 | 20 | `set_registry` | `reg: Hash` | `u` |
-| 21 | `set_xusd_asset` | `xa: Hash` | `u` |
-| 22 | `set_xusd_contract` | `xc: Hash` | `u` |
-| 23 | `set_treasury` | `t: Address` | `u` |
-| 24 | `set_timelock` | `tl: Hash` | `u` |
-| 25 | `set_guardian` | `g: Address` | `u` |
-| 26 | `set_emergency` | `e: Address` | `u` |
-| 27 | `transfer_admin` | `new_admin: Address` | `u` |
-| 28 | `get_version` | `—` | `s` |
-| 29 | `request_emergency_withdraw` | `—` | `u` |
-| 30 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
+| 21 | `set_oracle` | `oracle: Hash` | `u` |
+| 22 | `set_xusd_asset` | `xa: Hash` | `u` |
+| 23 | `set_xusd_contract` | `xc: Hash` | `u` |
+| 24 | `set_treasury` | `t: Address` | `u` |
+| 25 | `set_timelock` | `tl: Hash` | `u` |
+| 26 | `set_guardian` | `g: Address` | `u` |
+| 27 | `set_emergency` | `e: Address` | `u` |
+| 28 | `transfer_admin` | `new_admin: Address` | `u` |
+| 29 | `get_version` | `—` | `s` |
+| 30 | `request_emergency_withdraw` | `—` | `u` |
+| 31 | `execute_emergency_withdraw` | `asset: Hash` | `u` |
 
 ## `analytics/AnalyticsCollector.slx`
 
@@ -853,31 +854,32 @@ Each `entry` function gets a sequential ID starting at 0 in declaration order.
 
 | ID | Name | Parameters | Return |
 |----|------|------------|--------|
-| 0 | `submit_price` | `feed_id: u64, price: u64` | `u` |
-| 1 | `aggregate_now` | `feed_id: u64` | `u` |
-| 2 | `get_price_by_feed_entry` | `feed_id: u64` | `u` |
-| 3 | `get_price_entry` | `name: string` | `u` |
-| 4 | `get_price_for_asset_entry` | `asset: Hash` | `u` |
-| 5 | `get_feed_id_entry` | `name: string` | `u` |
-| 6 | `disable_bootstrap` | `—` | `u` |
-| 7 | `set_bootstrap_min_providers` | `n: u64` | `u` |
-| 8 | `set_min_providers` | `n: u64` | `u` |
-| 9 | `set_miner_contract` | `mc: Hash` | `u` |
-| 10 | `set_delegation_contract` | `dc: Hash` | `u` |
-| 11 | `set_registry` | `reg: Hash` | `u` |
-| 12 | `set_timelock` | `tl: Hash` | `u` |
-| 13 | `set_guardian` | `g: Address` | `u` |
-| 14 | `set_emergency` | `e: Address` | `u` |
-| 15 | `transfer_admin` | `new_admin: Address` | `u` |
-| 16 | `get_version` | `—` | `s` |
-| 17 | `set_max_deviation_bps_entry` | `bps: u64` | `u` |
-| 18 | `set_cb_threshold_bps_entry` | `bps: u64` | `u` |
-| 19 | `set_aggregation_blocks_entry` | `n: u64` | `u` |
-| 20 | `set_max_stale_blocks_entry` | `n: u64` | `u` |
-| 21 | `set_hard_stale_blocks_entry` | `n: u64` | `u` |
-| 22 | `pause_entry` | `reason: string` | `u` |
-| 23 | `unpause_entry` | `—` | `u` |
-| 24 | `force_update_price` | `feed_id: u64, new_price: u64` | `u` |
+| 0 | `add_feed_entry` | `name: string, asset: Hash, decimals: u8, min_price: u64, max_price: u64` | `u` |
+| 1 | `submit_price` | `feed_id: u64, price: u64` | `u` |
+| 2 | `aggregate_now` | `feed_id: u64` | `u` |
+| 3 | `get_price_by_feed_entry` | `feed_id: u64` | `u` |
+| 4 | `get_price_entry` | `name: string` | `u` |
+| 5 | `get_price_for_asset_entry` | `asset: Hash` | `u` |
+| 6 | `get_feed_id_entry` | `name: string` | `u` |
+| 7 | `disable_bootstrap` | `—` | `u` |
+| 8 | `set_bootstrap_min_providers` | `n: u64` | `u` |
+| 9 | `set_min_providers` | `n: u64` | `u` |
+| 10 | `set_miner_contract` | `mc: Hash` | `u` |
+| 11 | `set_delegation_contract` | `dc: Hash` | `u` |
+| 12 | `set_registry` | `reg: Hash` | `u` |
+| 13 | `set_timelock` | `tl: Hash` | `u` |
+| 14 | `set_guardian` | `g: Address` | `u` |
+| 15 | `set_emergency` | `e: Address` | `u` |
+| 16 | `transfer_admin` | `new_admin: Address` | `u` |
+| 17 | `get_version` | `—` | `s` |
+| 18 | `set_max_deviation_bps_entry` | `bps: u64` | `u` |
+| 19 | `set_cb_threshold_bps_entry` | `bps: u64` | `u` |
+| 20 | `set_aggregation_blocks_entry` | `n: u64` | `u` |
+| 21 | `set_max_stale_blocks_entry` | `n: u64` | `u` |
+| 22 | `set_hard_stale_blocks_entry` | `n: u64` | `u` |
+| 23 | `pause_entry` | `reason: string` | `u` |
+| 24 | `unpause_entry` | `—` | `u` |
+| 25 | `force_update_price` | `feed_id: u64, new_price: u64` | `u` |
 
 ## `payroll/Payroll.slx`
 

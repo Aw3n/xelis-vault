@@ -100,6 +100,35 @@ All contracts deployed as **V1** (version byte `01` embedded in module hex by th
 > Both AMM oracle calls now target StakedOracle chunk 32 `get_price_for_asset_entry(Hash::zero())` = XEL/USD feed price.
 > Registry count: 12.
 
-## Phase 6+ — Pending
+## Cross-contract call audit (v11.3 fix pass)
+
+Repo-wide audit of every hardcoded `.call(Nu16, ...)` against current compiled chunk layouts
+found 25 stale/incorrect targets (All/pub-fn chunks ARE callable cross-contract — only the id
+and param shape matter). Fixed in: LendingMarket (oracle 21→32, IRM 11→3 / 12→5), SyndicatePool
+(21→32), VaultEngineV3 (21→32), VaultChat (22→23 + u8), StakedOracle (23→24, 22→23, 23→22,
+67→12; u64→u8 service ids), OracleGovernance (add/remove/param/reward/emergency-cb/reset/
+slash/stake/freeze/ban ids), GuardianMultisig (pause 33→34, unpause via timelock 12→34u16,
+trigger 11→12). GuardianMultisig action 3 (custom call → hook 0) is still broken by design —
+struct lacks an entry_id field; documented, not reachable in normal flow.
+
+## Phase 6 — Lending Markets
+
+| Step | Contract / Action | Address (tx hash) | Status | Topoheight |
+|------|-------------------|-------------------|--------|-----------|
+| 6.1a | Deploy LendingMarket (patched) | `74809c24efbb2817589a6d379922a3e92650857d447f7917905a1514293f1519` | ✅ | — |
+| 6.1b | LM.set_registry(31) / set_oracle(29) / set_treasury(30, temp=admin) | `7ab92bac…` `53c9809e…` `ce05c78f…` | ✅ verified | 151505-151516 |
+| 6.1c | Registry.register "LendingMarket" | `6cca271c8ab5a149cdcc7d2e60623555db0a8285a3abbfb794e5a21ee7e3652c` | ✅ | 151517 |
+| 6.2a | Deploy PeerLoan | `39de766f32a9d297fc99eaf0c7ddefafc5b2785b4b78fd63d3a0f170e4dec485` | ✅ | — |
+| 6.2b | PL.set_registry(17) / set_oracle(15) / set_treasury(16, temp=admin) | `a35e5ff1…` `5b9c532d…` `158613c1…` | ✅ | 151524-151530 |
+| 6.2c | Registry.register "PeerLoan" | `133ebaa55baf962d1796a8d5a6721aa343960202002bdf96edf02d52e6e96911` | ✅ | 151531 |
+| 6.3a | Deploy SyndicatePool (patched) | `6ac66dfa4407b7a126b223e0ba4d2159f423a4806bf3031d6a9c32742d26258a` | ✅ | — |
+| 6.3b | SP.set_registry(21) / set_oracle(19) / set_treasury(20, temp=admin) | `53d44738…` `c9262361…` `51643694…` | ✅ | 151544-151550 |
+| 6.3c | Registry.register "SyndicatePool" | `b9d77d79d2cf536aa52dca00718caf804cd8986960b9316702fc6c1232f724cc` | ✅ | 151557 |
+
+> Registry count: 15. VaultEngine was redeployed as v2 (oracle 21→32 fix); register is
+> one-way ("exists"), registry upgrade has a 720-block cooldown → **upgrade pending at
+> topoheight ≥ 151736** (old `1a818eff…` still live until then; v2 `2c22a613…` fully configured).
+
+## Phase 7+ — Pending
 
 Following `docs/DEPLOYMENT_GUIDE.md`.

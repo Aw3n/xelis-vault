@@ -616,7 +616,7 @@ entry execute_proposal(proposal_id: u64) -> u64 {
         let _ = oracle.call(8u16, [
             proposal.feed_name,
             proposal.feed_asset,
-            proposal.feed_decimals as u64,
+            proposal.feed_decimals,
             proposal.feed_min,
             proposal.feed_max
         ], {})
@@ -626,66 +626,66 @@ entry execute_proposal(proposal_id: u64) -> u64 {
             proposal.feed_id,
             proposal.feed_min,
             proposal.feed_max,
-            proposal.feed_decimals as u64
+            proposal.feed_decimals
         ], {})
     } else if proposal.proposal_type == TYPE_REMOVE_FEED {
         // StakedOracle v5.0 entry 2 = set_feed_active(feed_id, active)
         // FIX #2: deactivate the feed instead of calling a non-existent remove entry.
-        let _ = oracle.call(10u16, [proposal.feed_id, false], {})
+        let _ = oracle.call(11u16, [proposal.feed_id, false], {})
     } else if proposal.proposal_type == TYPE_SET_PARAM {
         // FIX #2: corrected StakedOracle v5.0 entry IDs
         if proposal.param_key == PARAM_MAX_STALE {
             // entry 16 = set_max_stale_blocks
-            let _ = oracle.call(38u16, [proposal.param_value], {})
+            let _ = oracle.call(40u16, [proposal.param_value], {})
         } else if proposal.param_key == PARAM_HARD_STALE {
             // entry 17 = set_hard_stale_blocks
-            let _ = oracle.call(39u16, [proposal.param_value], {})
+            let _ = oracle.call(40u16, [proposal.param_value], {})
         } else if proposal.param_key == PARAM_MAX_DEV {
             // entry 13 = set_max_deviation_bps
-            let _ = oracle.call(35u16, [proposal.param_value], {})
+            let _ = oracle.call(38u16, [proposal.param_value], {})
         } else if proposal.param_key == PARAM_CB_THRESH {
             // entry 14 = set_cb_threshold_bps
-            let _ = oracle.call(36u16, [proposal.param_value], {})
+            let _ = oracle.call(38u16, [proposal.param_value], {})
         } else if proposal.param_key == PARAM_SUBMIT_WINDOW {
             // entry 15 = set_aggregation_blocks
-            let _ = oracle.call(37u16, [proposal.param_value], {})
+            let _ = oracle.call(38u16, [proposal.param_value], {})
         }
     } else if proposal.proposal_type == TYPE_SET_REWARD {
         // FIX #15: implemented — call XelisVaultMiner v5.0 entry 21
         // (set_base_reward_oracle) with proposal.reward_amount.
         let mc_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("mcnoset")
         let miner: Contract = Contract::new(mc_hash).expect("mcnf")
-        let _ = miner.call(35u16, [proposal.reward_amount], {})
+        let _ = miner.call(36u16, [proposal.reward_amount], {})
     } else if proposal.proposal_type == TYPE_EMERGENCY_CB {
         // StakedOracle v5.0 entry 3 = trigger_feed_cb(feed_id, reason)
-        let _ = oracle.call(11u16, [proposal.feed_id, "governance"], {})
+        let _ = oracle.call(12u16, [proposal.feed_id, "governance"], {})
     } else if proposal.proposal_type == TYPE_RESET_FEED {
         // StakedOracle v5.0 entry 4 = reset_feed_cb(feed_id)
-        let _ = oracle.call(12u16, [proposal.feed_id], {})
+        let _ = oracle.call(13u16, [proposal.feed_id], {})
     } else if proposal.proposal_type == TYPE_EMERGENCY_SLASH {
         // v10.9: Governance can slash a malicious miner
         // XelisVaultMiner entry 40 = emergency_slash_miner(addr, bps, reason)
         let mc_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("mcnoset")
         let miner: Contract = Contract::new(mc_hash).expect("mcnf")
-        let _ = miner.call(89u16, [proposal.target_addr, proposal.param_value, "governance_slash"], {})
+        let _ = miner.call(84u16, [proposal.target_addr, proposal.param_value, "governance_slash"], {})
     } else if proposal.proposal_type == TYPE_SET_MIN_STAKE {
         // v10.9: Governance can change min stake
         // XelisVaultMiner entry 43 = set_min_stake_entry(new_min_stake)
         let mc_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("mcnoset")
         let miner: Contract = Contract::new(mc_hash).expect("mcnf")
-        let _ = miner.call(89u16, [proposal.param_value], {})
+        let _ = miner.call(87u16, [proposal.param_value], {})
     } else if proposal.proposal_type == TYPE_FREEZE_REWARDS {
         // v10.9: Governance can freeze/unfreeze rewards
         // XelisVaultMiner entry 42 = emergency_freeze_rewards(bool)
         let mc_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("mcnoset")
         let miner: Contract = Contract::new(mc_hash).expect("mcnf")
-        let _ = miner.call(88u16, [proposal.param_value > 0], {})
+        let _ = miner.call(86u16, [proposal.param_value > 0], {})
     } else if proposal.proposal_type == TYPE_BAN_MINER {
         // v10.9: Governance can permanently ban a malicious miner
         // XelisVaultMiner entry 41 = emergency_ban_miner(addr, reason)
         let mc_hash: Hash = s.load(MINER_CONTRACT_KEY).expect("mcnoset")
         let miner: Contract = Contract::new(mc_hash).expect("mcnf")
-        let _ = miner.call(87u16, [proposal.target_addr, "governance_ban"], {})
+        let _ = miner.call(85u16, [proposal.target_addr, "governance_ban"], {})
     }
 
     return 0

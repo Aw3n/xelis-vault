@@ -370,7 +370,7 @@ entry anchor_messages(merkle_root: Hash, message_count: u64, sender_count: u64, 
             // Pass diminishing multiplier to miner (it will apply on top of reputation)
             // Entry 18 = distribute_reward(addr, service_id, is_valid)
             // The diminishing factor is tracked here, reward is adjusted in XelisVaultMiner
-            let _ = miner.call(22u16, [caller, CHAT_SERVICE_ID, true], {})
+            let _ = miner.call(23u16, [caller, CHAT_SERVICE_ID as u8, true], {})
 
             // Update daily reward tracking (estimate: base reward * diminishing)
             // Base chat reward is 2 VLT = 200000000 atomic (configurable in XelisVaultMiner)
@@ -1597,7 +1597,7 @@ entry anchor_batch(merkle_root: Hash, message_count: u64) -> u64 {
         let miner_hash: Hash = miner_hash_opt.expect("err")
         if miner_hash != Hash::zero() {
             let miner: Contract = Contract::new(miner_hash).expect("err")
-            let _ = miner.call(22u16, [caller, CHAT_SERVICE_ID, true], {})
+            let _ = miner.call(23u16, [caller, CHAT_SERVICE_ID as u8, true], {})
         }
     }
     

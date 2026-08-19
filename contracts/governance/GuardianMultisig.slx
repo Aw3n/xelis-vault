@@ -188,18 +188,18 @@ entry execute(proposal_id: u64) -> u64 {
     if proposal.action == 0 {
         // pause target (StakedOracle entry 11 = pause)
         let target: Contract = Contract::new(proposal.target).expect("err")
-        let _ = target.call(33u16, ["emergency"], {})
+        let _ = target.call(34u16, ["emergency"], {})
     } else if proposal.action == 1 {
         // unpause target via Timelock emergency proposal
         // Timelock v5.0 entry 3 = submit_emergency_proposal(target, entry_id, params)
         // StakedOracle v5.0 entry 12 = unpause
         let tl_hash: Hash = s.load(TIMELOCK_KEY).expect("err")
         let tl: Contract = Contract::new(tl_hash).expect("err")
-        let _ = tl.call(8u16, [proposal.target, 12u64, proposal.params], {})
+        let _ = tl.call(8u16, [proposal.target, 34u16, proposal.params], {})
     } else if proposal.action == 2 {
         // trigger_cb — StakedOracle v5.0 entry 3 = trigger_feed_cb(feed_id, reason)
         let target: Contract = Contract::new(proposal.target).expect("err")
-        let _ = target.call(11u16, [proposal.feed_id, "emergency"], {})
+        let _ = target.call(12u16, [proposal.feed_id, "emergency"], {})
     } else if proposal.action == 3 {
         // custom call
         let target: Contract = Contract::new(proposal.target).expect("err")

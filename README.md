@@ -31,13 +31,11 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex
 
 All three methods install **both** `xvault` (community CLI) and `xvault-miner` (miner dashboard).
 
-> **IMPORTANT — Contracts not yet deployed**
+> **IMPORTANT — Testnet deployment in progress**
 >
-> The smart contracts are currently being tested. The official testnet deployment is scheduled for **August 25, 2026**.
+> Contracts are being deployed methodically on the XELIS testnet following `docs/DEPLOYMENT_GUIDE.md` (13 phases, 37 core contracts). Deployed addresses and configuration records are tracked in [docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md).
 >
-> Until then, `xvault` and `xvault-miner` will install and run, but **cannot connect to the protocol** (contract addresses are not yet available).
->
-> Install now to be ready — once contracts are deployed, simply run `xvault-miner --setup` (or `xvault --setup`) to configure the addresses and start using the protocol.
+> `xvault` and `xvault-miner` will connect to the protocol once the core contracts are live. Run `xvault-miner --setup` (or `xvault --setup`) to configure the addresses.
 
 ---
 
@@ -391,7 +389,11 @@ Full CLI guide: [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md)
 | [User Guide](docs/USER_GUIDE.md) | End-user guide |
 | [Reward System](docs/REWARD_SYSTEM.md) | Reward + reputation mechanics |
 | [Roadmap](docs/ROADMAP.md) | Development roadmap |
-| [Entry IDs](docs/ENTRY_IDS.md) | Auto-generated entry ID table |
+| [Entry IDs](docs/ENTRY_IDS.md) | Auto-generated entry ID table (source order) |
+| [Entry Chunk IDs](docs/entry_chunk_ids.json) | Compiled chunk indices — use these for `entry_id` in invokes |
+| [Deployments](docs/DEPLOYMENTS.md) | Live testnet deployment record (updated after each step) |
+| [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Order of deployment + configuration |
+| [AGENTS.md](AGENTS.md) | Operator notes: RPC mechanics, gotchas, current state |
 
 ---
 

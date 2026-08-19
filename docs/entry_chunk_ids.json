@@ -1,0 +1,8157 @@
+{
+ "VLTToken": {
+  "entries": [
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   27
+  ],
+  "chunks": [
+   {
+    "idx": 3,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Array(Opaque(9)), Array(Number(U64))]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(8), Bool]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(8), Bool]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 21,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 22,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 23,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 25,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 26,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   }
+  ]
+ },
+ "FeeDistributor": {
+  "entries": [
+   7,
+   8,
+   9,
+   10,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25
+  ],
+  "chunks": [
+   {
+    "idx": 2,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 14,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "FounderVesting": {
+  "entries": [
+   6,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19
+  ],
+  "chunks": [
+   {
+    "idx": 2,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 7,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 8,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "RevenueShareDelegation": {
+  "entries": [
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 16,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 17,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 21,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 30,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "CreditScore": {
+  "entries": [
+   7,
+   8,
+   9,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "InterestRateModel": {
+  "entries": [
+   3,
+   5,
+   7,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 3,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 16,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 17,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 18,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "SealedBidAuction": {
+  "entries": [
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30,
+   31,
+   32,
+   33
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64), Opaque(8), Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 30,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 31,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 32,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 33,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 34,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 35,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 36,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "AssetVault": {
+  "entries": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[String, String, Number(U8), Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 20,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 22,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 23,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "SavingsRate": {
+  "entries": [
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28
+  ],
+  "chunks": [
+   {
+    "idx": 2,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 29,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 30,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 31,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 32,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "PrivacyMixer": {
+  "entries": [
+   5,
+   6,
+   7,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Opaque(9), Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 8,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 29,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "ContractRegistry": {
+  "entries": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 2,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 3,
+    "kind": "Entry",
+    "params": "[String, Opaque(8)]"
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[String, Opaque(8)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "All",
+    "params": "[String]"
+   },
+   {
+    "idx": 17,
+    "kind": "All",
+    "params": "[String]"
+   },
+   {
+    "idx": 18,
+    "kind": "All",
+    "params": "[String]"
+   },
+   {
+    "idx": 19,
+    "kind": "All",
+    "params": "[String]"
+   },
+   {
+    "idx": 20,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "VaultChat": {
+  "entries": [
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   38,
+   42,
+   43,
+   45,
+   46,
+   47,
+   48,
+   51,
+   55,
+   56,
+   57,
+   59,
+   60,
+   63,
+   66,
+   69,
+   71,
+   72,
+   73,
+   74,
+   75,
+   78,
+   81,
+   82,
+   83,
+   87,
+   93,
+   95,
+   97,
+   99,
+   101,
+   102,
+   103,
+   106,
+   107,
+   108,
+   112,
+   115,
+   116,
+   118,
+   119,
+   120,
+   122,
+   123,
+   127,
+   130,
+   132
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9), Bytes]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64), Number(U64), Number(U8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9), Bool]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 29,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 30,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 31,
+    "kind": "All",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 32,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 33,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 34,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 35,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 36,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 37,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 38,
+    "kind": "Entry",
+    "params": "[Opaque(9), Bytes, Number(U64)]"
+   },
+   {
+    "idx": 39,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 40,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 41,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 42,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 43,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 44,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 45,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 46,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 47,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 48,
+    "kind": "Entry",
+    "params": "[Number(U64), Bytes, Number(U64)]"
+   },
+   {
+    "idx": 49,
+    "kind": "All",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 50,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 51,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U8)]"
+   },
+   {
+    "idx": 52,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 53,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 55,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 56,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 57,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(8)]"
+   },
+   {
+    "idx": 58,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 59,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9), Bytes]"
+   },
+   {
+    "idx": 60,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 61,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 62,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 63,
+    "kind": "Entry",
+    "params": "[Opaque(9), Bytes, Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 64,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 65,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 66,
+    "kind": "Entry",
+    "params": "[String, Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 67,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 68,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 69,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 70,
+    "kind": "All",
+    "params": "[Opaque(9), Opaque(9)]"
+   },
+   {
+    "idx": 71,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 72,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 73,
+    "kind": "Entry",
+    "params": "[Number(U8), Number(U64), Number(U64), Number(U64), Number(U8)]"
+   },
+   {
+    "idx": 74,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 75,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 76,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 77,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 78,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 79,
+    "kind": "All",
+    "params": "[Opaque(9), Opaque(9)]"
+   },
+   {
+    "idx": 80,
+    "kind": "All",
+    "params": "[Opaque(9), Opaque(9)]"
+   },
+   {
+    "idx": 81,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 82,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 83,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 84,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 85,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 86,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 87,
+    "kind": "Entry",
+    "params": "[Opaque(9), String]"
+   },
+   {
+    "idx": 88,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 89,
+    "kind": "All",
+    "params": "[Opaque(9), Opaque(9)]"
+   },
+   {
+    "idx": 90,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 92,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 93,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 94,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 95,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 96,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 97,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 98,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 99,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 100,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 101,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Opaque(8), String]"
+   },
+   {
+    "idx": 102,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 103,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 104,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 105,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 106,
+    "kind": "Entry",
+    "params": "[String, Number(U64), Number(U64), Opaque(8)]"
+   },
+   {
+    "idx": 107,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 108,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 109,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 110,
+    "kind": "All",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 111,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 112,
+    "kind": "Entry",
+    "params": "[Opaque(9), Bytes, Number(U64)]"
+   },
+   {
+    "idx": 113,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 114,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 115,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 116,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 117,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 118,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 119,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 120,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 121,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 122,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), String]"
+   },
+   {
+    "idx": 123,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 125,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 126,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 127,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U8)]"
+   },
+   {
+    "idx": 128,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 129,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 130,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9), Number(U8)]"
+   },
+   {
+    "idx": 131,
+    "kind": "All",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 132,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 133,
+    "kind": "All",
+    "params": "[Number(U64), Opaque(9)]"
+   }
+  ]
+ },
+ "VaultNFT": {
+  "entries": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 16,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 17,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 18,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "LiquidationMarket": {
+  "entries": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "All",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "VaultBounties": {
+  "entries": [
+   5,
+   6,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 9,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "StakedOracle": {
+  "entries": [
+   15,
+   16,
+   29,
+   30,
+   31,
+   32,
+   40,
+   41,
+   42,
+   43,
+   44,
+   45,
+   46,
+   47,
+   48,
+   49,
+   50,
+   51,
+   52,
+   53,
+   54,
+   55,
+   56,
+   57,
+   58
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 8,
+    "kind": "All",
+    "params": "[String, Opaque(8), Number(U8), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "All",
+    "params": "[Number(U64), Number(U64), Number(U64), Number(U8)]"
+   },
+   {
+    "idx": 10,
+    "kind": "All",
+    "params": "[Number(U64), Bool]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Number(U64), String]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 19,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 20,
+    "kind": "All",
+    "params": "[String]"
+   },
+   {
+    "idx": 21,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "All",
+    "params": "[String]"
+   },
+   {
+    "idx": 23,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 25,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 26,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 27,
+    "kind": "All",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 28,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 30,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 31,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 32,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 33,
+    "kind": "All",
+    "params": "[String]"
+   },
+   {
+    "idx": 34,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 35,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 36,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 37,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 38,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 39,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 40,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 41,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 42,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 43,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 44,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 45,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 46,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 47,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 48,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 49,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 50,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 51,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 52,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 53,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 54,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 55,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 56,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 57,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 58,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   }
+  ]
+ },
+ "FlashCallback": {
+  "entries": [
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 2,
+    "kind": "All",
+    "params": "[Opaque(8), Number(U64), Number(U64), Opaque(9), Bytes]"
+   },
+   {
+    "idx": 3,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "FlashLoan": {
+  "entries": [
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   23,
+   24
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64), Opaque(8), Bytes]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 25,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "ComplianceModule": {
+  "entries": [
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 3,
+    "kind": "All",
+    "params": "[Opaque(9), Opaque(9), Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Opaque(8), Opaque(8)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(9), Bool]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(8), Bool]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "All",
+    "params": "[Opaque(8), Opaque(8)]"
+   },
+   {
+    "idx": 21,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 22,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 23,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "PSM": {
+  "entries": [
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30
+  ],
+  "chunks": [
+   {
+    "idx": 1,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 30,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 31,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 32,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 33,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 34,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 35,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "VaultSwapV2": {
+  "entries": [
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30,
+   31,
+   32,
+   33,
+   34,
+   35,
+   36,
+   37,
+   38,
+   39,
+   40,
+   41,
+   42,
+   43,
+   44,
+   45,
+   46
+  ],
+  "chunks": [
+   {
+    "idx": 1,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8), Opaque(8), Bool]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8), Opaque(8), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8), Opaque(8), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(8), Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(8), Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Opaque(8), Opaque(8)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Opaque(8), Opaque(8)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 30,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 31,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 32,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 33,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 34,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 35,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 36,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 37,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 38,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 39,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 40,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 41,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 42,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 43,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 44,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 45,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 46,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 47,
+    "kind": "All",
+    "params": "[Opaque(8), Opaque(8)]"
+   },
+   {
+    "idx": 48,
+    "kind": "All",
+    "params": "[Opaque(8), Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 49,
+    "kind": "All",
+    "params": "[Opaque(8), Opaque(8)]"
+   },
+   {
+    "idx": 50,
+    "kind": "All",
+    "params": "[Opaque(8), Opaque(8)]"
+   },
+   {
+    "idx": 51,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 52,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 53,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 54,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "EmergencyShutdown": {
+  "entries": [
+   5,
+   6,
+   7,
+   8,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "All",
+    "params": "[Number(U8)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "LendingMarket": {
+  "entries": [
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30,
+   31,
+   32,
+   33,
+   34,
+   35,
+   36,
+   37,
+   38
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8), Opaque(8), Number(U64), Number(U64), Number(U64), Number(U64), Opaque(8)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 30,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 31,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 32,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 33,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 34,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 35,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 36,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 37,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 38,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 39,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 40,
+    "kind": "All",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 41,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 42,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "PeerLoan": {
+  "entries": [
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64), Number(U64), Number(U64), Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 25,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 26,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 27,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "SyndicatePool": {
+  "entries": [
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64), Number(U64), Number(U64), Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 29,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 30,
+    "kind": "All",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 31,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 32,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "SocialTrading": {
+  "entries": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U8), Number(U64), Opaque(8)]"
+   },
+   {
+    "idx": 9,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 10,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "xUSD": {
+  "entries": [
+   2,
+   6,
+   8,
+   9,
+   10,
+   12,
+   13,
+   14,
+   15,
+   16,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 2,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 3,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 4,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64), Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "All",
+    "params": "[Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8), Bool]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(8), Bool]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 27,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 28,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 29,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   }
+  ]
+ },
+ "GovernanceDelegation": {
+  "entries": [
+   6,
+   7,
+   8,
+   9,
+   10,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U8), Opaque(9)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U8)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(9), Bool]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 15,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "GovernanceVault": {
+  "entries": [
+   4,
+   5,
+   6,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 7,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 8,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(8), Bool]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 25,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 26,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 27,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 28,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 29,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 30,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 31,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 32,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 33,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 34,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 35,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 36,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64), Number(U64)]"
+   }
+  ]
+ },
+ "Governor": {
+  "entries": [
+   3,
+   4,
+   5,
+   6,
+   7,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 3,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U16), Bytes, String]"
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U8)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 8,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 18,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "All",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 20,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 22,
+    "kind": "All",
+    "params": "[]"
+   }
+  ]
+ },
+ "GuardianMultisig": {
+  "entries": [
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 3,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U8), Bytes]"
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(9), Bytes]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(9), Bytes]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64), Bytes]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 18,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 20,
+    "kind": "All",
+    "params": "[]"
+   }
+  ]
+ },
+ "OracleGovernance": {
+  "entries": [
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 3,
+    "kind": "Entry",
+    "params": "[String, Opaque(8), Number(U8), Number(U64), Number(U64), String]"
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64), Number(U64), Number(U8), String]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64), String]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U8), Number(U64), String]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64), String]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64), String]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64), String]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64), Bool]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 25,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 26,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 27,
+    "kind": "All",
+    "params": "[Number(U64), Opaque(9)]"
+   }
+  ]
+ },
+ "Timelock": {
+  "entries": [
+   6,
+   7,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 5,
+    "kind": "All",
+    "params": "[Opaque(8), Number(U16), Bytes, Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "All",
+    "params": "[Opaque(8), Number(U16), Bytes]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 19,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 20,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "All",
+    "params": "[]"
+   }
+  ]
+ },
+ "FaucetContract": {
+  "entries": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   20,
+   21,
+   22
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Array(Opaque(9))]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "TreasuryVault": {
+  "entries": [
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29
+  ],
+  "chunks": [
+   {
+    "idx": 2,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Opaque(8), Opaque(9), Number(U64), Bytes]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 30,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 31,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 32,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 33,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 34,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 35,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "Payroll": {
+  "entries": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   17,
+   18,
+   19,
+   20,
+   21
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Opaque(9), Opaque(8), Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "RevenueShare": {
+  "entries": [
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21
+  ],
+  "chunks": [
+   {
+    "idx": 2,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9), Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 22,
+    "kind": "All",
+    "params": "[Opaque(9), Opaque(8)]"
+   },
+   {
+    "idx": 23,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 24,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 25,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "InsurancePool": {
+  "entries": [
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(8)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 26,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 27,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 28,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "PrivateInsurance": {
+  "entries": [
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23
+  ],
+  "chunks": [
+   {
+    "idx": 2,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64), Number(U64), Number(U64), Opaque(8)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(8)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 24,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 25,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 26,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "VaultInsurance": {
+  "entries": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "AirdropClaim": {
+  "entries": [
+   8,
+   9,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23
+  ],
+  "chunks": [
+   {
+    "idx": 2,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(9), Opaque(9), Number(U64), Array(Opaque(8))]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 10,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "AirdropTracker": {
+  "entries": [
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   51,
+   52,
+   53,
+   54,
+   55,
+   56,
+   57,
+   58,
+   65,
+   66,
+   67,
+   68,
+   69,
+   70,
+   71,
+   72,
+   73
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U8)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U8), Number(U64), String]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 26,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 27,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 28,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 29,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 30,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 31,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 32,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 33,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 34,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 35,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 36,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 37,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 38,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 39,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 40,
+    "kind": "All",
+    "params": "[Number(U8)]"
+   },
+   {
+    "idx": 41,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 42,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 43,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 44,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 45,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 46,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 47,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 48,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 49,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 50,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 51,
+    "kind": "Entry",
+    "params": "[Array(Opaque(9)), Number(U8), Number(U64), String]"
+   },
+   {
+    "idx": 52,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U8), Number(U64), String]"
+   },
+   {
+    "idx": 53,
+    "kind": "Entry",
+    "params": "[Opaque(9), String]"
+   },
+   {
+    "idx": 54,
+    "kind": "Entry",
+    "params": "[Opaque(9), String]"
+   },
+   {
+    "idx": 55,
+    "kind": "Entry",
+    "params": "[Opaque(9), String]"
+   },
+   {
+    "idx": 56,
+    "kind": "Entry",
+    "params": "[Opaque(9), String]"
+   },
+   {
+    "idx": 57,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), String]"
+   },
+   {
+    "idx": 58,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 59,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 60,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 61,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 62,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 63,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 64,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 65,
+    "kind": "Entry",
+    "params": "[Opaque(9), Bool]"
+   },
+   {
+    "idx": 66,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 67,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 68,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 69,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 70,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 71,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 72,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 73,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "NotificationCenter": {
+  "entries": [
+   4,
+   5,
+   6,
+   7,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Bytes, Opaque(8), Bytes, Number(U8), Number(U8), Number(U8), Number(U32), Number(U32)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Bytes, Bytes]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U8), Number(U8), Number(U8), Number(U32), Number(U32)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 8,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 9,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U8), Number(U8), Bytes]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "MultiCollateralVault": {
+  "entries": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(8), Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(8), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[Number(U64), Opaque(8)]"
+   },
+   {
+    "idx": 13,
+    "kind": "All",
+    "params": "[String]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[String, Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "VaultEngineV3": {
+  "entries": [
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30,
+   31,
+   32,
+   33,
+   34,
+   35,
+   36,
+   37,
+   38,
+   39,
+   40,
+   41,
+   42,
+   43,
+   44,
+   45,
+   46,
+   47,
+   48,
+   49,
+   50,
+   51,
+   52,
+   70,
+   71,
+   72,
+   74
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8), Number(U64), Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 30,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 31,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 32,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 33,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 34,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 35,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 36,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 37,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 38,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 39,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 40,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 41,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 42,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 43,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 44,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 45,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 46,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 47,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 48,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 49,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 50,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 51,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 52,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 53,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 54,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 55,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 56,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 57,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 58,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 59,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 60,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 61,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 62,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 63,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 64,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 65,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 66,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 67,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 68,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 69,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 70,
+    "kind": "Entry",
+    "params": "[Opaque(11), Opaque(17)]"
+   },
+   {
+    "idx": 71,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(11), Opaque(17), Opaque(17)]"
+   },
+   {
+    "idx": 72,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(11), Opaque(17)]"
+   },
+   {
+    "idx": 73,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 74,
+    "kind": "Entry",
+    "params": "[Number(U64), Tuples([Opaque(11), Opaque(11), Opaque(11)])]"
+   },
+   {
+    "idx": 75,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   }
+  ]
+ },
+ "VaultTemplates": {
+  "entries": [
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Number(U8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "YieldOptimizer": {
+  "entries": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 4,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U8)]"
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U8)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 11,
+    "kind": "All",
+    "params": "[Number(U8), Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "AnalyticsCollector": {
+  "entries": [
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   17,
+   18,
+   19,
+   20,
+   21
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64), Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Number(U8)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "All",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "All",
+    "params": "[Number(U8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   }
+  ]
+ },
+ "MinerDelegation": {
+  "entries": [
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30,
+   31,
+   32,
+   33,
+   34,
+   35
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 5,
+    "kind": "Entry",
+    "params": "[String, String, Number(U64)]"
+   },
+   {
+    "idx": 6,
+    "kind": "Entry",
+    "params": "[String, String, Number(U64)]"
+   },
+   {
+    "idx": 7,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), Bool]"
+   },
+   {
+    "idx": 8,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 9,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 16,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 17,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 18,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 19,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 20,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 21,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 30,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 31,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 32,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 33,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 34,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 35,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 36,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64)]"
+   }
+  ]
+ },
+ "MinerPool": {
+  "entries": [
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   17,
+   18,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30,
+   31,
+   32,
+   33,
+   34,
+   35
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 10,
+    "kind": "Entry",
+    "params": "[String, String, Number(U64)]"
+   },
+   {
+    "idx": 11,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 12,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 13,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 14,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 22,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 23,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 24,
+    "kind": "Entry",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 27,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 30,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 31,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 32,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 33,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 34,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 35,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 36,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 37,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 38,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 39,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 40,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 41,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 42,
+    "kind": "All",
+    "params": "[Number(U64), Opaque(9)]"
+   },
+   {
+    "idx": 43,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   }
+  ]
+ },
+ "XelisVaultMiner": {
+  "entries": [
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   25,
+   26,
+   28,
+   29,
+   30,
+   31,
+   32,
+   33,
+   34,
+   35,
+   37,
+   38,
+   39,
+   40,
+   41,
+   42,
+   43,
+   44,
+   45,
+   46,
+   47,
+   48,
+   49,
+   50,
+   51,
+   52,
+   53,
+   54,
+   63,
+   65,
+   75,
+   76,
+   77,
+   78,
+   79,
+   80,
+   81,
+   82,
+   83
+  ],
+  "chunks": [
+   {
+    "idx": 0,
+    "kind": "Hook",
+    "id": 0
+   },
+   {
+    "idx": 12,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 15,
+    "kind": "Entry",
+    "params": "[String, Opaque(8), Number(U8)]"
+   },
+   {
+    "idx": 16,
+    "kind": "Entry",
+    "params": "[Number(U8)]"
+   },
+   {
+    "idx": 17,
+    "kind": "Entry",
+    "params": "[Number(U8)]"
+   },
+   {
+    "idx": 18,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 19,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 20,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 21,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 22,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U8), Opaque(9)]"
+   },
+   {
+    "idx": 23,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U8), Bool]"
+   },
+   {
+    "idx": 24,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U8)]"
+   },
+   {
+    "idx": 25,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 26,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 27,
+    "kind": "All",
+    "params": "[Number(U8)]"
+   },
+   {
+    "idx": 28,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 29,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 30,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 31,
+    "kind": "Entry",
+    "params": "[Number(U8), Opaque(8)]"
+   },
+   {
+    "idx": 32,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 33,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 34,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 35,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 36,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 37,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 38,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 39,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 40,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 41,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 42,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 43,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 44,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 45,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 46,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 47,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 48,
+    "kind": "Entry",
+    "params": "[String]"
+   },
+   {
+    "idx": 49,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 50,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 51,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 52,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 53,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 54,
+    "kind": "Entry",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 55,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 56,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 57,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 58,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 59,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 60,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 61,
+    "kind": "All",
+    "params": "[Opaque(8)]"
+   },
+   {
+    "idx": 62,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 63,
+    "kind": "Entry",
+    "params": "[Bool]"
+   },
+   {
+    "idx": 64,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 65,
+    "kind": "Entry",
+    "params": "[Number(U64), Number(U64)]"
+   },
+   {
+    "idx": 66,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 67,
+    "kind": "All",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 69,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 70,
+    "kind": "All",
+    "params": "[Array(Number(U64)), Number(U64)]"
+   },
+   {
+    "idx": 71,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 72,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 73,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 74,
+    "kind": "All",
+    "params": "[]"
+   },
+   {
+    "idx": 75,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 76,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 77,
+    "kind": "Entry",
+    "params": "[Opaque(9), Number(U64), String]"
+   },
+   {
+    "idx": 78,
+    "kind": "Entry",
+    "params": "[Opaque(9), String]"
+   },
+   {
+    "idx": 79,
+    "kind": "Entry",
+    "params": "[Bool]"
+   },
+   {
+    "idx": 80,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 81,
+    "kind": "Entry",
+    "params": "[Number(U64)]"
+   },
+   {
+    "idx": 82,
+    "kind": "Entry",
+    "params": "[Opaque(9)]"
+   },
+   {
+    "idx": 83,
+    "kind": "Entry",
+    "params": "[]"
+   },
+   {
+    "idx": 84,
+    "kind": "All",
+    "params": "[Opaque(9), Number(U64), String]"
+   },
+   {
+    "idx": 85,
+    "kind": "All",
+    "params": "[Opaque(9), String]"
+   },
+   {
+    "idx": 86,
+    "kind": "All",
+    "params": "[Bool]"
+   },
+   {
+    "idx": 87,
+    "kind": "All",
+    "params": "[Number(U64)]"
+   }
+  ]
+ }
+}

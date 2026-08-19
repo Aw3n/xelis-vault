@@ -19,6 +19,26 @@ All contracts deployed as **V1** (version byte `01` embedded in module hex by th
 > Note: an earlier invoke used entry 9 (wrong chunk) → runtime error `notverifier`, no state change.
 > Chunk indices are the source of truth for `entry_id`.
 
-## Phase 2+ — Pending
+## Phase 2 — Token Layer
+
+| Step | Contract / Action | Address (tx hash) | Status | Topoheight |
+|------|-------------------|-------------------|--------|-----------|
+| 2.1a | Deploy VLTToken | `efd53bfa46d9fbb7494cca716cd86990299851705d408fcbff0e05d00bb09ac6` | ✅ deployed | — |
+| 2.1b | VLTToken.create_asset (chunk 9, +10 XEL deposit, 1 XEL burned) | `f581ff769d284f1f7ffaf80b6de8797027d244e822a967d722b621eebb99f1f9` | ✅ **VLT asset = `9d074e1b0c057dbd30897f10117e4feb1d8d6442306bc23ac763c87c9f73b89a`** | 150808 |
+| 2.1c | VLTToken.set_registry (chunk 10) | `c93b6d36b01f5c6d06f355ff29dd0ac042fb9ba3ae992b566fa1c3833aaf58cf` | ✅ | 150811 |
+| 2.1d | Registry.register "VLTToken" (chunk 3) | `5f45d3c72a6a2c2328446ddb6e852cb8c2b5694ac49630b39c345d5ee2dc8e0d` | ✅ `cur_VLTToken` stored, count=1 | 150812 |
+| 2.1e | VLTToken.mint_to_entry (chunk 27): **500,000 VLT (airdrop share) → admin wallet** | `0826f873fb2177deeeac15f3bb8b82d819b5114559b4f702490f7c26c9a65e56` | ✅ admin holds 50,000,000,000,000 atomic; distribution left to operator | 150825 |
+| 2.2a | Deploy xUSD | `87242c12262bf4d7144842a06e91d96af53e5ce5b786e10ccb5c687be4658ae8` | ✅ deployed | — |
+| 2.2b | xUSD.create_asset (chunk 2, +10 XEL deposit, 1 XEL burned) | `e0b124a5a42914e3e0285f813df91005c4ce1bfd2bc4064f2f5df58c2e95ccfa` | ✅ **xUSD asset = `a04b10a46698c97f3e465882dee5827e62360c30060f33f3604179769bc65100`** | 150842 |
+| 2.2c | xUSD.set_registry (chunk 20) | `863f6bc415783406e85e169ebea2e3c78fa06e5ccdd365a36098e87bebb32f4f` | ✅ | 150845 |
+| 2.2d | Registry.register "xUSD" (chunk 3) | `97830346f1032ed2517aac7e96471f38b979fef671086af3e0c66d4e0e48fe51` | ✅ `cur_xUSD` stored, count=2 | 150848 |
+| 2.3a | Deploy FaucetContract | `7da83d17c4db825083b4ae85ab95ff50654999ebf4847e284bcf11549f14256d` | ✅ deployed | — |
+| 2.3b | Faucet.set_registry (chunk 14) | `9f6475eb02c90472eb2e17ec329342d7474d55eefe6b64e2b2e6abf21c156553` | ✅ | 150859 |
+
+> VLT distribution note (operator decision): testnet airdrop contract skipped — the full 500k VLT
+> airdrop share is minted to the admin wallet for manual distribution.
+> Faucet refill deferred (operator-controlled VLT; refill later if desired).
+
+## Phase 3+ — Pending
 
 Following `docs/DEPLOYMENT_GUIDE.md`.

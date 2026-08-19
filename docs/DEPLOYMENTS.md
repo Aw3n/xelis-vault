@@ -129,6 +129,54 @@ struct lacks an entry_id field; documented, not reachable in normal flow.
 > one-way ("exists"), registry upgrade has a 720-block cooldown → **upgrade pending at
 > topoheight ≥ 151736** (old `1a818eff…` still live until then; v2 `2c22a613…` fully configured).
 
-## Phase 7+ — Pending
+## Phase 7 — Auctions & Privacy
+
+| Step | Contract / Action | Address (tx hash) | Status |
+|------|-------------------|-------------------|--------|
+| 7.1a | Deploy SealedBidAuction | `d3b48725a4a4327249130efb3405be80b6caadbe255db00b3bbb4b1d91be3155` | ✅ |
+| 7.1b | Auction.set_registry (25) | `1c0b5dac95c8da6810a9c8c20746cbae70987e5d6d4ec568a01dd61ef3cf2a73` | ✅ |
+| 7.1c | Registry.register "SealedBidAuction" | `75992ef4626ecac5cffa1ea518592b949110f0456989a08e9a99c7bf77637351` | ✅ |
+| 7.2a | Deploy PrivacyMixer | `c78b2e903f366519884533d75c67428521f8397af02110f2a4fe4f90bfadb79d` | ✅ |
+| 7.2b | Mixer.set_registry (20) | `8516b6446a648378b08a880d1ea018a3e32438d2a948d5aca267e0ba9b5bbb35` | ✅ |
+| 7.2c | Registry.register "PrivacyMixer" | `549e79fbe72e8d847eb7752e2953941aa5842c289dab67fbbe48f4cc0fcf22e9` | ✅ |
+
+## Phase 8 — Tokenization & Treasury
+
+| Step | Contract / Action | Address (tx hash) | Status |
+|------|-------------------|-------------------|--------|
+| 8.1a | Deploy AssetVault | `48806089766985050a81917bcfdf919dcd27df9780bcb6a16faa8e28bd06dd2b` | ✅ |
+| 8.1b | AV.set_registry (10) / set_compliance (9) | `e3ed94f6…` `b27525da…` | ✅ |
+| 8.1c | Registry.register "AssetVault" | `880ffa42387530e503f8267c7d4cfd1ea1cf75647060cbcb08dd65afe251c9b1` | ✅ |
+| 8.2a | Deploy TreasuryVault (no set_registry; admin/signer/quorum=1 by ctor) | `0b2cf9761ebc8a746e4418b80fdfaef0e940f12891deef12e65b60df304c6d70` | ✅ |
+| 8.2b | Registry.register "TreasuryVault" | `85937c22368a6b6230c06a803f94e723bf141282f1ee45ba7f0dba1305b9770f` | ✅ |
+| 8.3a | Deploy RevenueShare | `beb733d651e682ab7023ca1ae41963837c5d80af6894343657051b29ac9eaa6c` | ✅ |
+| 8.3b | RS.set_registry (10) / set_share_token VLT (8) | `c6039086…` `b9a2c79c…` | ✅ |
+| 8.3c | Registry.register "RevenueShare" | `c978db7bb533716f3217b64a960d1cf798aad5f8819bcc6e2653c3cdc398f33e` | ✅ |
+| 8.4a | Deploy Payroll | `edbfb5fd0a105aaf087b8bf7f0133bd99da6ac36b83b071780eac56e0df42771` | ✅ |
+| 8.4b | Payroll.set_registry (9) / set_treasury (8, temp=admin) | `58dd4768…` `4cc5f579…` | ✅ |
+| 8.4c | Registry.register "Payroll" | `226e9cd19b0c98f98b0c0514f4401d81750e52ae95671cc838863c473d1d24f2` | ✅ |
+
+> Treasury redirect step NOT APPLICABLE: all set_treasury take Address; TreasuryVault is a
+> contract (Hash). Fees stay on temp admin wallet until a future mechanism (RevenueShare).
+
+## Registry upgrades (cooldown 720 blocks)
+
+| Name | New hash | Old hash (prev_) | Status |
+|------|----------|------------------|--------|
+| VaultEngine | `2c22a613…` (v2, oracle 21→32 fix) | `1a818eff…` (v1) | ✅ `93feec25…` @151759 (first attempt @151733 reverted cooldown) |
+| StakedOracle | `159594c8…` (v3, miner-call fixes) | `68435e…` (v2) | ✅ `e2827d2c…` @151775 |
+
+## StakedOracle v3 migration (after upgrade)
+
+- set_registry (46) `23ae5c1b…`; set_miner_contract (44) `9f95092a…` then corrected `94827a2b…`
+  (⚠️ first call stored a corrupted miner hash — always cross-check against registry `cur_XelisVaultMiner`);
+  feed XEL/USD re-added (add_feed_entry 10, `68c0ecab…`, id 0 active 8 decimals 1/1e11, agg 5 blocks,
+  max deviation 500bps, cb threshold 2000bps, max stale 30, hard stale default); verified via `fc`/`fd_0`/`fa_0`.
+- miner register_service (31) with service_id **1** (0 → `badservice`) `61ec83d2…`; key `svc_<oracle_hash>` = 1.
+- set_oracle re-pointed → v3: VaultSwap (37) `f93698e7…`, PSM (23) `d936b461…`, LendingMarket (29) `597ee909…`,
+  PeerLoan (15) `8cacb8ed…`, SyndicatePool (19) `e643919a…`. Verified `or` keys + `fd_0`/`fg_0`/`la_0`.
+- xUSD: old VE1 minter/burner revoked (`9f958f71…` `e89e4268…`, mi_/bu_ false); VE2 mi_/bu_ still true.
+
+## Phase 9+ — Pending
 
 Following `docs/DEPLOYMENT_GUIDE.md`.

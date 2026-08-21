@@ -297,22 +297,17 @@ def check_contracts(cfg):
         clear()
         print(BANNER)
         print(f"\n{C.YELLOW}{'=' * 60}{C.RESET}")
-        print(f"{C.YELLOW}  !  CONTRACTS NOT YET DEPLOYED{C.RESET}")
+        print(f"{C.YELLOW}  !  PREMIÈRE CONFIGURATION{C.RESET}")
         print(f"{C.YELLOW}{'=' * 60}{C.RESET}")
-        print(f"\n{C.BOLD}The smart contracts are not yet deployed.{C.RESET}")
-        print(f"{C.DIM}Expected deployment: August 25, 2026{C.RESET}\n")
-        print(f"The dashboard is installed and ready, but cannot")
-        print(f"connect to the protocol until addresses are set.\n")
-        print(f"{C.CYAN}Once contracts are deployed:{C.RESET}")
-        print(f"  1. Run: xvault-miner --setup")
-        print(f"  2. Enter contract addresses")
-        print(f"  3. Start mining: xvault-miner --miner\n")
-        print(f"{C.DIM}Follow @xelisvault for announcements{C.RESET}")
-        print(f"{C.DIM}Discord: https://discord.gg/UHpYAWbG{C.RESET}\n")
-        choice = menu("What do you want to do?", [
-            ("Run setup now", "setup"),
-            ("View dashboard (demo mode)", "demo"),
-            ("Exit", None),
+        print(f"\n{C.BOLD}L'assistant va tout configurer automatiquement:{C.RESET}")
+        print(f"  {C.GREEN}1.{C.RESET} Wallet   — détection, création ou import (seed affichée)")
+        print(f"  {C.GREEN}2.{C.RESET} Daemon   — détection du noeud Xelis")
+        print(f"  {C.GREEN}3.{C.RESET} Contrats — chargés automatiquement depuis le bundle réseau")
+        print(f"  {C.GREEN}4.{C.RESET} Services — oracle / chat / les deux\n")
+        choice = menu("Démarrer la configuration ?", [
+            ("Oui — lancer l'assistant automatique", "setup"),
+            ("Voir le dashboard (mode démo)", "demo"),
+            ("Quitter", None),
         ])
         if choice == "setup": return "setup"
         elif choice == "demo": return "demo"
@@ -350,12 +345,16 @@ def main():
     if args.wallet_url: cfg.data["wallet_url"] = args.wallet_url
     if args.services: cfg.data["services"] = args.services
     if args.setup:
-        interactive_setup(cfg)
+        # v7.1: onboarding automatique (wallet/daemon/contrats) — l'utilisateur
+        # ne saisit plus les adresses de contrats ni les URLs par défaut.
+        import onboarding
+        onboarding.run_onboarding(cfg)
         return
 
     mode = check_contracts(cfg)
     if mode == "setup":
-        interactive_setup(cfg)
+        import onboarding
+        onboarding.run_onboarding(cfg)
         return
 
     client = XelisClient(cfg)

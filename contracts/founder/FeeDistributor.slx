@@ -150,13 +150,14 @@ fn is_authorized_fee_source(caller_hash: Hash) -> bool {
     if reg_hash == Hash::zero() { return false }
     let reg: Contract = Contract::new(reg_hash).expect("err")
     // Iterate the known protocol fee-source names. Use ContractRegistry's
-    //   non-panicking try_get_entry (chunk 14, F-05 fix) so a missing name
-    //   returns Hash::zero() instead of reverting the whole call.
+    //   pub fn try_get (chunk 17, All — v11.7 fix) so a missing name
+    //   returns Hash::zero() instead of reverting. The v11.5 target chunk 14
+    //   (request_emergency_withdraw, Entry) reverted "Chunk is not public".
     let names: string[] = ["VaultSwapV2", "PSM", "VaultEngineV3", "FlashLoan", "VaultChat", "LendingMarket", "PeerLoan", "SyndicatePool", "InsurancePool", "SealedBidAuction"]
     let i: u32 = 0
     while i < names.len() {
         let name: string = names[i]
-        let h: Hash = reg.call(14u16, [name], {})
+        let h: Hash = reg.call(17u16, [name], {})
         if h != Hash::zero() && h == caller_hash { return true }
         i += 1
     }

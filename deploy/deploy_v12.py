@@ -174,7 +174,7 @@ def phase2(D: Deployer):
     tx = D.invoke(xusd, cid("xUSD", "create_asset"), [],
                   deposits={XEL: {"amount": TEN_XEL}},
                   max_gas=5_000_000, label="xUSD.create_asset")
-    xasset = extract_new_asset(vlt)
+    xasset = extract_new_asset(xusd)
     STATE["assets"]["XUSD"] = xasset
     save()
     log(f"xUSD ASSET = {xasset}")
@@ -514,6 +514,11 @@ def phase12(D: Deployer):
                     ("set_registry", val_hash(reg))]:
         D.invoke(md, cid("MinerDelegation", fn), [arg], label=f"MD.{fn}")
     D.register(reg, "MinerDelegation", md)
+    # Guide 12.4: wiring bidirectionnel de la délégation
+    D.invoke(miner, cid("XelisVaultMiner", "set_delegation_contract"),
+             [val_hash(md)], label="Miner.set_delegation_contract")
+    D.invoke(S["StakedOracle"], cid("StakedOracle", "set_delegation_contract"),
+             [val_hash(md)], label="Oracle.set_delegation_contract")
 
 
 def phase13(D: Deployer):

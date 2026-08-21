@@ -194,11 +194,12 @@ entry claim(
     let count: u64 = s.load(CLAIMANTS_COUNT_KEY).unwrap_or(0)
     s.store(CLAIMANTS_COUNT_KEY, count + 1)
 
-    // Mint VLT to mainnet_addr — F-01 fix: VLTToken chunk 27 = mint_to_entry
-    // (chunk 4 was mint_split / chunk 9 = create_asset — neither matches "mint to address").
+    // Mint VLT to mainnet_addr — v11.7 fix: cross-contract calls require
+    // Access::All. VLTToken chunk 4 = pub fn mint_to (All); the v11.5 target
+    // chunk 27 (mint_to_entry, Entry) reverted "Chunk is not public".
     let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("novlt")
     let vlt: Contract = Contract::new(vlt_hash).expect("err")
-    let mint_result: u64 = vlt.call(27u16, [mainnet_addr, amount], {})
+    let mint_result: u64 = vlt.call(4u16, [mainnet_addr, amount], {})
     require(mint_result == 0, "mintfail")
 
     emit_event(0u64, ["AirdropClaimed", testnet_addr.to_string() + "_" + amount.to_string(10u32)])
@@ -226,10 +227,10 @@ entry emergency_withdraw_unclaimed(to: Address) -> u64 {
     require(total_distributable > total_claimed + already_withdrawn, "nothing")
     let remaining: u64 = total_distributable - total_claimed - already_withdrawn
 
-    // Mint the remaining VLT to `to` via VLTToken chunk 27 (mint_to_entry).
+    // Mint the remaining VLT to `to` via VLTToken chunk 4 (pub fn mint_to, All).
     let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("novlt")
     let vlt: Contract = Contract::new(vlt_hash).expect("err")
-    let mint_result: u64 = vlt.call(27u16, [to, remaining], {})
+    let mint_result: u64 = vlt.call(4u16, [to, remaining], {})
     require(mint_result == 0, "mintfail")
 
     // Track withdrawn amount to prevent re-entrancy / double-withdraw.

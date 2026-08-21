@@ -259,6 +259,10 @@ def _is_transient(method: str, err: dict) -> bool:
         return False  # permanent — funding required, retrying won't help
     if method == "get_transaction" and "not found" in msg:
         return False
+    # v12.1: un contrat vient d'être déployé → le wallet peut ne pas le
+    # connaître avant stabilité du bloc. Retry après quelques secondes.
+    if "contract not found" in msg:
+        return True
     return False
 
 

@@ -574,3 +574,89 @@ pub fn set_timelock_tl(tl: Hash) -> u64 {
     Storage::new().store(TIMELOCK_KEY, tl)
     return 0
 }
+
+// ============================================================================
+// v11.7 — Cross-contract wrappers (Access::All)
+// ----------------------------------------------------------------------------
+// VaultSwapV2 delegates its psm_mint/psm_redeem entries to PSM via
+// Contract::call, which requires Access::All (`pub fn`). The `entry` versions
+// above are wallet-only and reverted "Chunk is not public" when called
+// cross-contract. These wrappers duplicate the entry bodies verbatim and are
+// appended at the end of the file so every existing chunk ID is preserved.
+// Compiled IDs: mint_cross = 36, redeem_cross = 37.
+// ============================================================================
+
+// Cross-contract mint — identical logic to entry mint (chunk 8).
+// @caller: VaultSwapV2 contract (or any contract holding a XEL pre-deposit here)
+pub fn mint_cross(xel_amount: u64, min_xusd_out: u64) -> u64 {
+    when_not_paused()
+    require(xel_amount > 0, "amtgt0")
+    require(min_xusd_out > 0, "noslippage")
+    maybe_reset_daily()
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let daily_mint_used: u64 = s.load(DAILY_MINT_USED_KEY).unwrap_or(0)
+    let daily_mint_cap: u64 = s.load(DAILY_MINT_CAP_KEY).unwrap_or(DEFAULT_DAILY_MINT_CAP)
+    require(daily_mint_used + xel_amount <= daily_mint_cap, "dailycap")
+    let dep: u64 = get_deposit_for_asset(get_xel_asset()).expect("err")
+    require(dep >= xel_amount, "insdep")
+    if dep > xel_amount {
+        let _ = transfer(caller, dep - xel_amount, get_xel_asset())
+    }
+    let price: u64 = get_xel_price()
+    let gross_xusd: u64 = (xel_amount as u128 * price as u128 / PRICE_DECIMALS as u128) as u64
+    let mint_fee_bps: u64 = s.load(MINT_FEE_BPS_KEY).unwrap_or(DEFAULT_MINT_FEE_BPS)
+    let fee: u64 = (gross_xusd as u128 * mint_fee_bps as u128 / 10000u128) as u64
+    let net_xusd: u64 = gross_xusd - fee
+    require(net_xusd >= min_xusd_out, "slippage")
+    let xusd_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("err")
+    let xusd: Contract = Contract::new(xusd_hash).expect("err")
+    let treasury: Address = s.load(TREASURY_KEY).expect("err")
+    // mint_split (chunk 4) mints `net_xusd + fee`, sends `net_xusd` to caller, `fee` to treasury.
+    let result: u64 = xusd.call(4u16, [caller, net_xusd, treasury, fee], {})
+    require(result == 0, "mintfail")
+    s.store(DAILY_MINT_USED_KEY, daily_mint_used + xel_amount)
+    return 0
+}
+
+// Cross-contract redeem — identical logic to entry redeem (chunk 9).
+// @caller: VaultSwapV2 contract (or any contract holding an xUSD pre-deposit here)
+pub fn redeem_cross(xusd_amount: u64, min_xel_out: u64) -> u64 {
+    when_not_paused()
+    require(xusd_amount > 0, "amtgt0")
+    require(min_xel_out > 0, "noslippage")
+    maybe_reset_daily()
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let daily_redeem_used: u64 = s.load(DAILY_REDEEM_USED_KEY).unwrap_or(0)
+    let daily_redeem_cap: u64 = s.load(DAILY_REDEEM_CAP_KEY).unwrap_or(DEFAULT_DAILY_REDEEM_CAP)
+    require(daily_redeem_used + xusd_amount <= daily_redeem_cap, "dailycap")
+    let xusd_asset: Hash = s.load(XUSD_ASSET_KEY).expect("err")
+    // Pre-deposit check — caller must have deposited xUSD into PSM first.
+    let dep: u64 = get_deposit_for_asset(xusd_asset).expect("err")
+    require(dep >= xusd_amount, "insdep")
+    if dep > xusd_amount {
+        let _ = transfer(caller, dep - xusd_amount, xusd_asset)
+    }
+    let price: u64 = get_xel_price()
+    let gross_xel: u64 = (xusd_amount as u128 * PRICE_DECIMALS as u128 / price as u128) as u64
+    let redeem_fee_bps: u64 = s.load(REDEEM_FEE_BPS_KEY).unwrap_or(DEFAULT_REDEEM_FEE_BPS)
+    let fee_xel: u64 = (gross_xel as u128 * redeem_fee_bps as u128 / 10000u128) as u64
+    let net_xel: u64 = gross_xel - fee_xel
+    require(net_xel >= min_xel_out, "slippage")
+    let xel_balance: u64 = get_balance_for_asset(get_xel_asset()).unwrap_or(0)
+    require(xel_balance >= net_xel, "insreserve")
+    // Burn the deposited xUSD. PSM has it (from the deposit above), so burn_tokens works.
+    let xusd_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("err")
+    let xusd: Contract = Contract::new(xusd_hash).expect("err")
+    let result: u64 = xusd.call(5u16, [xusd_amount], {})
+    require(result == 0, "burnfail")
+    let ok: bool = transfer(caller, net_xel, get_xel_asset())
+    require(ok, "txfail")
+    if fee_xel > 0 {
+        let treasury: Address = s.load(TREASURY_KEY).expect("err")
+        let _ = transfer(treasury, fee_xel, get_xel_asset())
+    }
+    s.store(DAILY_REDEEM_USED_KEY, daily_redeem_used + xusd_amount)
+    return 0
+}

@@ -497,8 +497,10 @@ entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     }
     // Forward the XEL to PSM.slx so it can pull it during its own mint flow.
     require(transfer_contract(psm_hash, xel_amount, get_xel_asset()), "xferfail")
-    // Delegate the mint to PSM.slx entry mint (chunk 8).
-    let result: u64 = psm.call(8u16, [xel_amount, min_xusd_out], {})
+    // Delegate the mint to PSM.slx pub fn mint_cross (chunk 36).
+    //   v11.7 fix: cross-contract requires Access::All — the v11.5 target
+    //   chunk 8 (entry mint) reverted "Chunk is not public".
+    let result: u64 = psm.call(36u16, [xel_amount, min_xusd_out], {})
     require(result == 0, "psmfail")
     release_reentrancy()
     return 0
@@ -527,8 +529,9 @@ entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     }
     // Forward the xUSD to PSM.slx so it can burn it during its own redeem flow.
     require(transfer_contract(psm_hash, xusd_amount, xusd_asset), "xferfail")
-    // Delegate the redeem to PSM.slx entry redeem (chunk 9).
-    let result: u64 = psm.call(9u16, [xusd_amount, min_xel_out], {})
+    // Delegate the redeem to PSM.slx pub fn redeem_cross (chunk 37).
+    //   v11.7 fix: cross-contract requires Access::All — see psm_mint note.
+    let result: u64 = psm.call(37u16, [xusd_amount, min_xel_out], {})
     require(result == 0, "psmfail")
     release_reentrancy()
     return 0

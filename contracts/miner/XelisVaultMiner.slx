@@ -698,7 +698,7 @@ pub fn slash_miner(miner_addr: Address, severity: u8, reporter: Address) -> u64 
 // @params: service_id - service that produced the submission (1=oracle, 2=chat)
 // @params: is_valid - whether the submission was valid (invalid = no mint, just counter bump)
 // @returns: reward amount minted (0 if inactive / invalid / no budget)
-// @security: only_authorized_service, no-op for unknown or inactive miner, refuses to mint if reward would exceed remaining budget, calls VLTToken entry 0 (mint_to)
+// @security: only_authorized_service, no-op for unknown or inactive miner, refuses to mint if reward would exceed remaining budget, calls VLTToken chunk 4 (pub fn mint_to) cross-contract
 pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) -> u64 {
     only_authorized_service()
     let s: Storage = Storage::new()
@@ -739,8 +739,10 @@ pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) ->
 
     let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("err")
     let vlt: Contract = Contract::new(vlt_hash).expect("err")
-    // F-18r-related fix: VLTToken chunk 27 = mint_to_entry (chunk 4 is mint_split, chunk 9 = create_asset).
-    let mint_result: u64 = vlt.call(27u16, [miner_addr, reward], {})
+    // v11.7 fix: cross-contract calls require Access::All (`pub fn`).
+    //   VLTToken chunk 4 = pub fn mint_to (All); chunk 27 (mint_to_entry) is an
+    //   Entry — wallet-only, reverted "Chunk is not public" when called here.
+    let mint_result: u64 = vlt.call(4u16, [miner_addr, reward], {})
     require(mint_result == 0, "mintfail")
 
     miner.total_rewards_earned += reward

@@ -1,0 +1,21 @@
+{
+  "network": "testnet",
+  "version": "v12.1",
+  "updated": "2026-08-21",
+  "contracts": {
+    "staked_oracle": "3ae1c54de26db4dc6e8d884df1c7271979150c397835fedab99ebc7a9c1725ad",
+    "miner": "d6e8bb5608f860b75f1ae2248c728fa18cb007f265c4b11650b3476b26bca866",
+    "vlt_token": "0cc358d3851cfce1a1858605b7b4811a0166709d43df2376c91baa208ffb6091",
+    "xusd": "d8195e0af207814d6cfaac965fe746d9c217ad53abded72e7a431fbe078a1d07",
+    "registry": "66c7df95bf05e59eabf211d047f2183c3ada8e8dcf3e6862ddd9d3ce2bbbb820",
+    "vault_engine": "140438f54bcbaab5727dcf9fe412600509b78b3320ee999f485256b5dccec58a",
+    "vault_swap": "70083447b1bdbdbd12d3b6a080d80950864fa0cdf932aab2a6e2a58dabba3f19",
+    "psm": "d9bfc818d5e2d0f63b6002e2cdbc4ff7bc1c8d9fb91e51375fe448ff9b60ce6b",
+    "lending_market": "1706ec4dcd6d79910060d3739c080418ced530b43c4753c9cd8fc1b84e8b8507",
+    "chat": "6f75ed066887ba5897267601d6952f73afec18f60b294d0aaa0676e21fb963b0",
+    "delegation": "1b2673646412fc87d6769ae6263268ed6e7b4e1534ef279736f162ea5e8ee664"
+  },
+  "vlt_asset": "12f72fc47984070c82f88eba1d5868a808f43a76d31c055c9798b33881af5749",
+  "xusd_asset": "f610dfb8d140bf353cd27abcfe018164cb2c7d9c68a65d351b7a67796551c5bd",
+  "oracle_feed_id": 0
+}

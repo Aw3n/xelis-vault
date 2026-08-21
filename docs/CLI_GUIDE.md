@@ -1,11 +1,49 @@
 # XELIS Vault — CLI Guide
 
-> ⚠️ **IMPORTANT**: The smart contracts are not yet deployed on testnet.
-> Expected deployment: **August 25, 2026**.
-> Until then, `xvault` and `xvault-miner` will install and run, but cannot
-> connect to the protocol. Install now to be ready.
-
 ## For Miners: `xvault-miner`
+
+### First-time setup — fully automatic (v7.1)
+
+```bash
+xvault-miner --setup
+```
+
+The onboarding wizard configures everything for you:
+
+1. **Wallet** — three options, presented automatically:
+   - *Already running*: enter RPC URL + credentials once, validated live.
+   - *Not installed*: the official `xelis_wallet` release binary is downloaded
+     automatically (Linux/Windows; on macOS, build-from-source instructions are shown).
+   - *New wallet*: a seed phrase is generated **locally** with the exact Xelis
+     mnemonic scheme (24 words + checksum), displayed **once** for backup, then
+     the wallet is launched in the background and synced to the network.
+   - *Import*: paste your existing 24/25-word seed (validated before use).
+2. **Daemon** — auto-detects `http://127.0.0.1:18081`, or enter a custom node,
+   or continue offline (degraded dashboard).
+3. **Contracts** — loaded automatically from the bundled `network/testnet.json`.
+   You NEVER type contract addresses manually.
+4. **Services** — oracle / chat / both (default: both).
+
+Your miner address is read from the wallet itself. Everything is stored in
+`~/.xelis-vault/config/config.json`; subsequent launches go straight to the
+dashboard.
+
+> Security: seeds are generated and stay on your machine; they are displayed
+> exactly once.
+
+### Legacy manual setup
+
+The old per-field prompts (`interactive_setup`) remain available as a fallback
+when the bundled network file is missing.
+
+---
+
+## Historical notes (contracts not deployed era)
+
+> ⚠️ The section below predates the v12.x testnet deployments and the v7.1
+> auto-configuration. Kept for reference only.
+
+## For Miners: `xvault-miner` (legacy)
 
 ### First-time setup
 ```bash

@@ -1,3 +1,74 @@
+## [v7.1 CLI] — 2026-08-21
+
+### xvault-miner — Zero-config onboarding wizard
+
+- `scripts/onboarding.py` (new): automatic first-run configuration.
+  - Wallet: detect running RPC / connect existing / **download official
+    xelis_wallet release binary** (Linux/Windows assets auto-matched by OS/arch;
+    macOS shows build-from-source steps) / create or import non-interactively.
+  - Seeds are generated locally with the exact Xelis mnemonic scheme
+    (1626-word English list, 8×(3 words→u32 LE) groups, 25th word = repeat of
+    word at crc32(3-char-prefixes)%24; private key reduced to a canonical
+    curve25519 scalar). Validated against the official binary end-to-end.
+  - Daemon: local node auto-detection, custom URL, or offline mode.
+  - Contracts: loaded from new bundled `network/testnet.json` (testnet v12.1
+    addresses) — users never type contract addresses again.
+  - Miner address read automatically via wallet `get_address`.
+- `scripts/xvault-miner.py`: `--setup` and first-run now launch the wizard;
+  legacy manual prompts kept as fallback. Stale "contracts not deployed"
+  screen removed.
+- `scripts/xelis_wordlist_english.txt` (new): Xelis English wordlist.
+- `network/testnet.json` (new): bundled contract addresses for the CLI.
+
+## [v11.7] — 2026-08-21
+
+### Security — Cross-contract visibility audit (CRITICAL bug class eliminated)
+
+**Root cause discovered on testnet v12**: `Contract::call(N)` requires the target
+chunk to have Access::**All** (`pub fn`). Calling an `Access::Entry` chunk
+cross-contract reverts with `Chunk is not public`. Several v11.5 "fixes" had
+inverted this rule (converting `pub fn` → `entry` or targeting entry chunks),
+silently breaking every flow that relied on them. First symptom: every
+`StakedOracle.submit_price` reverted at reward time, blocking price aggregation
+and everything downstream.
+
+New tooling:
+- `scripts/audit_cross_calls.py` — compiles all contracts, resolves every
+  `.call(Nu16)` receiver to its target contract and verifies the on-chain/fresh
+  access kind is `all`. Result after fixes: **56 OK / 0 bugs**
+  (`docs/cross_call_audit.json`). The 3 remaining sites are GuardianMultisig's
+  dynamic `target.call(...)` (proposal-chosen targets — by design; proposals
+  MUST reference `pub fn` chunks only).
+- `scripts/gen_chunk_map.py` — recompiles the 34 core contracts + AirdropClaim,
+  writes `/tmp/deploy_<Name>.hex` and regenerates `docs/entry_chunk_ids.json`
+  (now 35 contracts / 1054 Entry+All entries).
+
+#### Fixes (8 call-sites across 7 files)
+
+- **XelisVaultMiner.distribute_reward** — `vlt.call(27)` (mint_to_entry, Entry)
+  → **`vlt.call(4)`** (`pub fn mint_to`, All). This was the blocker that killed
+  oracle aggregation on v12.
+- **AirdropClaim.claim / emergency_withdraw_unclaimed** — same 27→4 fix (2 sites).
+- **FlashCallback.on_flash_loan** — reverted the incorrect F-02 v11.5 change:
+  back to `pub fn` (All), chunk id unchanged (**2**), FlashLoan-only guard kept.
+- **FlashLoan.flash_loan** — `cb.call(8)` (nonexistent chunk) → **`cb.call(2)`**.
+- **LendingMarket.update_pool_interest** — IRM entries 3/5 → pub fns
+  **15/16** (`get_borrow_rate` / `get_supply_rate`, identical signatures).
+- **FeeDistributor.is_authorized_fee_source** — `reg.call(14)` was hitting
+  `request_emergency_withdraw`(!) → **`reg.call(17)`** (`pub fn try_get`,
+  non-panicking, returns Hash::zero() when missing).
+- **PSM** — appended `pub fn mint_cross` (**36**) / `redeem_cross` (**37**) at
+  end of file (existing IDs preserved), bodies identical to entries 8/9.
+- **VaultSwapV2.psm_mint / psm_redeem** — PSM entries 8/9 → **36/37**.
+
+#### Impact on deployed testnet v12
+
+VLTToken source unchanged → no asset migration needed in principle, but a full
+clean redeploy (v12.1) is performed anyway per owner decision, following
+docs/DEPLOYMENT_GUIDE.md phases (Phase 9 Insurance still skipped).
+
+---
+
 ## [v11.5] — 2026-08-21
 
 ### Security — Re-applied 18/18 controlled-disclosure audit fixes (Silex v1.3.0 compatible)

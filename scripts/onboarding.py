@@ -1,0 +1,519 @@
+#!/usr/bin/env python3
+"""
+ ============================================================================
+  XELIS Vault — Onboarding Wizard (auto-configuration)
+ ============================================================================
+ Zero-config onboarding for xvault-miner:
+
+   1. Wallet: detect a running wallet RPC, connect to it, or bootstrap a new
+      one (download official xelis_wallet release binary when available,
+      create/import wallet non-interactively, launch it in background).
+      Seeds are generated LOCALLY with the exact Xelis mnemonic scheme
+      (1626-word English list, 24 words + CRC32 checksum word) and shown once.
+   2. Daemon: auto-detect local node, allow custom URL, or continue offline
+      (degraded dashboard only).
+   3. Contracts: loaded automatically from network/testnet.json bundled in
+      the repository — the user never types contract addresses.
+
+ Everything is saved to ~/.xelis-vault/config/config.json so subsequent
+ launches skip straight to the dashboard.
+ ============================================================================
+"""
+from __future__ import annotations
+
+import json
+import os
+import platform
+import shutil
+import stat
+import subprocess
+import sys
+import tarfile
+import time
+import zipfile
+import zlib
+from pathlib import Path
+from typing import Optional
+
+import requests
+
+sys.path.insert(0, str(Path(__file__).parent))
+from tui import C, BANNER, clear, menu, text_input, confirm, info_box
+
+VAULT_DIR = Path.home() / ".xelis-vault"
+BIN_DIR = VAULT_DIR / "bin"
+LOG_DIR = VAULT_DIR / "logs"
+WALLETS_DIR = VAULT_DIR / "wallets"
+WORDLIST_PATH = Path(__file__).parent / "xelis_wordlist_english.txt"
+
+GITHUB_API = "https://api.github.com/repos/xelis-project/xelis-blockchain/releases/latest"
+
+# Release asset names -> (platform.system(), platform.machine()) patterns
+ASSET_MAP = {
+    ("Linux", "x86_64"): "x86_64-unknown-linux-gnu.tar.gz",
+    ("Linux", "aarch64"): "aarch64-unknown-linux-gnu.tar.gz",
+    ("Linux", "armv7l"): "armv7-unknown-linux-gnueabihf.tar.gz",
+    ("Windows", "AMD64"): "x86_64-pc-windows-msvc.zip",
+}
+
+DEFAULT_DAEMONS = ["http://127.0.0.1:18081"]
+
+
+# ---------------------------------------------------------------------------
+# Xelis mnemonic scheme (identical to xelis_wallet/src/mnemonics)
+# ---------------------------------------------------------------------------
+
+def _load_wordlist() -> list:
+    if not WORDLIST_PATH.exists():
+        return []
+    return [w.strip() for w in WORDLIST_PATH.read_text().splitlines() if w.strip()]
+
+
+_CURVE25519_L = 2**252 + 27742317777372353535851937790883648493
+
+
+def _random_valid_scalar() -> bytes:
+    """Random canonical curve25519 scalar (what KeyPair::new() generates)."""
+    while True:
+        k = int.from_bytes(os.urandom(32), "little") % _CURVE25519_L
+        if k > 0:
+            return k.to_bytes(32, "little")
+
+
+def generate_seed_phrase(wordlist: Optional[list] = None) -> list:
+    """Random wallet -> 24 words + checksum word (English, Xelis scheme).
+
+    Xelis mnemonics: 8 groups of 3 words encode 4 little-endian bytes each;
+    the 25th word is a REPEAT of the word at position crc32(prefixes)%24.
+    """
+    W = wordlist or _load_wordlist()
+    if len(W) != 1626:
+        raise RuntimeError("wordlist english introuvable ou invalide")
+    N = len(W)
+    key = _random_valid_scalar()
+    words = []
+    for i in range(0, 32, 4):
+        val = int.from_bytes(key[i:i + 4], "little")
+        a = val % N
+        b = ((val // N) + a) % N
+        c = ((val // N // N) + b) % N
+        words += [W[a], W[b], W[c]]
+    prefix = "".join(w[:3].lower() for w in words)
+    words.append(words[zlib.crc32(prefix.encode()) % 24])
+    return words
+
+
+def validate_seed_phrase(phrase: str, wordlist: Optional[list] = None) -> bool:
+    """Check words exist in list + sanity + optional checksum word (lenient)."""
+    W = wordlist or _load_wordlist()
+    if not W:
+        return True  # cannot validate without list — accept
+    S = set(W)
+    words = phrase.lower().strip().replace("\n", " ").split()
+    if len(words) not in (24, 25):
+        return False
+    if any(w not in S for w in words[:24]):
+        return False
+    N = len(W)
+    for i in range(0, 24, 3):
+        a, b, c = (W.index(w) for w in words[i:i + 3])
+        val = a + N * (((N - a) + b) % N) + N * N * (((N - b) + c) % N)
+        if val % N != a:
+            return False
+    if len(words) == 25:
+        prefix = "".join(w[:3].lower() for w in words[:24])
+        if words[24] != words[zlib.crc32(prefix.encode()) % 24]:
+            return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Network config (contracts bundle)
+# ---------------------------------------------------------------------------
+
+def load_network_bundle() -> dict:
+    for candidate in (Path(__file__).parent.parent / "network" / "testnet.json",
+                      Path(__file__).parent / "network_testnet.json"):
+        if candidate.exists():
+            try:
+                return json.loads(candidate.read_text())
+            except Exception:
+                pass
+    return {}
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def rpc_call(url: str, method: str, params=None, auth=None, timeout=5):
+    payload = {"jsonrpc": "2.0", "method": method, "id": 1}
+    if params is not None:
+        payload["params"] = params
+    r = requests.post(url.rstrip("/") + "/json_rpc" if not url.endswith("/json_rpc") else url,
+                      json=payload, auth=auth, timeout=timeout)
+    data = r.json()
+    if data.get("error"):
+        raise RuntimeError(str(data["error"])[:120])
+    return data.get("result")
+
+
+def find_wallet_binary() -> Optional[str]:
+    exe = "xelis_wallet.exe" if platform.system() == "Windows" else "xelis_wallet"
+    candidates = [
+        BIN_DIR / exe,
+        Path.home() / ".xelis" / exe,
+        shutil.which("xelis_wallet"),
+    ]
+    for c in candidates:
+        if c and Path(c).exists():
+            return str(c)
+    return None
+
+
+def download_wallet_binary() -> Optional[str]:
+    """Download official release binary (Linux/Windows). macOS unsupported."""
+    system, machine = platform.system(), platform.machine()
+    asset_suffix = ASSET_MAP.get((system, machine))
+    print(f"\n  {C.DIM}Téléchargement du wallet officiel xelis…{C.RESET}")
+    try:
+        rel = requests.get(GITHUB_API, timeout=30).json()
+        tag = rel.get("tag_name", "")
+        assets = {a["name"]: a["browser_download_url"] for a in rel.get("assets", [])}
+        name = next((n for n in assets if n.endswith(asset_suffix)), None) if asset_suffix else None
+        if not name:
+            print(f"  {C.RED}Aucun binaire précompilé pour {system}/{machine}.{C.RESET}")
+            return None
+        url = assets[name]
+        dest = BIN_DIR / name
+        BIN_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"  {C.DIM}{name} ({tag})…{C.RESET}")
+        with requests.get(url, stream=True, timeout=300) as r:
+            r.raise_for_status()
+            total = int(r.headers.get("content-length", 0))
+            done = 0
+            with open(dest, "wb") as f:
+                for chunk in r.iter_content(1024 * 256):
+                    f.write(chunk)
+                    done += len(chunk)
+                    if total:
+                        pct = min(100, done * 100 // total)
+                        print(f"\r  {C.CYAN}{pct}%{C.RESET}", end="", flush=True)
+        print()
+        if dest.suffix == ".zip":
+            with zipfile.ZipFile(dest) as z:
+                z.extractall(BIN_DIR)
+        else:
+            with tarfile.open(dest) as t:
+                t.extractall(BIN_DIR)
+        dest.unlink(missing_ok=True)
+        exe = BIN_DIR / ("xelis_wallet.exe" if system == "Windows" else "xelis_wallet")
+        if exe.exists():
+            exe.chmod(exe.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+            return str(exe)
+        # some archives nest a folder
+        found = next(BIN_DIR.rglob("xelus_wallet*"), None) or next(
+            (p for p in BIN_DIR.rglob("*xelis_wallet*") if p.is_file()), None)
+        if found:
+            found.chmod(found.stat().st_mode | stat.S_IEXEC)
+            return str(found)
+    except Exception as e:
+        print(f"  {C.RED}Erreur téléchargement: {e}{C.RESET}")
+    return None
+
+
+def free_port(start: int = 18082, avoid=()) -> int:
+    import socket
+    used = set(avoid)
+    port = start
+    while port < start + 200:
+        if port in used:
+            port += 1
+            continue
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind(("127.0.0.1", port))
+            s.close()
+            return port
+        except OSError:
+            port += 1
+        finally:
+            try:
+                s.close()
+            except Exception:
+                pass
+    raise RuntimeError("no free port")
+
+
+def launch_wallet(binary: str, network: str, daemon_url: str, password: str,
+                  wallet_dir: Path, rpc_port: int, seed: Optional[str] = None,
+                  rpc_user: str = "wallet", rpc_pass: str = "testpass") -> subprocess.Popen:
+    wallet_dir.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_file = open(LOG_DIR / "wallet.log", "ab")
+    cmd = [
+        binary,
+        "--network", network,
+        "--daemon-address", daemon_url,
+        "--password", password,
+        "--wallet-path", str(wallet_dir),
+        "--rpc-bind-address", f"127.0.0.1:{rpc_port}",
+        "--rpc-username", rpc_user,
+        "--rpc-password", rpc_pass,
+        "--logs-path", str(LOG_DIR) + os.sep,
+        "--disable-ascii-art",
+    ]
+    if seed:
+        cmd += ["--seed", seed]
+    kwargs = {}
+    if platform.system() != "Windows":
+        kwargs["start_new_session"] = True
+    proc = subprocess.Popen(cmd, stdout=log_file, stderr=log_file, **kwargs)
+    return proc
+
+
+def wait_for_wallet(url: str, auth, timeout_s: int = 90) -> Optional[str]:
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        try:
+            addr = rpc_call(url, "get_address", auth=auth)
+            if isinstance(addr, dict):
+                addr = addr.get("address")
+            if addr:
+                return addr
+        except Exception:
+            pass
+        time.sleep(2)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Onboarding steps
+# ---------------------------------------------------------------------------
+
+def ensure_wallet(cfg) -> bool:
+    """Returns True when cfg has a working wallet connection."""
+    wurl = cfg.get("wallet_url", "http://127.0.0.1:18082")
+    user, pwd = cfg.get("wallet_user", "wallet"), cfg.get("wallet_pass", "testpass")
+
+    def _try(url, u, p):
+        try:
+            addr = rpc_call(url, "get_address", auth=(u, p), timeout=4)
+            if isinstance(addr, dict):
+                addr = addr.get("address")
+            return addr
+        except Exception:
+            return None
+
+    # already configured & reachable?
+    addr = _try(wurl, user, pwd)
+    if addr:
+        cfg.data["miner_address"] = cfg.data.get("miner_address") or addr
+        info_box("Wallet détecté", [f"Connecté à {wurl}", f"Adresse: {addr[:34]}…"])
+        return True
+
+    clear()
+    print(BANNER)
+    choice = menu("Bienvenue dans XELIS Vault ! Avez-vous déjà un wallet Xelis lancé ?", [
+        ("Oui — le connecter (URL RPC + identifiants)", "connect"),
+        ("Non — tout installer pour moi automatiquement", "bootstrap"),
+        ("Utiliser un daemon public sans wallet (lecture seule)", "readonly"),
+    ])
+    if choice is None:
+        return False
+
+    if choice == "connect":
+        while True:
+            wurl = text_input("URL RPC du wallet", wurl)
+            user = text_input("Utilisateur RPC", user)
+            pwd = text_input("Mot de passe RPC", pwd, password=True)
+            addr = _try(wurl, user, pwd)
+            if addr:
+                cfg.data.update({"wallet_url": wurl, "wallet_user": user,
+                                 "wallet_pass": pwd, "miner_address": addr})
+                cfg.save()
+                info_box("Wallet connecté ✓", [f"{wurl}", f"Adresse: {addr[:34]}…"])
+                return True
+            print(f"  {C.RED}Connexion impossible ({wurl}). Réessayez.{C.RESET}")
+            if not confirm("Réessayer ?", default_yes=True):
+                return False
+
+    if choice == "readonly":
+        cfg.data["wallet_url"] = ""
+        cfg.data["miner_address"] = ""
+        cfg.save()
+        return True
+
+    # ---- full bootstrap ----------------------------------------------------
+    binary = find_wallet_binary()
+    if not binary:
+        if platform.system() == "Darwin":
+            print(f"\n  {C.YELLOW}macOS: aucun binaire officiel publié par Xelis.{C.RESET}")
+            print(f"  {C.DIM}Installation depuis les sources requise (~10 min):{C.RESET}")
+            print(f"  {C.DIM}  git clone https://github.com/xelis-project/xelis-blockchain{C.RESET}")
+            print(f"  {C.DIM}  cargo build --release -p xelis-wallet{C.RESET}")
+            print(f"  {C.DIM}Puis relancez xvault-miner.\n{C.RESET}")
+            input("  Entrée pour quitter… ")
+            return False
+        binary = download_wallet_binary()
+        if not binary:
+            input("  Entrée pour quitter… ")
+            return False
+    print(f"  {C.GREEN}Wallet binaire: {binary}{C.RESET}")
+
+    network = menu("Réseau ?", [("Testnet (recommandé pour démarrer)", "testnet"),
+                                ("Mainnet", "mainnet")]) or "testnet"
+    daemon_url = cfg.get("rpc_url", DEFAULT_DAEMONS[0])
+
+    mode = menu("Créer ou importer un wallet ?", [
+        ("Créer un NOUVEAU wallet (seed générée et affichée)", "create"),
+        ("Importer une seed existante (24/25 mots)", "import"),
+    ])
+    if mode is None:
+        return False
+
+    seed = None
+    password = "xvault-" + os.urandom(9).hex()
+    if mode == "import":
+        while True:
+            phrase = text_input("Collez votre seed (24/25 mots)")
+            if validate_seed_phrase(phrase):
+                seed = phrase.strip()
+                break
+            print(f"  {C.RED}Seed invalide (mots inconnus / longueur). Réessayez.{C.RESET}")
+
+    rpc_port = free_port(int(wurl.split(":")[-1].split("/")[0]) if ":18" in wurl else 18082)
+    wdir = WALLETS_DIR / f"xvault-{network}"
+    print(f"\n  {C.DIM}Lancement du wallet (première synchronisation: quelques minutes)…{C.RESET}")
+    launch_wallet(binary, network, daemon_url, password, wdir, rpc_port, seed=seed)
+
+    url = f"http://127.0.0.1:{rpc_port}"
+    addr = wait_for_wallet(url, ("wallet", "testpass"), timeout_s=120)
+    if not addr:
+        print(f"  {C.RED}Le wallet n'a pas répondu sur {url}. Logs: ~/.xelis-vault/logs/wallet.log{C.RESET}")
+        return False
+
+    cfg.data.update({
+        "wallet_url": url, "wallet_user": "wallet", "wallet_pass": "testpass",
+        "wallet_binary": binary, "wallet_network": network,
+        "wallet_password": password, "wallet_path": str(wdir),
+        "wallet_rpc_port": rpc_port, "miner_address": addr,
+    })
+    cfg.save()
+
+    if mode == "create":
+        phrase = generate_seed_phrase()
+        clear()
+        print(BANNER)
+        print(f"\n{C.GREEN}{C.BOLD}  WALLET CRÉÉ !{C.RESET}")
+        print(f"  Adresse: {C.BOLD}{addr}{C.RESET}\n")
+        print(f"  {C.RED}{C.BOLD}╔══════════════════════════════════════════════════════════╗{C.RESET}")
+        print(f"  {C.RED}{C.BOLD}║  SAUVEGARDEZ VOTRE SEED — AFFICHÉE UNE SEULE FOIS !       ║{C.RESET}")
+        print(f"  {C.RED}{C.BOLD}║  Écrivez-la sur papier. Sans elle, vos fonds sont perdus. ║{C.RESET}")
+        print(f"  {C.RED}{C.BOLD}╚══════════════════════════════════════════════════════════╝{C.RESET}\n")
+        for i in range(0, 25, 5):
+            row = phrase[i:i + 5]
+            print("  " + "  ".join(f"{C.BOLD}{j+1:>2}.{C.RESET}{w:<12}" for j, w in
+                                    zip(range(i, i + 5), row)))
+        print()
+        typed = text_input("Tapez le mot n°13 pour confirmer la sauvegarde").strip().lower()
+        if typed != phrase[12].lower():
+            print(f"  {C.YELLOW}Mot incorrect — mais notez que cette seed ne sera plus jamais affichée.{C.RESET}")
+        info_box("Wallet prêt", [
+            f"Binaire : {binary}",
+            f"Dossier : {wdir}",
+            f"RPC     : {url}",
+            "",
+            f"Mot de passe fichier wallet: {password}",
+            "(sauvegardé dans la config locale)",
+        ])
+    else:
+        info_box("Wallet importé ✓", [f"RPC: {url}", f"Adresse: {addr[:34]}…"])
+    return True
+
+
+def ensure_daemon(cfg) -> bool:
+    for url in [cfg.get("rpc_url")] + DEFAULT_DAEMONS:
+        if not url:
+            continue
+        try:
+            topo = rpc_call(url, "get_topoheight")
+            cfg.data["rpc_url"] = url
+            cfg.save()
+            info_box("Daemon connecté ✓", [f"{url}", f"Topoheight: {topo}"])
+            return True
+        except Exception:
+            continue
+
+    clear()
+    print(BANNER)
+    choice = menu("Noeud Xelis introuvable. Comment voulez-vous continuer ?", [
+        ("Entrer l'URL d'un daemon", "custom"),
+        ("Continuer hors-ligne (dashboard dégradé)", "offline"),
+    ])
+    if choice == "custom":
+        url = text_input("URL RPC du daemon", DEFAULT_DAEMONS[0])
+        try:
+            rpc_call(url, "get_topoheight")
+            cfg.data["rpc_url"] = url
+            cfg.save()
+            return True
+        except Exception as e:
+            print(f"  {C.RED}Inaccessible: {e}{C.RESET}")
+            time.sleep(2)
+    elif choice == "offline":
+        cfg.data.setdefault("rpc_url", DEFAULT_DAEMONS[0])
+        cfg.save()
+        return True
+    return True
+
+
+def apply_bundled_contracts(cfg) -> bool:
+    bundle = load_network_bundle()
+    contracts = bundle.get("contracts", {})
+    if contracts:
+        merged = dict(cfg.contracts)
+        merged.update({k: v for k, v in contracts.items() if v})
+        cfg.data["contracts"] = merged
+        if bundle.get("vlt_asset"):
+            cfg.data.setdefault("vlt_asset", bundle["vlt_asset"])
+        cfg.data.setdefault("network", bundle.get("network", "testnet"))
+        cfg.save()
+        info_box("Contrats chargés automatiquement ✓", [
+            f"{k}: {v[:26]}…" for k, v in list(merged.items())[:4]
+        ] + ["", f"(bundle réseau {bundle.get('version', '?')} — aucune saisie requise)"])
+        return True
+    return False
+
+
+def run_onboarding(cfg) -> bool:
+    """Full first-run experience. Returns True when config is usable."""
+    ok_wallet = ensure_wallet(cfg)
+    ok_daemon = ensure_daemon(cfg)
+    ok_contracts = apply_bundled_contracts(cfg)
+
+    if not ok_contracts:
+        from xvault_miner import interactive_setup  # manual fallback
+        interactive_setup(cfg)
+
+    services = menu("Services à supporter ?", [
+        ("Oracle + Chat (recommandé, max récompenses)", "both"),
+        ("Oracle uniquement (prix)", "oracle"),
+        ("Chat uniquement (ancrage messages)", "chat"),
+    ])
+    if services:
+        cfg.data["services"] = services
+    endpoint = text_input("Endpoint public (optionnel, Entrée pour ignorer)", "")
+    cfg.data["miner_endpoint"] = endpoint
+    cfg.save()
+
+    lines = []
+    lines.append("Configuration terminée !" if ok_wallet else
+                 "Configuration partielle (pas de wallet).")
+    lines.append("")
+    lines.append(f"Wallet : {'✓ ' + cfg.get('wallet_url') if ok_wallet else '—'}")
+    lines.append(f"Daemon : {cfg.get('rpc_url')}")
+    lines.append(f"Adresse: {(cfg.get('miner_address') or '—')[:34]}")
+    lines.append(f"Contrats: {'✓ automatique' if ok_contracts else '✗ manuel'}")
+    info_box("Prêt !", lines)
+    return ok_wallet

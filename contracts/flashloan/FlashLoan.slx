@@ -119,11 +119,12 @@ entry flash_loan(
     let caller: Address = get_caller().expect("err")
     let cb: Contract = Contract::new(callback_contract).expect("err")
     require(transfer_contract(callback_contract, amount, asset), "xferfail")
-    // F-02 fix (CRITICAL): invoke on_flash_loan at its real chunk ID.
-    //   FlashCallback.on_flash_loan is now an `entry` (was pub fn — never callable).
-    //   Per docs/entry_chunk_ids.json post-recompile, on_flash_loan is chunk 8 on FlashCallback.
-    //   The previous `cb.call(2u16, ...)` was hitting set_flash_loan (chunk 4) and corrupting admin storage.
-    let result: u64 = cb.call(8u16, [asset, amount, fee, caller, callback_data], {})
+    // v11.7 fix: invoke on_flash_loan at its real chunk ID (2) as a cross-contract
+    //   call. Cross-contract requires Access::All (`pub fn`) — the v11.5 `entry`
+    //   version of on_flash_loan reverted with "Chunk is not public".
+    //   (Historical note: the pre-v11.5 bug was a stale chunk id hitting
+    //   set_flash_loan; the F-02 fix swapped visibility instead of fixing the id.)
+    let result: u64 = cb.call(2u16, [asset, amount, fee, caller, callback_data], {})
     require(result == 0, "cbfail")
 
     // After callback, balance must be >= balance_before + fee

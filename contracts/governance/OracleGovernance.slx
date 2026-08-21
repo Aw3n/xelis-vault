@@ -215,7 +215,7 @@ entry propose_add_feed(
         param_key: 0,
         param_value: 0,
         reward_amount: 0,
-        target_addr: Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")),
+        target_addr: Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -269,7 +269,7 @@ entry propose_update_feed(
         param_key: 0,
         param_value: 0,
         reward_amount: 0,
-        target_addr: Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")),
+        target_addr: Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -314,7 +314,7 @@ entry propose_remove_feed(feed_id: u64, description: string) -> u64 {
         param_key: 0,
         param_value: 0,
         reward_amount: 0,
-        target_addr: Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")),
+        target_addr: Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -364,7 +364,7 @@ entry propose_set_param(param_key: u8, param_value: u64, description: string) ->
         param_key: param_key,
         param_value: param_value,
         reward_amount: 0,
-        target_addr: Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")),
+        target_addr: Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -409,7 +409,7 @@ entry propose_set_reward(reward_amount: u64, description: string) -> u64 {
         param_key: 0,
         param_value: 0,
         reward_amount: reward_amount,
-        target_addr: Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")),
+        target_addr: Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -454,7 +454,7 @@ entry propose_emergency_cb(feed_id: u64, description: string) -> u64 {
         param_key: 0,
         param_value: 0,
         reward_amount: 0,
-        target_addr: Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")),
+        target_addr: Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
@@ -499,7 +499,7 @@ entry propose_reset_feed(feed_id: u64, description: string) -> u64 {
         param_key: 0,
         param_value: 0,
         reward_amount: 0,
-        target_addr: Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")),
+        target_addr: Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")),
         description: description
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)

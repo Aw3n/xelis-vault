@@ -217,7 +217,7 @@ pub fn get_claimed_amount() -> u64 {
 // Used if founder wants to transfer vesting to another address
 entry set_founder(new_founder: Address) -> u64 {
     only_admin()
-    require(new_founder != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
+    require(new_founder != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
     let s: Storage = Storage::new()
     s.store(FOUNDER_KEY, new_founder)
     emit_event(0u64, ["FounderChanged", new_founder.to_string()])

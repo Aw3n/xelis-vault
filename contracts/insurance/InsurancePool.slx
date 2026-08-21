@@ -33,7 +33,7 @@
 
 const VERSION: string = "InsurancePool v11.3"
 
-const ADMIN_KEY: string = "a"
+const ADMIN_KEY: string = "adm"
 const TIMELOCK_KEY: string = "tl"
 const GUARDIAN_KEY: string = "gd"
 const EMERGENCY_KEY: string = "ea"

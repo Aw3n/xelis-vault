@@ -280,7 +280,7 @@ fn get_or_init_user(user: Address) -> UserPoints {
         total_with_bonus: 0,
         days_active: 0,
         last_active_day: 0,
-        mainnet_address: Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")),
+        mainnet_address: Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")),
         qualified: false,
         registered: true
     }
@@ -551,7 +551,7 @@ entry record_manual_attribution(user: Address, category: u8, points: u64, reason
 entry record_mainnet_address(mainnet_addr: Address) -> u64 {
     when_not_paused()
     when_not_frozen()
-    require(mainnet_addr != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
+    require(mainnet_addr != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
 
@@ -561,7 +561,7 @@ entry record_mainnet_address(mainnet_addr: Address) -> u64 {
 
     // If user had a previous mainnet address, clear the old reverse lookup
     let up: UserPoints = get_or_init_user(caller)
-    if up.mainnet_address != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) && up.mainnet_address != mainnet_addr {
+    if up.mainnet_address != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")) && up.mainnet_address != mainnet_addr {
         s.delete(MAINNET_TO_TESTNET_PREFIX + up.mainnet_address.to_string())
     }
 
@@ -621,7 +621,7 @@ entry finalize_distribution() -> u64 {
             let is_force_qualified: bool = s.load(FORCE_QUALIFIED_PREFIX + user.to_string()).unwrap_or(false)
 
             // Check standard qualification
-            let has_mainnet: bool = up.mainnet_address != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
+            let has_mainnet: bool = up.mainnet_address != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000"))
             let has_min_points: bool = up.total_raw >= MIN_POINTS_TO_QUALIFY
             let has_min_days: bool = up.days_active >= MIN_DAYS_ACTIVE
             let standard_qualified: bool = has_mainnet && has_min_points && has_min_days
@@ -873,11 +873,11 @@ pub fn get_all_category_totals() -> (u64, u64, u64, u64, u64, u64, u64) {
 }
 
 // Pub fn 29: Reverse lookup — get testnet address from mainnet address
-// Returns Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) if not found
+// Returns Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")) if not found
 pub fn get_testnet_address(mainnet_addr: Address) -> Address {
     let s: Storage = Storage::new()
     let opt: optional<Address> = s.load(MAINNET_TO_TESTNET_PREFIX + mainnet_addr.to_string())
-    if opt.is_none() { return Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) }
+    if opt.is_none() { return Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")) }
     return opt.expect("err")
 }
 
@@ -897,7 +897,7 @@ pub fn get_snapshot_info() -> (u64, u64, u64, u64) {
 pub fn get_user_activity_summary(user: Address) -> (u64, u64, bool, bool) {
     let s: Storage = Storage::new()
     let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("notreg")
-    let has_mainnet: bool = up.mainnet_address != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
+    let has_mainnet: bool = up.mainnet_address != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000"))
     return (up.days_active, up.last_active_day, up.qualified, has_mainnet)
 }
 
@@ -971,15 +971,15 @@ pub fn get_leaderboard_at_rank(rank: u64) -> Address {
         }
         i += 1
     }
-    return Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
+    return Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000"))
 }
 
 // Pub fn 34: Get leaderboard entry (full info for a rank)
 // Returns (testnet_addr, points, qualified, mainnet_addr, distribution)
 pub fn get_leaderboard_entry(rank: u64) -> (Address, u64, bool, Address, u64) {
     let addr: Address = get_leaderboard_at_rank(rank)
-    if addr == Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) {
-        return (Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), 0, false, Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), 0)
+    if addr == Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")) {
+        return (Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), 0, false, Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), 0)
     }
     let s: Storage = Storage::new()
     let up: UserPoints = s.load(USER_PREFIX + addr.to_string()).expect("err")
@@ -1063,7 +1063,7 @@ entry record_manual_attribution_batch(
         i += 1
     }
 
-    log_admin_action(6u8, Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), category, points, 0u64, reason + " (batch " + users.len().to_string(10u32) + " users)")
+    log_admin_action(6u8, Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), category, points, 0u64, reason + " (batch " + users.len().to_string(10u32) + " users)")
     emit_event(0u64, ["BatchAttribution", users.len().to_string(10u32) + "_" + points.to_string(10u32) + "_" + reason])
     return users.len() as u64
 }

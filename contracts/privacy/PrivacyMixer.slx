@@ -229,7 +229,7 @@ fn do_mix(s: Storage) -> u64 {
 
 entry deposit(recipient: Address, asset: Hash, min_anonymity: u64) -> u64 {
     when_not_paused()
-    require(recipient != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badrecipient")
+    require(recipient != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), "badrecipient")
 
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")

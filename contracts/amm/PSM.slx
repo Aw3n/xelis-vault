@@ -1,8 +1,9 @@
 // ============================================================================
 // PSM.slx — XELIS Vault v5.0 (Peg Stability Module)
 // ----------------------------------------------------------------------------
-// FIX #12: get_xel_price() calls oracle.call(21u16, [Hash::zero()], {})
-//          (PriceOracle entry 4 = get_price(asset: Hash)).
+// FIX #12: get_xel_price() calls oracle.call(22u16, [Hash::zero()], {})
+//          (StakedOracle pub-fn get_price_for_asset, chunk 22 = All access —
+//          cross-contract calls require All chunks, NOT Entry chunks).
 // FIX #14: Two-step emergency_withdraw at IDs 11/12 with 17280-block delay.
 //
 // Entry IDs (sequential, starting at 0):
@@ -127,12 +128,12 @@ fn maybe_reset_daily() {
     }
 }
 
-// PriceOracle entry 4 = get_price(asset: Hash)
+// StakedOracle pub-fn get_price_for_asset = chunk 22 (All access — required for cross-contract calls)
 fn get_xel_price() -> u64 {
     let s: Storage = Storage::new()
     let oracle_hash: Hash = s.load(ORACLE_KEY).expect("err")
     let oracle: Contract = Contract::new(oracle_hash).expect("err")
-    let price: u64 = oracle.call(32u16, [Hash::zero()], {})
+    let price: u64 = oracle.call(22u16, [Hash::zero()], {})
     require(price > 0, "noprice")
     return price
 }
@@ -172,8 +173,8 @@ entry mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     require(net_xusd >= min_xusd_out, "slippage")
     let xusd_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("err")
     let xusd: Contract = Contract::new(xusd_hash).expect("err")
-    let treasury: Address = s.load(TREASURY_KEY).expect("err")
-    let _ = xusd.call(4u16, [caller, net_xusd, treasury, fee], {})
+        let self_hash: Hash = s.load("sh").expect("err")
+    let _ = xusd.call(17u16, [self_hash, net_xusd], {})
     s.store(DAILY_MINT_USED_KEY, daily_mint_used + xel_amount)
     return 0
 }
@@ -205,8 +206,6 @@ entry redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     let xel_balance: u64 = get_balance_for_asset(get_xel_asset()).unwrap_or(0)
     require(xel_balance >= net_xel, "insreserve")
     let xusd_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("err")
-    let xusd_asset: Hash = s.load(XUSD_ASSET_KEY).expect("err")
-    let _ = transfer_contract(xusd_hash, xusd_amount, xusd_asset)
     let xusd: Contract = Contract::new(xusd_hash).expect("err")
     let _ = xusd.call(5u16, [xusd_amount], {})
     let ok: bool = transfer(caller, net_xel, get_xel_asset())

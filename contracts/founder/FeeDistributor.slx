@@ -274,7 +274,7 @@ pub fn get_distribution() -> (u64, u64, u64) {
 // Entry 8: Set founder address (admin/governance only)
 entry set_founder(new_founder: Address) -> u64 {
     only_admin()
-    require(new_founder != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
+    require(new_founder != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
     let s: Storage = Storage::new()
     s.store(FOUNDER_KEY, new_founder)
     return 0

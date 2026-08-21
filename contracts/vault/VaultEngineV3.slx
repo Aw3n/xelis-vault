@@ -155,8 +155,8 @@ fn get_oracle() -> Contract {
 
 fn get_xel_price() -> u64 {
     let oracle: Contract = get_oracle()
-    // StakedOracle v5.0 entry 9 = get_price_for_asset_entry(asset) -> u64
-    let price: u64 = oracle.call(32u16, [Hash::zero()], {})
+    // StakedOracle pub-fn get_price_for_asset = chunk 22 (All)
+    let price: u64 = oracle.call(22u16, [Hash::zero()], {})
     require(price > 0, "noprice")
     return price
 }

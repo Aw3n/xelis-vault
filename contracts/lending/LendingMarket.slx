@@ -1,8 +1,9 @@
 // ============================================================================
 // LendingMarket.slx — XELIS Vault v5.0
 // ----------------------------------------------------------------------------
-// FIX #12: get_asset_price() calls oracle.call(21u16, [asset], {})
-//          (StakedOracle v5.0 entry 9 = get_price_for_asset_entry).
+// FIX #12: get_asset_price() calls oracle.call(22u16, [asset], {})
+//          (StakedOracle pub-fn get_price_for_asset, chunk 22 = All access —
+//          cross-contract calls require All chunks, NOT Entry chunks).
 // FIX N-01: Accrued interest computed via index ratio
 //          (accrued = principal * current_index / position_index) before any
 //          calculation that uses principal.
@@ -125,12 +126,12 @@ fn when_not_paused() {
     require(!paused, "paused")
 }
 
-// FIX #12: StakedOracle v5.0 entry 9 = get_price_for_asset_entry
+// StakedOracle pub-fn get_price_for_asset = chunk 22 (All)
 fn get_asset_price(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
     let oracle_hash: Hash = s.load(ORACLE_KEY).expect("ornoset")
     let oracle: Contract = Contract::new(oracle_hash).expect("ornf")
-    let price: u64 = oracle.call(32u16, [asset], {})
+    let price: u64 = oracle.call(22u16, [asset], {})
     require(price > 0, "noprice")
     return price
 }

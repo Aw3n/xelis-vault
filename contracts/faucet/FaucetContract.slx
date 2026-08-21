@@ -169,7 +169,7 @@ entry distribute(addresses: Address[]) -> u64 {
     let i: u32 = 0
     while i < addresses.len() {
         let addr: Address = addresses[i]
-        if addr == Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) {
+        if addr == Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")) {
             i += 1
             continue
         }

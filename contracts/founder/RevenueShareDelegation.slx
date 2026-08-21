@@ -185,7 +185,7 @@ fn get_total_active_percentage() -> u64 {
 entry set_share(contributor: Address, percentage_bps: u64, duration_blocks: u64) -> u64 {
     when_not_paused()
     only_founder()
-    require(contributor != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
+    require(contributor != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
     require(contributor != get_caller().expect("err"), "selfshare")
     require(percentage_bps > 0 && percentage_bps <= MAX_SHARE_BPS, "badpct")
     require(duration_blocks >= BLOCKS_PER_DAY, "tooshort")  // min 1 day

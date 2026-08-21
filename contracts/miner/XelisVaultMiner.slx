@@ -1400,15 +1400,15 @@ pub fn get_leaderboard() -> (Address, u64, Address, u64, Address, u64, Address, 
     
     // Simple: return top 5 miners by reputation (gas-efficient)
     // Full top-10 would be too expensive in a single call
-    let top1: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
+    let top1: Address = Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000"))
     let top1_rep: u64 = 0
-    let top2: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
+    let top2: Address = Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000"))
     let top2_rep: u64 = 0
-    let top3: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
+    let top3: Address = Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000"))
     let top3_rep: u64 = 0
-    let top4: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
+    let top4: Address = Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000"))
     let top4_rep: u64 = 0
-    let top5: Address = Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000"))
+    let top5: Address = Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000"))
     let top5_rep: u64 = 0
     
     let i: u64 = 0

@@ -246,7 +246,7 @@ pub fn get_voting_power(user: Address, own_stake: u64) -> u64 {
 pub fn get_delegate(user: Address) -> Address {
     let s: Storage = Storage::new()
     let del_opt: optional<Address> = s.load(DELEGATE_PREFIX + user.to_string())
-    if del_opt.is_none() { return Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) }
+    if del_opt.is_none() { return Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")) }
     return del_opt.expect("err")
 }
 
@@ -267,7 +267,7 @@ pub fn get_topic_delegate(user: Address, topic: u8) -> Address {
     let s: Storage = Storage::new()
     let key: string = TOPIC_DELEGATE_PREFIX + user.to_string() + "_" + topic.to_string(10u32)
     let del_opt: optional<Address> = s.load(key)
-    if del_opt.is_none() { return Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")) }
+    if del_opt.is_none() { return Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")) }
     return del_opt.expect("err")
 }
 

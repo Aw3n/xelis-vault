@@ -2,21 +2,44 @@
 
 ## Live Environment
 
+# XELIS Vault — Operator Notes (AGENTS.md)
+
+## Live Environment
+
 - **Network**: testnet (block_version 6 → allows V0|V1; V7 will allow V1 only). Daemon v1.25.0 (`1.25.0-a39e295`, built from local `~/opencode/xelis-blockchain`).
 - **Daemon RPC**: `http://127.0.0.1:18081/json_rpc` (no auth)
 - **Wallet RPC**: `http://127.0.0.1:18082/json_rpc`, basic auth `wallet:testpass`
 - **Admin**: `xet:czr9q8k5xlzqdptq7n2vapyjfduldts6tw3e6apl99vknzvmu4zsq8z9j8v`
-- **Processes**: daemon `./xelis_daemon --network testnet --dir-path /Users/adrien/xelis/data/`, miner (8 threads), wallet v1.25.0 binary `/Users/adrien/xelis/xelis_wallet` (`--wallet-path /Users/adrien/xelis/wallet_v125`).
+- **Processes**: daemon `./xelis_daemon --network testnet --dir-path /Users/adrien/xelis/data/`, miner (8 threads), wallet v1.25.0 binary `/Users/adrien/xelis/xelis_wallet` (`--wallet-path /Users/adrien/xelis/wallet_v125`). LaunchAgents: `com.xelisvault.daemon`, `.miner`, `.stack`, `.keeper`, `.provider18082/18084/18085`. **Unloaded the keeper+providers on 2026-08-20 (they spammed StakedOracle entry 16 submit_price → `alreadysub` every block, flooding the mempool and blocking admin txs from confirming). Restart only after fixing the subscribe-once logic.**
+- **Wallet nonce**: after a daemon restart the wallet's stored nonce lags the chain; poll `get_nonce` (wallet RPC) between txs and wait for it to advance, or restart the wallet (fast with `--precomputed-tables-path`).
 - **Deployment helper**: `/tmp/deploy_ops.py` (`deploy()`, `invoke()`, `get_data()`, `val_*` value builders).
 - **Block time**: ~2.7s. Wait 5–12s between sequential TXs (proof-verification race → `Proof verification error`); nonce race → `Invalid TX ... nonce, got X expected Y` — both fixed by sleeping and retrying once. "Contract not found" right after deploy → wrong hash or too soon; cross-check with `cur_<Name>` in the registry.
 - **Registry (ContractRegistry `840b81...`)**: register (entry 3) is ONE-WAY per name (`exists` revert); upgrade (entry 4, admin) enforces 720-block cooldown (`UPGRADE_TOPO_PREFIX`, unlock = register topo + 720). Upgrades preserve `prev_<Name>` for rollback. Names registered (count 33): ContractRegistry, ComplianceModule, VLTToken, xUSD, FaucetContract, XelisVaultMiner, StakedOracle, MinerPool, InterestRateModel, VaultEngine, SavingsRate, FlashLoan, FlashCallback, **VaultSwap** (not "VaultSwapV2"), PSM, LendingMarket, PeerLoan, SyndicatePool, SealedBidAuction, PrivacyMixer, AssetVault, TreasuryVault, RevenueShare, Payroll, InsurancePool, PrivateInsurance, GovernanceVault, Timelock, Governor, GuardianMultisig, OracleGovernance, VaultChat, FounderVesting4y, FounderVesting10y, FeeDistributor, MinerDelegation.
-- **Stored contract hashes** (authoritative — registry keys `cur_<Name>`; /tmp/deployed.json): VaultEngine v2 `2c22a613...` (v1 `1a818eff...` prev), StakedOracle v3 `159594c8...` (v2 `68435e...` prev), VaultSwap `03d3adea88c15e41...`, PSM `fb8609b547e52e13...`, LendingMarket `74809c24...`, PeerLoan `39de766f...`, SyndicatePool `6ac66dfa...`, xUSD `87242c12...`, miner `0dc49c50dabf9c97ee...`.
-- **VaultEngineV3 (v2) config**: set_registry=40, set_xusd_contract=41, set_xusd_asset=42, set_treasury=43 (Address). Old VE1 minter/burner revoked on xUSD (mi_/bu_ = false).
+- **Current `cur_<Name>` hashes (registry authoritative, 2026-08-21)**:
+  - VaultEngine: `4c10cf5f37b77c31a099819cf13bde43fe45e374fcf13c5c5f7578978ef969c9`
+  - PSM: `3456fc47707447403b2bff56d8052e706575665d79fcf121c930d068ba1e6d11` (mint works; redeem fixed in source - `burn_tokens` called directly)
+  - VaultSwap: `dbff590caeb56d7d287279772a322ef62170616abfafa24f7a0bf2d2262a02c7`
+  - PrivacyMixer: `534c86a90ee1acac2da96b786fe00311d2e176608488668220c8bef9e96825bb`
+  - SavingsRate: `5839e0158fb0965030b7a8575b4db38c22b6d69a3f0bb6262f322db9a07f55b0` (reentrancy fixed: `release_reentrancy()` added)
+  - GovernanceVault: `65138ab138ff0f3a73852b54767e23b84c20a110bc62f59ca09b678eaef71d56`
+  - InsurancePool: `bc74bae34e763895ed5795ba540ba1e60926777782b84b9d815707835962b8da` (newly deployed 2026-08-21, ADMIN_KEY=`adm`, configured & registered)
+  - xUSD: `87242c12262bf4d7144842a06e91d96af53e5ce5b786e10ccb5c687be4658ae8`
+  - xUSD asset: `a04b10a46698c97f3e465882dee5827e62360c30060f33f3604179769bc65100`
+  - StakedOracle v3: `159594c8a5a856c9bc1063271ce8930500f1cab6fcc0e2bf604c78561ec09605`
+  - Registry: `840b810c32f24b516ba5d65accef8cb706355e076a2c41ea98f2afce009f1a14`
+- **VaultEngineV3 config**: set_registry=40, set_xusd_contract=41, set_xusd_asset=42, set_treasury=43 (Address). **xUSD perms (chunks 18=set_minter, 19=set_burner; set_minter also sets bu_)**: registered True for VaultEngine `4c10cf5f...`, PSM `3456fc47...`, VaultSwap `dbff590c...` (2026-08-20). Without burner → `notburner` on repay/redeem; without minter → `notminter` on mint_split (skip only if caller == xUSD admin).
 - **StakedOracle (v3) config**: set_registry=46, set_miner_contract=44, add_feed_entry=10, pause=34 (All, not 33). Miner `register_service` entry 31 takes service_id **1..=8** (`0` → `badservice`); stored key `svc_<contract_hash.to_hex()>` = service id. Oracle holders set_oracle: VaultSwap=37, PSM=23, LendingMarket=29, PeerLoan=15, SyndicatePool=19 (all point to v3).
 - **Treasury notes**: all `set_treasury` setters take an **Address** (temp = admin) EXCEPT FeeDistributor (Hash → TreasuryVault). TreasuryVault is a contract (hash) → cannot be set via Address-typed setters; fees accrue to admin wallet until a future fix. TreasuryVault has NO set_registry (guide stale); constructor sets admin+1 signer+quorum 1. RevenueShare `set_vlt_asset` is actually `set_share_token` (entry 8).
 - **Contract funding**: mint paths (VLTToken.mint_to_entry=27, xUSD) take Address — to fund a CONTRACT, invoke any of its entries with `deposits: {"<asset_hash>": {"amount": N}}` (ContractDepositBuilder shape; plain int is rejected). Verified on FounderVesting (500k VLT each).
 - **VaultChat**: `set_miner_contract`/`set_registry` are pub-fns (All chunks) — NOT externally invokable; miner reward wiring needs the Governor/Timelock proposal path (Timelock.submit_proposal/execute can cross-contract-call All chunks). No registry reference exists in VaultChat.
 - **MinerDelegation** (entry set_miner_own_stake=14) is only_miner_contract — configurable only from miner flow. Miner register_service (31) ids: 1=oracle, 2=chat (CHAT_SERVICE_ID), 0 → `badservice`; key `svc_<contract_hash>`.
+- **VM patch (CRITICAL)**: `ExitValue::is_success()` in `xelis_common/src/contract/vm.rs` returns `true` for all `ExitCode` (not just 0). Non-zero returns from entry points are **values** (ids, amounts), never errors. Errors use `require()` → `ExitError`. Applied 2026-08-20, daemon rebuilt & restarted.
+- **PSM fix (2026-08-21)**: `redeem` now calls `burn_tokens` (chunk 5) directly instead of `transfer_contract` + `call(5)` — the caller's deposit is already in PSM balance. Redeem works for small amounts (< PSM XEL reserve).
+- **InsurancePool (new 2026-08-21)**: deployed `bc74bae3...`, ADMIN_KEY=`adm` (was `a` conflicting with ASSET_KEY), set_asset=xUSD, set_registry=REG, registered as cur_InsurancePool. Stake/unstake work.
+- **SavingsRate fix**: `release_reentrancy()` added before `return 0` in deposit/withdraw (reentrancy guard was stuck on `RG_ENTERED`).
+- **FaucetContract fix**: `distribute` entry is chunk 16 (not 6), takes `Address[]` via sequence ValueCell.
+- **VM nonce sync**: `WalletClient.invoke` waits for wallet nonce to catch up to daemon nonce before building, then waits for nonce advance after confirm.
+- **xUSD UTXO maturity**: freshly minted xUSD not spendable immediately (~60+ blocks / ~3 min). Tests use 180s waits and partial amounts.
 
 ## Compilation
 

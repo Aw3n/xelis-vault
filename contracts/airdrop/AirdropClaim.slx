@@ -207,7 +207,7 @@ entry emergency_withdraw_unclaimed(to: Address) -> u64 {
     let deploy_topo: u64 = s.load(DEPLOY_TOPO_KEY).expect("err")
     let current: u64 = get_current_topoheight()
     require(current >= deploy_topo + EMERGENCY_DELAY_BLOCKS, "toosoon")
-    require(to != Address::from_bytes(bytes::from_hex("0000000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
+    require(to != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
 
     // In production: calculate remaining = TOTAL_DISTRIBUTABLE - total_claimed
     // Then transfer remaining to `to`

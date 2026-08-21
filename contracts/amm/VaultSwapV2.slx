@@ -2,8 +2,9 @@
 // VaultSwapV2.slx — XELIS Vault v9.0 (AMM + PSM)
 // ----------------------------------------------------------------------------
 // FIX #3:  get_oracle() loads oracle hash from storage (ORACLE_KEY).
-// FIX #12: psm_mint / psm_redeem use oracle.call(21u16, [Hash::zero()], {})
-//          (PriceOracle entry 4 = get_price(asset: Hash)).
+// FIX #12: psm_mint / psm_redeem use oracle.call(22u16, [Hash::zero()], {})
+//          (StakedOracle pub-fn get_price_for_asset, chunk 22 = All access —
+//          cross-contract calls require All chunks, NOT Entry chunks).
 // FIX #14: Two-step emergency_withdraw at IDs 29/30 with 17280-block delay.
 //
 // Entry IDs (sequential, starting at 0):
@@ -453,7 +454,7 @@ entry swap(
     return 0
 }
 
-// ID 3: psm_mint — FIX #12: oracle.call(9u16, [asset], {})
+// ID 3: psm_mint — oracle pub-fn chunk 22 (All) get_price_for_asset
 // Mint xUSD from XEL via the PSM pool at the oracle XEL/USD price (no AMM curve, fixed price).
 // @caller: any user
 // @params: xel_amount - amount of XEL to deposit
@@ -476,7 +477,7 @@ entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     require(pool.is_psm, "notpsm")
 
     let oracle: Contract = get_oracle()
-    let xel_price: u64 = oracle.call(32u16, [Hash::zero()], {})
+    let xel_price: u64 = oracle.call(22u16, [Hash::zero()], {})
     require(xel_price > 0, "noprice")
 
     let gross_xusd: u64 = (xel_amount as u128 * xel_price as u128 / PRICE_DECIMALS as u128) as u64
@@ -506,7 +507,7 @@ entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     return 0
 }
 
-// ID 4: psm_redeem — FIX #12: oracle.call(9u16, [asset], {})
+// ID 4: psm_redeem — oracle pub-fn chunk 22 (All) get_price_for_asset
 // Burn xUSD and receive XEL from the PSM pool at the oracle price.
 // @caller: any user
 // @params: xusd_amount - amount of xUSD to burn
@@ -528,7 +529,7 @@ entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     require(pool.is_psm, "notpsm")
 
     let oracle: Contract = get_oracle()
-    let xel_price: u64 = oracle.call(32u16, [Hash::zero()], {})
+    let xel_price: u64 = oracle.call(22u16, [Hash::zero()], {})
     require(xel_price > 0, "noprice")
 
     let gross_xel: u64 = (xusd_amount as u128 * PRICE_DECIMALS as u128 / xel_price as u128) as u64

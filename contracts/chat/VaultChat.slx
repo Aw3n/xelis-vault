@@ -1769,6 +1769,15 @@ entry set_treasury(addr: Address) -> u64 {
     return 0
 }
 
+// v11.6 fix: VLT_ASSET_KEY ("va") was read by stake_relayer_bond but never
+// stored anywhere — the bond mechanism was dead on arrival. This entry lets
+// the admin wire the VLT asset id used for relayer bonds.
+entry set_vlt_asset(a: Hash) -> u64 {
+    only_admin()
+    Storage::new().store(VLT_ASSET_KEY, a)
+    return 0
+}
+
 // ── Storage Management (on-chain ring buffer) ─────────────────────────────
 // On-chain storage is limited (50 messages per user, ring buffer).
 // This is by design: old messages are overwritten by new ones.

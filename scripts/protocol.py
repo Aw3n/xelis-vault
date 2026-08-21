@@ -42,8 +42,8 @@ ADMIN = "xet:czr9q8k5xlzqdptq7n2vapyjfduldts6tw3e6apl99vknzvmu4zsq8z9j8v"
 
 # Canonical asset hashes (verified on-chain)
 XEL_ASSET = ZERO_HASH                      # native XELIS (8 decimals)
-VLT_ASSET = "9d074e1b0c057dbd30897f10117e4feb1d8d6442306bc23ac763c87c9f73b89a"
-XUSD_ASSET = "a04b10a46698c97f3e465882dee5827e62360c30060f33f3604179769bc65100"
+VLT_ASSET = "daa3981df5fc070d93d6752f477d880aa0bfe6bc628a8fb1e416d5e8659f387d"
+XUSD_ASSET = "0daf60ef357733a403e0ca8928b1548b0953521e318fae418c943e6abfbac85c"
 
 ASSET_NAMES = {
     XEL_ASSET: "XEL",
@@ -55,42 +55,45 @@ DECIMALS = {XEL_ASSET: 8, VLT_ASSET: 8, XUSD_ASSET: 8}
 
 # Registered contract hashes (deploy log — registry cur_<Name> is authoritative)
 CONTRACT_HASHES = {
-    "ContractRegistry": "840b810c32f24b516ba5d65accef8cb706355e076a2c41ea98f2afce009f1a14",
-    "ComplianceModule": "7d20ea3646e5c308b9153353f68c24e8f161bc43392f092ea138a5498f132f78",
-    "VLTToken": "efd53bfa46d9fbb7494cca716cd86990299851705d408fcbff0e05d00bb09ac6",
-    "xUSD": "87242c12262bf4d7144842a06e91d96af53e5ce5b786e10ccb5c687be4658ae8",
-    "FaucetContract": "7da83d17c4db825083b4ae85ab95ff50654999ebf4847e284bcf11549f14256d",
-    "XelisVaultMiner": "0dc49c50dabf9c97ee2efaa76d17013922a89855f63233821ed6d4c445505cbf",
-    "StakedOracle": "159594c8a5a856c9bc1063271ce8930500f1cab6fcc0e2bf604c78561ec09605",
-    "MinerPool": "86895d2f16fc293f3e29234b9daa6a0482be4a061e76265af049baa13e9bd275",
-    "InterestRateModel": "172214c5d10f967f73e3c12832b74a6b17ce05aa9d656936ce4be0d1fbd6e2de",
-    "VaultEngine": "2c22a6132fb4f21719c2acf04fe5c10f8cb796cba421b60c8d250d32a1a8b393",
-    "SavingsRate": "a275a8e2cc97db7d5fb519c5d9a952fcaa9c36e55a5870339b468c7acc68c043",
-    "FlashLoan": "7dcbf096f4d6f30366316e38736eb75124a9b8054624a974d4cadae7f5edf729",
-    "FlashCallback": "f151220561b7d956fbd32b236111b6fc6c152c6a1d384c94b8bd5ea4fc76ea60",
-    "VaultSwap": "03d3adea88c15e41105814f3f67e58f2036f593ea96a307bfbf5336356f5782a",
-    "PSM": "fb8609b547e52e1364776457d88ba9b3a84d80ecf60d28ac34700626c2d7c0a6",
-    "LendingMarket": "74809c24efbb2817589a6d379922a3e92650857d447f7917905a1514293f1519",
-    "PeerLoan": "39de766f32a9d297fc99eaf0c7ddefafc5b2785b4b78fd63d3a0f170e4dec485",
-    "SyndicatePool": "6ac66dfa4407b7a126b223e0ba4d2159f423a4806bf3031d6a9c32742d26258a",
-    "SealedBidAuction": "d3b48725a4a4327249130efb3405be80b6caadbe255db00b3bbb4b1d91be3155",
-    "PrivacyMixer": "c78b2e903f366519884533d75c67428521f8397af02110f2a4fe4f90bfadb79d",
-    "AssetVault": "48806089766985050a81917bcfdf919dcd27df9780bcb6a16faa8e28bd06dd2b",
-    "TreasuryVault": "0b2cf9761ebc8a746e4418b80fdfaef0e940f12891deef12e65b60df304c6d70",
-    "RevenueShare": "beb733d651e682ab7023ca1ae41963837c5d80af6894343657051b29ac9eaa6c",
-    "Payroll": "edbfb5fd0a105aaf087b8bf7f0133bd99da6ac36b83b071780eac56e0df42771",
-    "InsurancePool": "bc74bae34e763895ed5795ba540ba1e60926777782b84b9d815707835962b8da",
-    "PrivateInsurance": "7e313998ccba0651bfeab12c8d6ff7153cfcf14c0e7486c51194430dc045e20f",
-    "GovernanceVault": "65138ab138ff0f3a73852b54767e23b84c20a110bc62f59ca09b678eaef71d56",
-    "Timelock": "0c4742beb58ee4b5a2d1d7059c87bb8592b6a6dbdcf8267dec4d01d8fc748cea",
-    "Governor": "bfdbbf77eccdb2101f8ad60ee3714f38918abcaa4741850160b58d875d54eded",
-    "GuardianMultisig": "435e001c412cc1b434045a4b5e86e8117a98013856426582945d0de1dd29a373",
-    "OracleGovernance": "97f51a646774f27cbff1508c7324845e5ed806f75ee399f259eb309bdd10cb9e",
-    "VaultChat": "7560b5e33b8fde6cf5f6c81117320cfb9d7294c7edd6aa2e6c41ffdee8d7c7d2",
-    "FounderVesting4y": "99ee70127dbf856f04f86bd60a55533e1ef22e7602f88978384edf7aff75da55",
-    "FounderVesting10y": "d919ca28731428d7ec96238412b66c6eb33edde6eb466873ec74ec4bb20efda3",
-    "FeeDistributor": "29fb3abf45d7aea116b07baaf4d79ca8c01daf7c4921fca328b4f42421a5de6a",
-    "MinerDelegation": "e3c2f0f7a21502cce3b8d197a04876cbf441b75345d8dd7da64b512c66f48140",
+    # v12 full redeploy (2026-08-21) — v11.5 audit-fixed code, Phase 9 skipped
+    "ContractRegistry": "ec60bb78150add73492ac8d07c32186550b138af9c00588d59964aac5cc83194",
+    "ComplianceModule": "3eb327fd49856e3fe9cfdade47042b3c2177bae3eb47067053c7ae1379d369ed",
+    "VLTToken": "0b0f5cfb9f0f0fb8db7a23c4b5170e0e69521b6941a639ed949bae9cb9839524",
+    "xUSD": "8154335a929257c4e3387cad745c846416821990ce40fb8f1333775a92c771c8",
+    "FaucetContract": "0baaa0c650d4378810a6584f548a9ecf57fb7b4be40503024564546937c36d5a",
+    "XelisVaultMiner": "ba27f8e6c1fc94b679f35b758c38e64c70f92da8d92dd01b6805b830ce1af3e7",
+    "StakedOracle": "15247c0a6ae190ad729bd2ccab675f8e292a17129474f0ff4fa234eceb4f9f27",
+    "MinerPool": "ee96c17b2dff166b61cd187d3af79c71130975b4016d094500e7ea75fbe73c35",
+    "InterestRateModel": "3ccdfce44461c02d33a499f088a86e51e822a30b7ab024df38ee682710bb068c",
+    "VaultEngine": "b916b7a46d837aa4d2ee68cf161dc76baf000309337769c4e5c054b59c0a5ec9",
+    "VaultEngineV3": "b916b7a46d837aa4d2ee68cf161dc76baf000309337769c4e5c054b59c0a5ec9",
+    "SavingsRate": "4841e68886f98975e1e1a4cfaa54014ac9cfb067265f6369193dc72d8d651c88",
+    "FlashLoan": "a9d2c504693163e9be61f2c479f9453c3d4f0feecbe9ad08795d8ee9fd25e4bb",
+    "FlashCallback": "8cae8f5702c916e298cafafa12d52611b0190a83b23aaf047a302ae1b36bcdb4",
+    "VaultSwap": "0e5c318db4bd7feb3e0578436a96eb25e80801c7a61bebcbce831b7d46c53099",
+    "VaultSwapV2": "0e5c318db4bd7feb3e0578436a96eb25e80801c7a61bebcbce831b7d46c53099",
+    "PSM": "3376c525759a7df0e306c379cbad96cd02f92de9b1681d2edf96b7b6d9a9f9ba",
+    "LendingMarket": "01c5767015026059999b7c188b377577bfaa29abadddbe19ed76745e42d2bda2",
+    "PeerLoan": "132e270dd75fb44db66109912d3d36d1ee34e3425a8e9c3aeef9a5a519050942",
+    "SyndicatePool": "4a04cdc0723dbe953c0f78e03efbcd4373e236b1f8e66f0f0aa60ded366a6e1b",
+    "SealedBidAuction": "e2d2fa2ac51ee61c2b676f1d1c26d7531da7948defd49f9aec7f77cf7625ea14",
+    "PrivacyMixer": "7f41faec283b6c722a3b289323bcce79ad6c3e23b03ed2a1589c1adba7f12985",
+    "AssetVault": "2f3308a10c3ad60473423f7ed785cb6ebc206793c3c1608d46c3bea7e8e723a5",
+    "TreasuryVault": "6ef3f44b79eb12f5e85b3f6465ba5251e1e33a687ac9f415c0245e2e1ffe52d1",
+    "RevenueShare": "caa6c5dc93f9a27946e79cdc924ba1e134f5067efb6556e3b3c685b8d63663c4",
+    "Payroll": "a5982d6fcf562da3d9294e4321e94e835623880ef3584dee774f2b1afe4a972c",
+    # Phase 9 Insurance SKIPPED by owner decision — no on-chain instances
+    "GovernanceVault": "40f7b6bed62789cb3ceab6e47284c00150f4aa67ed91caf14605c4b5c8420619",
+    "Timelock": "a43a00d8d4184c4e193f24acf7aca8e7e08f4c5526627c82728593fd8861a659",
+    "Governor": "2377145f070f29790cfbf5ffb43c03847de4f96e781abec0278d6ef9752e1582",
+    "GuardianMultisig": "3ec3595c405430e64c9be3ff1d3837cc23814d9cf1fdceed5ef6746ecbcb6750",
+    "OracleGovernance": "7ea57bf2803d514c16b13a76d6bd159a0b3126680e02185c08af3e81510a0bad",
+    "VaultChat": "0bfc1b24a02ce3e05e755f83dc8ddf2c046945e7c8badf279a8d87b3669d2097",
+    "FounderVesting4y": "7e64b68658b6ffad46dd58dceb0f9f06b7a7ee8cda983fab1a81340fba88abec",
+    "FounderVesting10y": "b4f48448cfe3711fa79f06db33d0b8d088b37b2a1b6f8eea1f7573e80da5fd04",
+    "FeeDistributor": "fb26448cea78a0ca0141842824ba4780fb89e4763964cc2dd6833c15c39b95df",
+    "MinerDelegation": "1a7723fe5565e6e064ab0ca6cb087fdec2597a8692ebda5475d2bd5f55d90f6f",
+    "AirdropTracker": "e1f0ec8f737963a620ae7b918dbc096ea0d7c9d0f610d3b07108c6ef31aeb8d1",
 }
 
 # Oracle feed ids

@@ -256,12 +256,21 @@ fn only_guardian_or_admin() {
 }
 
 // Only authorized contracts (recorders) can call record_*
-// Admin is always authorized
+// Admin is always authorized.
+// v11.6 fix: contract recorders are authorized by Hash via get_contract_caller()
+//   (the previous Address-based check could never match a contract caller).
 fn only_authorized_recorder() {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     let admin: Address = s.load(ADMIN_KEY).expect("err")
     if caller == admin { return }
+    let cc_opt: optional<Hash> = get_contract_caller()
+    if cc_opt.is_some() {
+        let cc: Hash = cc_opt.expect("err")
+        let is_auth_c: bool = s.load(RECORDER_PREFIX + cc.to_hex()).unwrap_or(false)
+        require(is_auth_c, "notauth")
+        return
+    }
     // Check if caller is in the authorized recorders list
     let is_auth: bool = s.load(RECORDER_PREFIX + caller.to_string()).unwrap_or(false)
     require(is_auth, "notauth")
@@ -1294,10 +1303,12 @@ pub fn get_manual_attribution_cap() -> u64 {
 }
 
 // Entry 23: Set authorized recorder (contract that can call record_*)
-entry set_authorized_recorder(addr: Address, authorized: bool) -> u64 {
+// v11.6 fix: takes the contract Hash (was Address — could never match a
+//   contract caller, see only_authorized_recorder).
+entry set_authorized_recorder(contract_hash: Hash, authorized: bool) -> u64 {
     only_admin()
     let s: Storage = Storage::new()
-    s.store(RECORDER_PREFIX + addr.to_string(), authorized)
+    s.store(RECORDER_PREFIX + contract_hash.to_hex(), authorized)
     return 0
 }
 

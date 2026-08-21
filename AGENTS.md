@@ -126,3 +126,24 @@ AnalyticsCollector NOT in the 38-core deploy list (DO NOT DEPLOY YET) — left u
 pas stdout — piège subprocess). Bytecodes dans /tmp/deploy_<Name>.hex et /tmp/chunkmap_<Name>.hex.
 
 ## PROCHAINE ÉTAPE: déploiement phases 1-8, 10-13 (Phase 9 Insurance SKIPPED)
+
+# v12 FULL REDEPLOY (v11.5 code) — en cours
+Orchestrateur: deploy/deploy_v12.py (--phase N), état: docs/deployment_state.json.
+AirdropTracker patché v11.6: set_authorized_recorder(Hash,bool) + only_authorized_recorder
+via get_contract_caller()/to_hex() (l'ancien check Address ne pouvait jamais matcher un contrat).
+PHASE 1 ✅ ContractRegistry=ec60bb78…83194 | ComplianceModule=3eb327fd…69ed (+set_registry ok)
+PHASE 2 ✅ VLTToken=0b0f5cfb…9524 VLT_ASSET=daa3981d…f387d | xUSD=8154335a…771c8 XUSD_ASSET=0daf60ef…ac85c | Faucet=0baaa0c6…36d5a
+⚠️ Bug substring dans deploy_v12.py extract_new_asset — state XUSD corrigé à la main. NE PAS réutiliser tel quel.
+PHASE 3 ✅ Miner=ba27f8e6…af3e7 Oracle=15247c0a…9f27 (+feed XEL/USD svc1) MinerPool=ee96c17b…73c35
+deploy_v12.py: invoke() resumable via STATE["steps"] (label@contract12). Fixes: val_u8 decimals, register_service(u8,hash).
+PHASE 4 ✅ IRM=3ccdfce4…068c(rates 50/1000/5000/8000) VE=b916b7a4…5ec9(minter+burner xUSD) Savings=4841e688…1c88(minter) FL=a9d2c504…e4bb CB=8cae8f57…bcdb4(+set_flash_loan chunk4 ajouté au script)
+VE: oracle résolu via registry "StakedOracle" — pas de set_oracle.
+PHASE 6 ✅ LendingMarket=01c57670…bda2 PeerLoan=132e270d…0942 SyndicatePool=4a04cdc0…6e1b
+⚠️ Pas de set_irm sur LM v11.5 (IRM par pool dans create_pool) — écart vs guide documenté.
+PHASE 11 ✅ VaultChat v11.6=0bfc1b24…2097 (nouveau chunk set_vlt_asset=96; ancien 1be87b9e… abandonné)
+Admin wallet: 700 000 VLT (airdrop testnet, distribution manuelle). Relayer bond 100 VLT (double stake cosmétique).
+VLTToken.mint_to_entry=27 ; wallet doit tracker l'asset avant tout dépôt VLT.
+PHASE 12 ✅ FV4y=7e64b686…abec(⚠️1M VLT, excès 500k verrouillé) FV10y=b4f48448…fd04(500k) FeeDistributor=fb26448c…95df MinerDelegation=1a7723fe…90f6f
+phase12 patchée: instances par hash explicite (cache deploy() fusionnait les 2 vestings).
+PHASE 13 ✅ AirdropTracker v11.6=e1f0ec8f…eb8d1 + 7 recorders (Hash) — DÉPLOIEMENT COMPLET
+protocol.py: VLT/XUSD assets + 37 CONTRACT_HASHES v12. docs/DEPLOYMENTS_V12.md complet.

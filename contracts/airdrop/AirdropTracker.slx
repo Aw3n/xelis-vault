@@ -604,12 +604,57 @@ entry freeze_points() -> u64 {
 //   entire user list has been processed. The final batch sets FINALIZED_KEY = true
 //   and builds the sorted leaderboard index (F-12 fix).
 // Returns: number of users processed in this batch (0 when already finalized).
+
+// F-12 fix (MEDIUM): build a sorted leaderboard index once after finalize.
+// Stores addresses sorted by total_with_bonus (desc) under LEADERBOARD_INDEX_PREFIX.
+// O(n^2) worst case but only runs ONCE at finalize — get_leaderboard_at_rank is then O(1).
+fn build_leaderboard_index() {
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
+    // Collect (address, points) pairs into a flat list using a simple selection-sort.
+    // For small/medium testnet populations (<1000 users) this is acceptable.
+    // For larger populations, off-chain indexing is the recommended approach (per the audit).
+    let n: u64 = 0
+    let i: u64 = 0
+    while i < count {
+        let user_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string(10u32))
+        if user_opt.is_some() {
+            let user: Address = user_opt.expect("err")
+            let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("err")
+            // Insert (user, up.total_with_bonus) into the running sorted list.
+            // Find the right slot: scan from the top.
+            let insert_rank: u64 = n  // default: append at the bottom
+            let j: u64 = 0
+            while j < n {
+                let other_addr: Address = s.load(LEADERBOARD_INDEX_PREFIX + j.to_string(10u32)).expect("err")
+                let other_up: UserPoints = s.load(USER_PREFIX + other_addr.to_string()).expect("err")
+                if up.total_with_bonus > other_up.total_with_bonus {
+                    insert_rank = j
+                    j = n  // break
+                }
+                j += 1
+            }
+            // Shift entries from insert_rank downward by 1
+            let k: u64 = n
+            while k > insert_rank {
+                let prev_addr: Address = s.load(LEADERBOARD_INDEX_PREFIX + (k - 1).to_string(10u32)).expect("err")
+                s.store(LEADERBOARD_INDEX_PREFIX + k.to_string(10u32), prev_addr)
+                k -= 1
+            }
+            s.store(LEADERBOARD_INDEX_PREFIX + insert_rank.to_string(10u32), user)
+            n += 1
+        }
+        i += 1
+    }
+    s.store(LEADERBOARD_COUNT_KEY, n)
+}
+
 entry finalize_distribution(start_index: u64, count: u64) -> u64 {
     only_admin()
     require(count > 0 && count <= 200, "badbatch")
     let s: Storage = Storage::new()
     require(s.load(FROZEN_KEY).unwrap_or(false), "notfrozen")
-    require(!s.load(FINALIZED_KEY).unwrap_or(false), "alreadyfinal")
+    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false); require(!finalized, "alreadyfinal")
 
     let user_count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
     require(start_index <= user_count, "oob")
@@ -618,7 +663,7 @@ entry finalize_distribution(start_index: u64, count: u64) -> u64 {
         s.store(FINALIZED_KEY, true)
         s.store(FINALIZE_TOPO_KEY, get_current_topoheight())
         s.delete(FINALIZE_CURSOR_KEY)
-        emit_event(0u64, ["DistributionFinalized", s.load(QUALIFIED_COUNT_KEY).unwrap_or(0).to_string(10u32)])
+        let qualified_count: u64 = s.load(QUALIFIED_COUNT_KEY).unwrap_or(0); emit_event(0u64, ["DistributionFinalized", qualified_count.to_string(10u32)])
         // F-12 fix: build the sorted leaderboard index in a single pass on completion.
         build_leaderboard_index()
         return 0
@@ -713,50 +758,6 @@ entry finalize_distribution(start_index: u64, count: u64) -> u64 {
         emit_event(0u64, ["DistributionBatchProcessed", end.to_string(10u32) + "/" + user_count.to_string(10u32)])
     }
     return end - start_index
-}
-
-// F-12 fix (MEDIUM): build a sorted leaderboard index once after finalize.
-// Stores addresses sorted by total_with_bonus (desc) under LEADERBOARD_INDEX_PREFIX.
-// O(n^2) worst case but only runs ONCE at finalize — get_leaderboard_at_rank is then O(1).
-fn build_leaderboard_index() {
-    let s: Storage = Storage::new()
-    let count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
-    // Collect (address, points) pairs into a flat list using a simple selection-sort.
-    // For small/medium testnet populations (<1000 users) this is acceptable.
-    // For larger populations, off-chain indexing is the recommended approach (per the audit).
-    let n: u64 = 0
-    let i: u64 = 0
-    while i < count {
-        let user_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string(10u32))
-        if user_opt.is_some() {
-            let user: Address = user_opt.expect("err")
-            let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("err")
-            // Insert (user, up.total_with_bonus) into the running sorted list.
-            // Find the right slot: scan from the top.
-            let insert_rank: u64 = n  // default: append at the bottom
-            let j: u64 = 0
-            while j < n {
-                let other_addr: Address = s.load(LEADERBOARD_INDEX_PREFIX + j.to_string(10u32)).expect("err")
-                let other_up: UserPoints = s.load(USER_PREFIX + other_addr.to_string()).expect("err")
-                if up.total_with_bonus > other_up.total_with_bonus {
-                    insert_rank = j
-                    j = n  // break
-                }
-                j += 1
-            }
-            // Shift entries from insert_rank downward by 1
-            let k: u64 = n
-            while k > insert_rank {
-                let prev_addr: Address = s.load(LEADERBOARD_INDEX_PREFIX + (k - 1).to_string(10u32)).expect("err")
-                s.store(LEADERBOARD_INDEX_PREFIX + k.to_string(10u32), prev_addr)
-                k -= 1
-            }
-            s.store(LEADERBOARD_INDEX_PREFIX + insert_rank.to_string(10u32), user)
-            n += 1
-        }
-        i += 1
-    }
-    s.store(LEADERBOARD_COUNT_KEY, n)
 }
 
 // F-12 fix: pub fn returning leaderboard count (for pagination/iteration).

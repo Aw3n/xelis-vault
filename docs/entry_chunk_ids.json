@@ -1,1065 +1,4194 @@
 {
-  "VLTToken": {
-    "burn_own": 5,
-    "mint_batch": 6,
-    "set_minter": 7,
-    "set_burner": 8,
-    "create_asset": 9,
-    "set_registry": 10,
-    "set_timelock": 11,
-    "transfer_admin": 12,
-    "set_emergency": 13,
-    "get_version": 14,
-    "get_asset_hash_entry": 15,
-    "get_max_supply_entry": 16,
-    "get_total_burned_entry": 17,
-    "get_circulating_supply_entry": 18,
-    "request_emergency_withdraw": 19,
-    "execute_emergency_withdraw": 20,
-    "mint_to_entry": 27
-  },
-  "FeeDistributor": {
-    "collect_fee": 7,
-    "claim_founder_share": 8,
-    "claim_treasury_share": 9,
-    "burn_deflationary_share": 10,
-    "set_founder": 15,
-    "set_treasury": 16,
-    "set_vlt_contract": 17,
-    "set_vlt_asset": 18,
-    "set_registry": 19,
-    "set_timelock": 20,
-    "set_guardian": 21,
-    "pause": 22,
-    "unpause": 23,
-    "transfer_admin": 24,
-    "get_version": 25
-  },
-  "FounderVesting": {
-    "claim_founder_tokens": 6,
-    "set_founder": 10,
-    "set_vlt_contract": 11,
-    "set_vlt_asset": 12,
-    "set_registry": 13,
-    "set_timelock": 14,
-    "set_guardian": 15,
-    "pause": 16,
-    "unpause": 17,
-    "transfer_admin": 18,
-    "get_version": 19
-  },
-  "RevenueShareDelegation": {
-    "set_share": 8,
-    "revoke_share": 9,
-    "update_share_percentage": 10,
-    "extend_share_duration": 11,
-    "claim_founder_revenue": 12,
-    "claim_contributor_revenue": 13,
-    "receive_fee": 14,
-    "set_vlt_contract": 22,
-    "set_xel_asset": 23,
-    "set_registry": 24,
-    "set_timelock": 25,
-    "set_guardian": 26,
-    "pause": 27,
-    "unpause": 28,
-    "transfer_admin": 29,
-    "get_version": 30
-  },
-  "CreditScore": {
-    "record_loan_opened": 7,
-    "record_loan_repaid": 8,
-    "record_loan_defaulted": 9,
-    "set_registry": 15,
-    "set_timelock": 16,
-    "set_guardian": 17,
-    "pause": 18,
-    "unpause": 19,
-    "transfer_admin": 20,
-    "get_version": 21
-  },
-  "InterestRateModel": {
-    "get_borrow_rate_entry": 3,
-    "get_supply_rate_entry": 5,
-    "annual_to_per_block_entry": 7,
-    "get_rates_entry": 9,
-    "set_rates": 10,
-    "set_reserve_factor": 11,
-    "set_timelock": 12,
-    "transfer_admin": 13,
-    "get_version": 14
-  },
-  "SealedBidAuction": {
-    "create_auction": 13,
-    "commit": 14,
-    "reveal": 15,
-    "settle": 16,
-    "declare_winner": 17,
-    "refund_bid": 18,
-    "claim_asset": 19,
-    "claim_proceeds": 20,
-    "get_auction_entry": 21,
-    "get_auctions_count_entry": 22,
-    "pause": 23,
-    "unpause": 24,
-    "set_registry": 25,
-    "set_treasury": 26,
-    "set_timelock": 27,
-    "set_guardian": 28,
-    "set_emergency": 29,
-    "transfer_admin": 30,
-    "get_version": 31,
-    "request_emergency_withdraw": 32,
-    "execute_emergency_withdraw": 33
-  },
-  "AssetVault": {
-    "create_asset": 4,
-    "mint": 5,
-    "transfer_asset": 6,
-    "pause": 7,
-    "unpause": 8,
-    "set_compliance": 9,
-    "set_registry": 10,
-    "set_timelock": 11,
-    "set_emergency": 12,
-    "transfer_admin": 13,
-    "get_asset_info_entry": 14,
-    "get_asset_hash_entry": 15,
-    "get_total_supply_entry": 16,
-    "get_version": 17,
-    "request_emergency_withdraw": 18,
-    "execute_emergency_withdraw": 19
-  },
-  "SavingsRate": {
-    "deposit": 8,
-    "withdraw": 9,
-    "claim_interest": 10,
-    "set_apy_bps": 11,
-    "pause": 12,
-    "unpause": 13,
-    "set_xusd_contract": 14,
-    "set_xusd_asset": 15,
-    "set_treasury": 16,
-    "set_registry": 17,
-    "set_timelock": 18,
-    "set_guardian": 19,
-    "set_emergency": 20,
-    "transfer_admin": 21,
-    "get_balance_entry": 23,
-    "get_total_deposits_entry": 24,
-    "get_apy_entry": 25,
-    "get_version": 26,
-    "request_emergency_withdraw": 27,
-    "execute_emergency_withdraw": 28
-  },
-  "PrivacyMixer": {
-    "deposit": 5,
-    "execute_mix": 6,
-    "execute_refund": 7,
-    "set_min_threshold": 13,
-    "set_max_threshold": 14,
-    "set_timeout_blocks": 15,
-    "set_withdraw_fee_bps": 16,
-    "set_admin_fee_bps": 17,
-    "set_admin_fee_addr": 18,
-    "set_treasury": 19,
-    "set_registry": 20,
-    "set_timelock": 21,
-    "set_guardian": 22,
-    "pause": 23,
-    "unpause": 24,
-    "transfer_admin": 25,
-    "request_emergency_withdraw": 26,
-    "execute_emergency_withdraw": 27,
-    "get_version": 28
-  },
   "ContractRegistry": {
-    "get_entry": 2,
-    "register": 3,
-    "upgrade": 4,
-    "rollback": 5,
-    "list_names_entry": 6,
-    "get_name_at_entry": 7,
-    "get_version_entry": 8,
-    "get_previous_entry": 9,
-    "set_timelock": 10,
-    "transfer_admin": 11,
-    "set_emergency": 12,
-    "get_version_str": 13,
-    "request_emergency_withdraw": 14,
-    "execute_emergency_withdraw": 15
-  },
-  "VaultChat": {
-    "register_session": 7,
-    "create_group": 8,
-    "add_group_member": 9,
-    "remove_group_member": 10,
-    "anchor_messages": 11,
-    "revoke_session": 12,
-    "get_session_entry": 13,
-    "get_group_entry": 14,
-    "get_group_member_key_entry": 15,
-    "is_session_active_entry": 16,
-    "get_last_anchor_entry": 17,
-    "get_groups_count_entry": 18,
-    "get_group_members_count_entry": 19,
-    "set_relayer": 20,
-    "set_timelock": 21,
-    "set_guardian": 22,
-    "pause": 23,
-    "unpause": 24,
-    "transfer_admin": 25,
-    "get_version": 26,
-    "request_emergency_withdraw": 27,
-    "execute_emergency_withdraw": 28,
-    "store_message": 38,
-    "delete_message": 42,
-    "delete_conversation": 43,
-    "set_group_admin": 45,
-    "admin_delete_group_message": 46,
-    "admin_kick_member": 47,
-    "store_group_message": 48,
-    "set_relayer_fee": 51,
-    "pay_premium_message": 55,
-    "claim_relayer_fees": 56,
-    "rotate_group_key": 57,
-    "distribute_new_key": 59,
-    "mark_read": 60,
-    "store_ephemeral_message": 63,
-    "register_as_relayer": 66,
-    "claim_free_slot": 69,
-    "consume_free_message": 71,
-    "report_free_usage": 72,
-    "create_plan": 73,
-    "update_plan": 74,
-    "delete_plan": 75,
-    "buy_plan": 78,
-    "consume_credit": 81,
-    "set_batch_interval": 82,
-    "anchor_batch": 83,
-    "blacklist_relayer": 87,
-    "set_protocol_fee_bps": 93,
-    "set_treasury": 95,
-    "set_prune_interval": 97,
-    "report_storage_stats": 99,
-    "create_payment_request": 101,
-    "fulfill_payment_request": 102,
-    "cancel_payment_request": 103,
-    "create_giveaway": 106,
-    "claim_giveaway": 107,
-    "cancel_giveaway": 108,
-    "send_direct_message": 112,
-    "delete_direct_message": 115,
-    "toggle_relayer_paused": 116,
-    "update_relayer_endpoint": 118,
-    "update_free_tier": 119,
-    "stake_relayer_bond": 120,
-    "slash_relayer_bond": 122,
-    "withdraw_relayer_bond": 123,
-    "rate_relayer_weighted": 127,
-    "set_member_role": 130,
-    "mute_member": 132
-  },
-  "VaultNFT": {
-    "mint_nft": 4,
-    "transfer_nft": 5,
-    "burn_nft": 6,
-    "list_for_sale": 7,
-    "cancel_sale": 8,
-    "buy_nft": 9,
-    "make_offer": 10,
-    "cancel_offer": 11,
-    "accept_offer": 12,
-    "fractionalize": 13,
-    "set_vault_engine": 19,
-    "set_registry": 20,
-    "set_timelock": 21,
-    "set_guardian": 22,
-    "pause": 23,
-    "unpause": 24,
-    "transfer_admin": 25,
-    "get_version": 26
-  },
-  "LiquidationMarket": {
-    "register_liquidator": 4,
-    "stake_for_priority": 5,
-    "unstake": 6,
-    "record_liquidation": 7,
-    "report_inactive": 8,
-    "claim_rewards": 9,
-    "set_registry": 14,
-    "set_timelock": 15,
-    "set_guardian": 16,
-    "pause": 17,
-    "unpause": 18,
-    "transfer_admin": 19,
-    "get_version": 20
-  },
-  "VaultBounties": {
-    "report_unhealthy_vault": 5,
-    "claim_bounty": 6,
-    "set_vault_engine": 10,
-    "set_registry": 11,
-    "set_timelock": 12,
-    "set_guardian": 13,
-    "pause": 14,
-    "unpause": 15,
-    "transfer_admin": 16,
-    "get_version": 17
-  },
-  "StakedOracle": {
-    "add_feed_entry": 10,
-    "submit_price": 16,
-    "aggregate_now": 17,
-    "get_price_by_feed_entry": 30,
-    "get_price_entry": 31,
-    "get_price_for_asset_entry": 32,
-    "get_feed_id_entry": 33,
-    "disable_bootstrap": 41,
-    "set_bootstrap_min_providers": 42,
-    "set_min_providers": 43,
-    "set_miner_contract": 44,
-    "set_delegation_contract": 45,
-    "set_registry": 46,
-    "set_timelock": 47,
-    "set_guardian": 48,
-    "set_emergency": 49,
-    "transfer_admin": 50,
-    "get_version": 51,
-    "set_max_deviation_bps_entry": 52,
-    "set_cb_threshold_bps_entry": 53,
-    "set_aggregation_blocks_entry": 54,
-    "set_max_stale_blocks_entry": 55,
-    "set_hard_stale_blocks_entry": 56,
-    "pause_entry": 57,
-    "unpause_entry": 58,
-    "force_update_price": 59
-  },
-  "FlashCallback": {
-    "claim_profit": 3,
-    "set_flash_loan": 4,
-    "set_registry": 5,
-    "transfer_admin": 6,
-    "get_version": 7
-  },
-  "FlashLoan": {
-    "flash_loan": 6,
-    "get_fee_bps_entry": 7,
-    "get_total_earned_entry": 8,
-    "get_available_liquidity_entry": 9,
-    "set_fee_bps": 10,
-    "pause": 11,
-    "unpause": 12,
-    "set_treasury": 13,
-    "set_registry": 14,
-    "set_timelock": 15,
-    "set_guardian": 16,
-    "set_emergency": 17,
-    "transfer_admin": 18,
-    "get_version": 19,
-    "request_emergency_withdraw": 20,
-    "execute_emergency_withdraw": 21,
-    "verify_callback": 23,
-    "revoke_callback": 24
+    "2": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "3": {
+      "kind": "Entry",
+      "params": "Some([String, Opaque(8)])"
+    },
+    "4": {
+      "kind": "Entry",
+      "params": "Some([String, Opaque(8)])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "16": {
+      "kind": "All",
+      "params": "Some([String])"
+    },
+    "17": {
+      "kind": "All",
+      "params": "Some([String])"
+    },
+    "18": {
+      "kind": "All",
+      "params": "Some([String])"
+    },
+    "19": {
+      "kind": "All",
+      "params": "Some([String])"
+    },
+    "20": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    }
   },
   "ComplianceModule": {
-    "verify_proof_entry": 5,
-    "is_compliant_entry": 6,
-    "get_current_root_entry": 7,
-    "get_verifiers_count_entry": 8,
-    "update_merkle_root": 9,
-    "mark_compliant": 10,
-    "add_verifier": 11,
-    "remove_verifier": 12,
-    "set_compliance_required": 13,
-    "set_registry": 14,
-    "set_timelock": 15,
-    "pause": 16,
-    "unpause": 17,
-    "transfer_admin": 18,
-    "get_version": 19
+    "3": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Opaque(9), Opaque(8), Number(U64)])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Opaque(8)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Bool])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Bool])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "20": {
+      "kind": "All",
+      "params": "Some([Opaque(8), Opaque(8)])"
+    },
+    "21": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "22": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "23": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "24": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
   },
-  "PSM": {
-    "mint": 8,
-    "redeem": 9,
-    "get_reserves_entry": 10,
-    "get_mint_fee_entry": 11,
-    "get_redeem_fee_entry": 12,
-    "get_daily_usage_entry": 13,
-    "set_mint_fee_bps": 14,
-    "set_redeem_fee_bps": 15,
-    "set_daily_caps": 16,
-    "pause": 17,
-    "unpause": 18,
-    "request_emergency_withdraw": 19,
-    "execute_emergency_withdraw": 20,
-    "set_xusd_contract": 21,
-    "set_xusd_asset": 22,
-    "set_oracle": 23,
-    "set_treasury": 24,
-    "set_registry": 25,
-    "set_timelock": 26,
-    "set_guardian": 27,
-    "set_emergency": 28,
-    "transfer_admin": 29,
-    "get_version": 30
-  },
-  "VaultSwapV2": {
-    "create_pool": 16,
-    "add_liquidity": 17,
-    "swap": 18,
-    "psm_mint": 19,
-    "psm_redeem": 20,
-    "get_pool_entry": 21,
-    "get_amount_out_view_entry": 22,
-    "get_twap_entry": 23,
-    "get_volatility_bps_entry": 24,
-    "get_pools_count_entry": 25,
-    "get_pool_by_index_entry": 26,
-    "get_fees_entry": 27,
-    "pause": 28,
-    "unpause": 29,
-    "set_base_fee_bps": 30,
-    "set_treasury_fee_bps": 31,
-    "set_max_volatility_bps": 32,
-    "set_max_swap_pct_bps": 33,
-    "set_psm_mint_fee_bps": 34,
-    "set_psm_redeem_fee_bps": 35,
-    "set_registry": 36,
-    "set_oracle": 37,
-    "set_xusd_asset": 38,
-    "set_xusd_contract": 39,
-    "set_treasury": 40,
-    "set_timelock": 41,
-    "set_guardian": 42,
-    "set_emergency": 43,
-    "transfer_admin": 44,
-    "get_version": 45,
-    "request_emergency_withdraw": 46,
-    "execute_emergency_withdraw": 47
-  },
-  "EmergencyShutdown": {
-    "trigger_soft_pause": 5,
-    "trigger_full_shutdown": 6,
-    "propose_recovery": 7,
-    "execute_recovery": 8,
-    "set_registry": 14,
-    "set_timelock": 15,
-    "set_guardian": 16,
-    "set_governor": 17,
-    "transfer_admin": 18,
-    "get_version": 19
-  },
-  "LendingMarket": {
-    "create_pool": 18,
-    "supply": 19,
-    "borrow": 20,
-    "repay": 21,
-    "withdraw": 22,
-    "liquidate": 23,
-    "get_pool_info_entry": 24,
-    "get_user_position_entry": 25,
-    "get_pools_count_entry": 26,
-    "pause": 27,
-    "unpause": 28,
-    "set_oracle": 29,
-    "set_treasury": 30,
-    "set_registry": 31,
-    "set_timelock": 32,
-    "set_guardian": 33,
-    "set_emergency": 34,
-    "transfer_admin": 35,
-    "get_version": 36,
-    "request_emergency_withdraw": 37,
-    "execute_emergency_withdraw": 38
-  },
-  "PeerLoan": {
-    "create_offer": 6,
-    "cancel_offer": 7,
-    "accept_offer": 8,
-    "repay": 9,
-    "claim_collateral": 10,
-    "get_offer_entry": 11,
-    "get_offers_count_entry": 12,
-    "pause": 13,
-    "unpause": 14,
-    "set_oracle": 15,
-    "set_treasury": 16,
-    "set_registry": 17,
-    "set_timelock": 18,
-    "set_guardian": 19,
-    "set_emergency": 20,
-    "transfer_admin": 21,
-    "get_version": 22,
-    "request_emergency_withdraw": 23,
-    "execute_emergency_withdraw": 24
-  },
-  "SyndicatePool": {
-    "create_pool": 8,
-    "supply": 9,
-    "withdraw_supply": 10,
-    "activate_pool": 11,
-    "repay": 12,
-    "claim": 13,
-    "get_pool_entry": 14,
-    "get_lender_position_entry": 15,
-    "get_pools_count_entry": 16,
-    "pause": 17,
-    "unpause": 18,
-    "set_oracle": 19,
-    "set_treasury": 20,
-    "set_registry": 21,
-    "set_timelock": 22,
-    "set_guardian": 23,
-    "set_emergency": 24,
-    "transfer_admin": 25,
-    "get_version": 26,
-    "request_emergency_withdraw": 27,
-    "execute_emergency_withdraw": 28
-  },
-  "SocialTrading": {
-    "make_vault_public": 4,
-    "make_vault_private": 5,
-    "follow_leader": 6,
-    "stop_follow": 7,
-    "emit_leader_action": 8,
-    "set_registry": 13,
-    "set_timelock": 14,
-    "set_guardian": 15,
-    "pause": 16,
-    "unpause": 17,
-    "transfer_admin": 18,
-    "get_version": 19
+  "VLTToken": {
+    "4": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Array(Opaque(9)), Array(Number(U64))])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Bool])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Bool])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "21": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "22": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "23": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "24": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "25": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "26": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    }
   },
   "xUSD": {
-    "create_asset": 2,
-    "transfer_tokens": 6,
-    "get_asset_info": 8,
-    "set_vault_contract": 9,
-    "set_timelock": 10,
-    "transfer_admin": 12,
-    "set_psm": 13,
-    "set_emergency": 14,
-    "emergency_withdraw": 15,
-    "set_savings": 16,
-    "set_minter": 18,
-    "set_burner": 19,
-    "set_registry": 20,
-    "get_version": 21,
-    "get_asset_hash_entry": 22,
-    "get_asset_info_entry": 23,
-    "get_balance_entry": 24,
-    "request_emergency_withdraw": 25,
-    "execute_emergency_withdraw": 26
-  },
-  "GovernanceDelegation": {
-    "delegate": 6,
-    "undelegate": 7,
-    "delegate_by_topic": 8,
-    "undelegate_by_topic": 9,
-    "record_vote": 10,
-    "set_governance_vault": 16,
-    "set_registry": 17,
-    "set_timelock": 18,
-    "set_guardian": 19,
-    "pause": 20,
-    "unpause": 21,
-    "transfer_admin": 22,
-    "get_version": 23
-  },
-  "GovernanceVault": {
-    "stake": 4,
-    "unstake": 5,
-    "claim_rewards": 6,
-    "get_total_staked_entry": 9,
-    "get_user_staked_entry": 10,
-    "get_stakes_count_entry": 11,
-    "notify_reward_amount": 12,
-    "set_reward_distributor": 13,
-    "set_vlt_contract": 14,
-    "set_vlt_asset": 15,
-    "set_registry": 16,
-    "set_timelock": 17,
-    "pause": 18,
-    "unpause": 19,
-    "transfer_admin": 20,
-    "set_emergency": 21,
-    "get_version": 22,
-    "request_emergency_withdraw": 23,
-    "execute_emergency_withdraw": 24
-  },
-  "Governor": {
-    "propose": 3,
-    "vote": 4,
-    "queue": 5,
-    "cancel": 6,
-    "get_proposal_count_entry": 7,
-    "set_governance_vault": 10,
-    "set_timelock": 11,
-    "set_voting_period": 12,
-    "set_quorum_bps": 13,
-    "set_approval_bps": 14,
-    "set_proposal_threshold": 15,
-    "transfer_admin": 16,
-    "get_version": 17
-  },
-  "GuardianMultisig": {
-    "propose_emergency_action": 3,
-    "confirm": 4,
-    "execute": 5,
-    "add_guardian_via_proposal": 6,
-    "remove_guardian_via_proposal": 7,
-    "set_quorum_via_proposal": 8,
-    "get_proposal_entry": 9,
-    "get_guardians_info_entry": 10,
-    "is_guardian_entry": 11,
-    "set_timelock": 12,
-    "transfer_admin": 13,
-    "get_version": 14,
-    "request_emergency_withdraw": 15,
-    "execute_emergency_withdraw": 16
-  },
-  "OracleGovernance": {
-    "propose_add_feed": 3,
-    "propose_update_feed": 4,
-    "propose_remove_feed": 5,
-    "propose_set_param": 6,
-    "propose_set_reward": 7,
-    "propose_emergency_cb": 8,
-    "propose_reset_feed": 9,
-    "vote": 10,
-    "execute_proposal": 12,
-    "cancel_proposal": 13,
-    "set_voting_period": 14,
-    "set_quorum_bps": 15,
-    "set_approval_bps": 16,
-    "set_execution_delay": 17,
-    "set_oracle": 18,
-    "set_governance_vault": 19,
-    "set_miner_contract": 20,
-    "set_timelock": 21,
-    "set_guardian": 22,
-    "transfer_admin": 23,
-    "get_version": 24
-  },
-  "Timelock": {
-    "execute_proposal": 6,
-    "cancel_proposal": 7,
-    "set_min_delay": 9,
-    "set_max_delay": 10,
-    "set_governor": 11,
-    "set_guardian": 12,
-    "set_guardian_contract": 13,
-    "set_emergency": 14,
-    "transfer_admin": 15,
-    "get_version": 16,
-    "request_emergency_withdraw": 17,
-    "execute_emergency_withdraw": 18
+    "2": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "3": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "4": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64), Opaque(9), Number(U64)])"
+    },
+    "5": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "7": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "11": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "17": {
+      "kind": "All",
+      "params": "Some([Opaque(8), Number(U64)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Bool])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Bool])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "27": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "28": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "29": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    }
   },
   "FaucetContract": {
-    "refill_xel": 4,
-    "refill_vlt": 5,
-    "distribute": 16,
-    "set_claim_amounts": 7,
-    "set_cooldown_blocks": 8,
-    "set_lifetime_caps": 9,
-    "pause": 10,
-    "unpause": 11,
-    "set_vlt_contract": 12,
-    "set_vlt_asset": 13,
-    "set_registry": 14,
-    "set_timelock": 15,
-    "set_guardian": 16,
-    "transfer_admin": 17,
-    "get_version": 20,
-    "request_emergency_withdraw": 21,
-    "execute_emergency_withdraw": 22
-  },
-  "TreasuryVault": {
-    "propose": 9,
-    "confirm": 10,
-    "revoke": 11,
-    "execute": 12,
-    "add_signer": 13,
-    "remove_signer": 14,
-    "set_quorum": 15,
-    "deposit": 16,
-    "pause": 17,
-    "unpause": 18,
-    "set_timelock": 19,
-    "set_emergency": 20,
-    "transfer_admin": 21,
-    "get_proposal_entry": 22,
-    "get_signers_entry": 23,
-    "is_signer_entry": 24,
-    "get_balance_entry": 25,
-    "get_proposals_count_entry": 26,
-    "get_version": 27,
-    "request_emergency_withdraw": 28,
-    "execute_emergency_withdraw": 29
-  },
-  "Payroll": {
-    "add_employee": 4,
-    "update_employee": 5,
-    "remove_employee": 6,
-    "claim": 7,
-    "set_treasury": 8,
-    "set_registry": 9,
-    "set_timelock": 10,
-    "set_emergency": 11,
-    "pause": 12,
-    "unpause": 13,
-    "transfer_admin": 14,
-    "deposit_funds": 15,
-    "get_pending_entry": 17,
-    "get_employees_count_entry": 18,
-    "get_version": 19,
-    "request_emergency_withdraw": 20,
-    "execute_emergency_withdraw": 21
-  },
-  "RevenueShare": {
-    "deposit_revenue": 6,
-    "claim": 7,
-    "set_share_token": 8,
-    "set_total_supply": 9,
-    "set_registry": 10,
-    "set_timelock": 11,
-    "set_emergency": 12,
-    "pause": 13,
-    "unpause": 14,
-    "transfer_admin": 15,
-    "get_claimable_entry": 16,
-    "get_total_distributed_entry": 17,
-    "get_accum_per_token_entry": 18,
-    "get_version": 19,
-    "request_emergency_withdraw": 20,
-    "execute_emergency_withdraw": 21
-  },
-  "InsurancePool": {
-    "stake": 6,
-    "unstake": 7,
-    "claim_premium": 8,
-    "submit_claim": 9,
-    "approve_claim": 10,
-    "reject_claim": 11,
-    "pay_premium": 12,
-    "get_pool_info_entry": 13,
-    "get_staker_entry": 14,
-    "set_asset": 15,
-    "set_registry": 16,
-    "set_timelock": 17,
-    "set_guardian": 18,
-    "set_emergency": 19,
-    "pause": 20,
-    "unpause": 21,
-    "transfer_admin": 22,
-    "get_version": 23,
-    "request_emergency_withdraw": 24,
-    "execute_emergency_withdraw": 25
-  },
-  "PrivateInsurance": {
-    "create_policy": 7,
-    "buy_policy": 8,
-    "claim": 9,
-    "approve_claim": 10,
-    "cancel_policy": 11,
-    "expire_policy": 12,
-    "get_policy_entry": 13,
-    "get_policies_count_entry": 14,
-    "set_registry": 15,
-    "set_timelock": 16,
-    "set_emergency": 17,
-    "pause": 18,
-    "unpause": 19,
-    "transfer_admin": 20,
-    "get_version": 21,
-    "request_emergency_withdraw": 22,
-    "execute_emergency_withdraw": 23
-  },
-  "VaultInsurance": {
-    "insure_vault": 4,
-    "cancel_insurance": 5,
-    "trigger_auto_repay": 6,
-    "claim_residual_collateral": 7,
-    "stake_to_pool": 8,
-    "unstake_from_pool": 9,
-    "claim_staker_rewards": 10,
-    "set_vault_engine": 14,
-    "set_registry": 15,
-    "set_timelock": 16,
-    "set_guardian": 17,
-    "pause": 18,
-    "unpause": 19,
-    "transfer_admin": 20,
-    "get_version": 21
-  },
-  "AirdropClaim": {
-    "claim": 8,
-    "emergency_withdraw_unclaimed": 9,
-    "set_vlt_contract": 15,
-    "set_merkle_root": 16,
-    "set_registry": 17,
-    "set_timelock": 18,
-    "set_guardian": 19,
-    "pause": 20,
-    "unpause": 21,
-    "transfer_admin": 22,
-    "get_version": 23
-  },
-  "AirdropTracker": {
-    "record_mining_activity": 13,
-    "record_relayer_activity": 14,
-    "record_governance_vote": 15,
-    "record_governance_proposal": 16,
-    "record_chat_message": 17,
-    "record_chat_group_created": 18,
-    "record_liquidity_provided": 19,
-    "record_bug_bounty": 20,
-    "record_manual_attribution": 21,
-    "record_mainnet_address": 22,
-    "freeze_points": 23,
-    "finalize_distribution": 24,
-    "set_merkle_root": 25,
-    "record_manual_attribution_batch": 51,
-    "deduct_points": 52,
-    "disqualify_user": 53,
-    "revoke_disqualification": 54,
-    "force_qualify_user": 55,
-    "revoke_force_qualification": 56,
-    "set_user_bonus_multiplier": 57,
-    "set_manual_attribution_cap": 58,
-    "set_authorized_recorder": 65,
-    "set_vlt_contract": 66,
-    "set_registry": 67,
-    "set_timelock": 68,
-    "set_guardian": 69,
-    "pause": 70,
-    "unpause": 71,
-    "transfer_admin": 72,
-    "get_version": 73
-  },
-  "NotificationCenter": {
-    "register_preferences": 4,
-    "update_contact_info": 5,
-    "update_notification_prefs": 6,
-    "unsubscribe": 7,
-    "emit_notification_event": 10,
-    "set_registry": 11,
-    "set_timelock": 12,
-    "set_guardian": 13,
-    "pause": 14,
-    "unpause": 15,
-    "transfer_admin": 16,
-    "get_version": 17
-  },
-  "MultiCollateralVault": {
-    "create_multi_vault": 4,
-    "add_collateral": 5,
-    "remove_collateral": 6,
-    "borrow_multi": 7,
-    "repay_multi": 8,
-    "liquidate_multi": 9,
-    "set_asset_ltv": 14,
-    "set_registry": 15,
-    "set_timelock": 16,
-    "set_guardian": 17,
-    "pause": 18,
-    "unpause": 19,
-    "transfer_admin": 20,
-    "get_version": 21
-  },
-  "VaultEngineV3": {
-    "deposit": 17,
-    "borrow": 18,
-    "repay": 19,
-    "withdraw": 20,
-    "liquidate": 21,
-    "redeem": 22,
-    "get_health_factor_entry": 23,
-    "total_vaults_entry": 24,
-    "redemption_queue_size_entry": 25,
-    "get_vault_entry": 26,
-    "get_accrued_borrow_entry": 27,
-    "get_config_public_entry": 28,
-    "get_stability_fee_index_entry": 29,
-    "pause": 30,
-    "unpause": 31,
-    "set_min_cr_bps": 32,
-    "set_liq_penalty_bps": 33,
-    "set_protocol_fee_bps": 34,
-    "set_insurance_fee_bps": 35,
-    "set_redemption_fee_bps": 36,
-    "set_grace_period_blocks": 37,
-    "set_stability_fee_bps": 38,
-    "set_queue_cap": 39,
-    "set_registry": 40,
-    "set_xusd_contract": 41,
-    "set_xusd_asset": 42,
-    "set_treasury": 43,
-    "set_insurance_pool": 44,
-    "set_timelock": 45,
-    "set_guardian": 46,
-    "transfer_admin": 47,
-    "set_emergency": 48,
-    "get_version": 49,
-    "is_paused": 50,
-    "request_emergency_withdraw": 51,
-    "execute_emergency_withdraw": 52,
-    "deposit_confidential": 70,
-    "borrow_confidential": 71,
-    "repay_confidential": 72,
-    "update_channel_meta": 74
-  },
-  "VaultTemplates": {
-    "execute_safe_vault": 5,
-    "execute_leverage_loop": 6,
-    "execute_yield_farmer": 7,
-    "execute_psm_arbitrage": 8,
-    "execute_lp_strategy": 9,
-    "emergency_exit": 10,
-    "set_vault_engine": 12,
-    "set_psm": 13,
-    "set_vault_swap": 14,
-    "set_savings_rate": 15,
-    "set_registry": 16,
-    "set_timelock": 17,
-    "set_guardian": 18,
-    "pause": 19,
-    "unpause": 20,
-    "transfer_admin": 21,
-    "get_version": 22
-  },
-  "YieldOptimizer": {
-    "opt_in": 4,
-    "opt_out": 5,
-    "set_strategy": 6,
-    "execute_strategy": 7,
-    "reinvest_rewards": 8,
-    "claim_rewards": 9,
-    "set_savings_rate": 13,
-    "set_lending_market": 14,
-    "set_gov_vault": 15,
-    "set_registry": 16,
-    "set_timelock": 17,
-    "set_guardian": 18,
-    "pause": 19,
-    "unpause": 20,
-    "transfer_admin": 21,
-    "get_version": 22
-  },
-  "AnalyticsCollector": {
-    "record_tvl_snapshot": 5,
-    "record_swap_volume": 6,
-    "record_liquidation": 7,
-    "record_vault_opened": 8,
-    "record_vault_closed": 9,
-    "record_rewards_distributed": 10,
-    "record_health_factor_bucket": 11,
-    "record_active_user": 12,
-    "set_registry": 17,
-    "set_timelock": 18,
-    "set_guardian": 19,
-    "transfer_admin": 20,
-    "get_version": 21
-  },
-  "MinerDelegation": {
-    "register_miner_profile": 5,
-    "update_miner_profile": 6,
-    "delegate": 7,
-    "undelegate": 8,
-    "execute_undelegate": 9,
-    "claim_delegator_rewards": 10,
-    "claim_miner_rewards": 11,
-    "distribute_rewards": 12,
-    "apply_slashing": 13,
-    "set_miner_own_stake": 14,
-    "set_miner_contract_hash": 22,
-    "set_min_commission": 23,
-    "set_max_commission": 24,
-    "set_undelegate_delay": 25,
-    "set_cap_stake": 26,
-    "set_vlt_asset": 27,
-    "set_registry": 28,
-    "set_timelock": 29,
-    "set_guardian": 30,
-    "pause": 31,
-    "unpause": 32,
-    "transfer_admin": 33,
-    "get_miner_total_stake_entry": 34,
-    "get_version": 35
-  },
-  "MinerPool": {
-    "create_pool": 10,
-    "join_pool": 11,
-    "leave_pool": 12,
-    "kick_member": 13,
-    "distribute_pool_rewards_entry": 14,
-    "claim_pool_rewards": 15,
-    "get_pool_entry": 17,
-    "get_pool_members_entry": 18,
-    "get_pool_reputation_entry": 20,
-    "get_user_pool_entry": 21,
-    "get_pools_count_entry": 22,
-    "get_pool_pending_rewards_entry": 23,
-    "is_pool_member_entry": 24,
-    "set_miner_contract": 25,
-    "set_vlt_asset": 26,
-    "set_registry": 27,
-    "set_timelock": 28,
-    "set_emergency": 29,
-    "pause": 30,
-    "unpause": 31,
-    "transfer_admin": 32,
-    "get_version": 33,
-    "request_emergency_withdraw": 34,
-    "execute_emergency_withdraw": 35
+    "4": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Array(Opaque(9))])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "18": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([])"
+    }
   },
   "XelisVaultMiner": {
-    "register_miner": 15,
-    "enable_service": 16,
-    "disable_service": 17,
-    "increase_stake": 18,
-    "decrease_stake": 19,
-    "deregister_miner": 20,
-    "submit_heartbeat": 21,
-    "get_miner_stake_entry": 25,
-    "get_miner_reputation_entry": 26,
-    "get_miners_count_entry": 28,
-    "get_total_staked_entry": 29,
-    "get_base_reward_oracle_entry": 30,
-    "register_service": 31,
-    "unregister_service": 32,
-    "set_min_stake": 33,
-    "set_heartbeat_interval": 34,
-    "set_heartbeat_timeout": 35,
-    "set_base_reward_chat": 37,
-    "set_total_budget": 38,
-    "set_target_duration": 39,
-    "set_vlt_contract": 40,
-    "set_vlt_asset": 41,
-    "set_delegation_contract": 42,
-    "set_treasury": 43,
-    "set_registry": 44,
-    "set_timelock": 45,
-    "set_guardian": 46,
-    "set_emergency": 47,
-    "pause": 48,
-    "unpause": 49,
-    "transfer_admin": 50,
-    "get_version": 51,
-    "request_emergency_withdraw": 52,
-    "cancel_emergency_withdraw": 53,
-    "execute_emergency_withdraw": 54,
-    "set_compound": 63,
-    "set_rep_decay_params": 65,
-    "get_active_miners_count_entry": 75,
-    "get_miner_at_entry": 76,
-    "emergency_slash_miner": 77,
-    "emergency_ban_miner": 78,
-    "emergency_freeze_rewards": 79,
-    "set_min_stake_entry": 80,
-    "set_max_delegation_pct": 81,
-    "get_miner_own_stake_entry": 82,
-    "is_rewards_frozen_entry": 83
+    "12": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([String, Opaque(8), Number(U8)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Number(U8)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Number(U8)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "22": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U8), Opaque(9)])"
+    },
+    "23": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U8), Bool])"
+    },
+    "24": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U8)])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "27": {
+      "kind": "All",
+      "params": "Some([Number(U8)])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "29": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "30": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "31": {
+      "kind": "Entry",
+      "params": "Some([Number(U8), Opaque(8)])"
+    },
+    "32": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "33": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "34": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "35": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "36": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "37": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "38": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "39": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "40": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "41": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "42": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "43": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "44": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "45": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "46": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "47": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "48": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "49": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "50": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "51": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "52": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "53": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "54": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "55": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "56": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "57": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "58": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "59": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "60": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "61": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "62": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "63": {
+      "kind": "Entry",
+      "params": "Some([Bool])"
+    },
+    "64": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "65": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "66": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "67": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "69": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "70": {
+      "kind": "All",
+      "params": "Some([Array(Number(U64)), Number(U64)])"
+    },
+    "71": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "72": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "73": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "74": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "75": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "76": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "77": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64), String])"
+    },
+    "78": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), String])"
+    },
+    "79": {
+      "kind": "Entry",
+      "params": "Some([Bool])"
+    },
+    "80": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "81": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "82": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "83": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "84": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64), String])"
+    },
+    "85": {
+      "kind": "All",
+      "params": "Some([Opaque(9), String])"
+    },
+    "86": {
+      "kind": "All",
+      "params": "Some([Bool])"
+    },
+    "87": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    }
+  },
+  "StakedOracle": {
+    "8": {
+      "kind": "All",
+      "params": "Some([String, Opaque(8), Number(U8), Number(U64), Number(U64)])"
+    },
+    "9": {
+      "kind": "All",
+      "params": "Some([Number(U64), Number(U64), Number(U64), Number(U8)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([String, Opaque(8), Number(U8), Number(U64), Number(U64)])"
+    },
+    "11": {
+      "kind": "All",
+      "params": "Some([Number(U64), Bool])"
+    },
+    "12": {
+      "kind": "All",
+      "params": "Some([Number(U64), String])"
+    },
+    "13": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "20": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "21": {
+      "kind": "All",
+      "params": "Some([String])"
+    },
+    "22": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "23": {
+      "kind": "All",
+      "params": "Some([String])"
+    },
+    "24": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "25": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "26": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "27": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "28": {
+      "kind": "All",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "29": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "30": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "31": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "32": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "33": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "34": {
+      "kind": "All",
+      "params": "Some([String])"
+    },
+    "35": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "36": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "37": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "38": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "39": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "40": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "41": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "42": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "43": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "44": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "45": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "46": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "47": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "48": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "49": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "50": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "51": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "52": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "53": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "54": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "55": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "56": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "57": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "58": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "59": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    }
+  },
+  "MinerPool": {
+    "10": {
+      "kind": "Entry",
+      "params": "Some([String, String, Number(U64)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "29": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "30": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "31": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "32": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "33": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "34": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "35": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "36": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "37": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "38": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "39": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "40": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "41": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "42": {
+      "kind": "All",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "43": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "InterestRateModel": {
+    "3": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64), Number(U64), Number(U64)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "15": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "16": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "17": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "18": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "VaultEngineV3": {
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64), Opaque(8)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "29": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "30": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "31": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "32": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "33": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "34": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "35": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "36": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "37": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "38": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "39": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "40": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "41": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "42": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "43": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "44": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "45": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "46": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "47": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "48": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "49": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "50": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "51": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "52": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "53": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "54": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "55": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "56": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "57": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "58": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "59": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "60": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "61": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "62": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "63": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "64": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "65": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "66": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "67": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "68": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "69": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64), Number(U64)])"
+    },
+    "70": {
+      "kind": "Entry",
+      "params": "Some([Opaque(11), Opaque(17)])"
+    },
+    "71": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(11), Opaque(17), Opaque(17)])"
+    },
+    "72": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(11), Opaque(17)])"
+    },
+    "73": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "74": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Tuples([Opaque(11), Opaque(11), Opaque(11)])])"
+    },
+    "75": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    }
+  },
+  "SavingsRate": {
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "29": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "30": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "31": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "32": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "FlashLoan": {
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64), Opaque(8), Bytes])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "22": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "25": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "FlashCallback": {
+    "2": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64), Number(U64), Opaque(9), Bytes])"
+    },
+    "3": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "4": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([])"
+    }
+  },
+  "VaultSwapV2": {
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Opaque(8), Bool])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Opaque(8), Number(U64), Number(U64)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Opaque(8), Number(U64), Number(U64)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Opaque(8)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Opaque(8), Number(U64)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Opaque(8)])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Opaque(8)])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "29": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "30": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "31": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "32": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "33": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "34": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "35": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "36": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "37": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "38": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "39": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "40": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "41": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "42": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "43": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "44": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "45": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "46": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "47": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "48": {
+      "kind": "All",
+      "params": "Some([Opaque(8), Opaque(8)])"
+    },
+    "49": {
+      "kind": "All",
+      "params": "Some([Opaque(8), Opaque(8), Number(U64)])"
+    },
+    "50": {
+      "kind": "All",
+      "params": "Some([Opaque(8), Opaque(8)])"
+    },
+    "51": {
+      "kind": "All",
+      "params": "Some([Opaque(8), Opaque(8)])"
+    },
+    "52": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "53": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "54": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "55": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "56": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "57": {
+      "kind": "All",
+      "params": "Some([])"
+    }
+  },
+  "PSM": {
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "29": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "30": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "31": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "32": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "33": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "34": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "35": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "LendingMarket": {
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Opaque(8), Number(U64), Number(U64), Number(U64), Number(U64), Opaque(8)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9), Number(U64)])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "29": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "30": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "31": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "32": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "33": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "34": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "35": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "36": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "37": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "38": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "39": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "40": {
+      "kind": "All",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "41": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "42": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "PeerLoan": {
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64), Number(U64), Number(U64), Opaque(8), Number(U64)])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "25": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "26": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "27": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "SyndicatePool": {
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64), Number(U64), Number(U64), Opaque(8), Number(U64)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "29": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "30": {
+      "kind": "All",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "31": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "32": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "SealedBidAuction": {
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64), Opaque(8), Number(U64), Number(U64), Number(U64)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(8)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64), Number(U64)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9), Number(U64)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "29": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "30": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "31": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "32": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "33": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "34": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "35": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "36": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "PrivacyMixer": {
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Opaque(8), Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "8": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "9": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "10": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "11": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "12": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "29": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "AssetVault": {
+    "4": {
+      "kind": "Entry",
+      "params": "Some([String, String, Number(U8), Number(U64)])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "20": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "21": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "22": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "23": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "TreasuryVault": {
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Opaque(9), Number(U64), Bytes])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "29": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "30": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "31": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "32": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "33": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "34": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "35": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "RevenueShare": {
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64)])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Opaque(8)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "22": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Opaque(8)])"
+    },
+    "23": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "24": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "25": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "Payroll": {
+    "4": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Opaque(8), Number(U64), Number(U64), Number(U64)])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64), Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "22": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "23": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "24": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    }
+  },
+  "GovernanceVault": {
+    "4": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "7": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "8": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Bool])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "25": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "26": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "27": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "28": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "29": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "30": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "31": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "32": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "33": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "34": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "35": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "36": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64), Number(U64)])"
+    }
+  },
+  "Timelock": {
+    "5": {
+      "kind": "All",
+      "params": "Some([Opaque(8), Number(U16), Bytes, Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "8": {
+      "kind": "All",
+      "params": "Some([Opaque(8), Number(U16), Bytes])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "19": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "20": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "21": {
+      "kind": "All",
+      "params": "Some([])"
+    }
+  },
+  "GuardianMultisig": {
+    "3": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U8), Bytes])"
+    },
+    "4": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Bytes])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Bytes])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Bytes])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "17": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "18": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "20": {
+      "kind": "All",
+      "params": "Some([])"
+    }
+  },
+  "Governor": {
+    "3": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U16), Bytes, String])"
+    },
+    "4": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U8)])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "8": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "9": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "18": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "All",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "20": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "21": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "22": {
+      "kind": "All",
+      "params": "Some([])"
+    }
+  },
+  "OracleGovernance": {
+    "3": {
+      "kind": "Entry",
+      "params": "Some([String, Opaque(8), Number(U8), Number(U64), Number(U64), String])"
+    },
+    "4": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64), Number(U64), Number(U8), String])"
+    },
+    "5": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), String])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([Number(U8), Number(U64), String])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), String])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), String])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), String])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Bool])"
+    },
+    "11": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "25": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "26": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "27": {
+      "kind": "All",
+      "params": "Some([Number(U64), Opaque(9)])"
+    }
+  },
+  "VaultChat": {
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9), Bytes])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64), Number(U64), Number(U8)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Bool])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "29": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "30": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "31": {
+      "kind": "All",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "32": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "33": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "34": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "35": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "36": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "37": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "38": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Bytes, Number(U64)])"
+    },
+    "39": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "40": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "41": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "42": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "43": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "44": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "45": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "46": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "47": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "48": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Bytes, Number(U64)])"
+    },
+    "49": {
+      "kind": "All",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "50": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "51": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U8)])"
+    },
+    "52": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "53": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "55": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "56": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "57": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(8)])"
+    },
+    "58": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "59": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9), Bytes])"
+    },
+    "60": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "61": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "62": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "63": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Bytes, Number(U64), Number(U64)])"
+    },
+    "64": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "65": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "66": {
+      "kind": "Entry",
+      "params": "Some([String, Number(U64), Number(U64)])"
+    },
+    "67": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "68": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "69": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "70": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Opaque(9)])"
+    },
+    "71": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "72": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "73": {
+      "kind": "Entry",
+      "params": "Some([Number(U8), Number(U64), Number(U64), Number(U64), Number(U8)])"
+    },
+    "74": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64), Number(U64), Number(U64)])"
+    },
+    "75": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "76": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "77": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "78": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64), Opaque(9)])"
+    },
+    "79": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Opaque(9)])"
+    },
+    "80": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Opaque(9)])"
+    },
+    "81": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "82": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "83": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64)])"
+    },
+    "84": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "85": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "86": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "87": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), String])"
+    },
+    "88": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "89": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Opaque(9)])"
+    },
+    "90": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "92": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "93": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "94": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "95": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "96": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "97": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "98": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "99": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64), Number(U64)])"
+    },
+    "100": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "101": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64), Opaque(8), String])"
+    },
+    "102": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "103": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "104": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "105": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "106": {
+      "kind": "Entry",
+      "params": "Some([String, Number(U64), Number(U64), Opaque(8)])"
+    },
+    "107": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "108": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "109": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "110": {
+      "kind": "All",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "111": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "112": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Bytes, Number(U64)])"
+    },
+    "113": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "114": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "115": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "116": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "117": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "118": {
+      "kind": "Entry",
+      "params": "Some([String])"
+    },
+    "119": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "120": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "121": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "122": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64), String])"
+    },
+    "123": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "125": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "126": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "127": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U8)])"
+    },
+    "128": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "129": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "130": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9), Number(U8)])"
+    },
+    "131": {
+      "kind": "All",
+      "params": "Some([Number(U64), Opaque(9)])"
+    },
+    "132": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Opaque(9), Number(U64)])"
+    },
+    "133": {
+      "kind": "All",
+      "params": "Some([Number(U64), Opaque(9)])"
+    }
+  },
+  "FounderVesting": {
+    "6": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "7": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "8": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "9": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([])"
+    }
+  },
+  "FeeDistributor": {
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8), Number(U64)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "12": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "13": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "14": {
+      "kind": "All",
+      "params": "Some([Opaque(8)])"
+    },
+    "15": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([])"
+    }
+  },
+  "MinerDelegation": {
+    "5": {
+      "kind": "Entry",
+      "params": "Some([String, String, Number(U64)])"
+    },
+    "6": {
+      "kind": "Entry",
+      "params": "Some([String, String, Number(U64)])"
+    },
+    "7": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64), Bool])"
+    },
+    "8": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "9": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "10": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "11": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "12": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "15": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "16": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "17": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "18": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "19": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "20": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "21": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "24": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "26": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "27": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "29": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "30": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "31": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "32": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "33": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "34": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "35": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "36": {
+      "kind": "All",
+      "params": "Some([Opaque(9), Number(U64)])"
+    }
+  },
+  "AirdropTracker": {
+    "13": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64), Number(U64)])"
+    },
+    "14": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64), Number(U64)])"
+    },
+    "15": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "16": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "17": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "18": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "19": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64)])"
+    },
+    "20": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U8)])"
+    },
+    "21": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U8), Number(U64), String])"
+    },
+    "22": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "23": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "25": {
+      "kind": "Entry",
+      "params": "Some([Number(U64), Number(U64)])"
+    },
+    "26": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "27": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "28": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "29": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "30": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "31": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "32": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "33": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "34": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "35": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "36": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "37": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "38": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "39": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "40": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "41": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "42": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "43": {
+      "kind": "All",
+      "params": "Some([Number(U8)])"
+    },
+    "44": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "45": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "46": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "47": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "48": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "49": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "50": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "51": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "52": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "53": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "54": {
+      "kind": "Entry",
+      "params": "Some([Array(Opaque(9)), Number(U8), Number(U64), String])"
+    },
+    "55": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U8), Number(U64), String])"
+    },
+    "56": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), String])"
+    },
+    "57": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), String])"
+    },
+    "58": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), String])"
+    },
+    "59": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), String])"
+    },
+    "60": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Number(U64), String])"
+    },
+    "61": {
+      "kind": "Entry",
+      "params": "Some([Number(U64)])"
+    },
+    "62": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "63": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "64": {
+      "kind": "All",
+      "params": "Some([Opaque(9)])"
+    },
+    "65": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "66": {
+      "kind": "All",
+      "params": "Some([Number(U64)])"
+    },
+    "67": {
+      "kind": "All",
+      "params": "Some([])"
+    },
+    "68": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9), Bool])"
+    },
+    "69": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "70": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "71": {
+      "kind": "Entry",
+      "params": "Some([Opaque(8)])"
+    },
+    "72": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "73": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "74": {
+      "kind": "Entry",
+      "params": "Some([])"
+    },
+    "75": {
+      "kind": "Entry",
+      "params": "Some([Opaque(9)])"
+    },
+    "76": {
+      "kind": "Entry",
+      "params": "Some([])"
+    }
   }
 }

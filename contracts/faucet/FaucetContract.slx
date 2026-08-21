@@ -168,7 +168,7 @@ entry distribute(addresses: Address[]) -> u64 {
     let current_topo: u64 = get_current_topoheight()
 
     // F-17 fix (LOW): pre-check faucet balance against total XEL needed.
-    let total_xel_needed: u64 = xel_amount * addresses.len()
+    let total_xel_needed: u64 = xel_amount * (addresses.len() as u64)
     require(total_xel_needed >= xel_amount, "ovf")
     let faucet_xel_balance: u64 = get_balance_for_asset(Hash::zero()).unwrap_or(0)
     require(faucet_xel_balance >= total_xel_needed, "insfaucetxel")
@@ -179,7 +179,7 @@ entry distribute(addresses: Address[]) -> u64 {
     // F-17 fix (LOW): pre-check faucet balance against total VLT needed (if VLT configured).
     if vlt_hash_opt.is_some() && vlt_asset_opt.is_some() {
         let vlt_asset: Hash = vlt_asset_opt.expect("err")
-        let total_vlt_needed: u64 = vlt_amount * addresses.len()
+        let total_vlt_needed: u64 = vlt_amount * (addresses.len() as u64)
         require(total_vlt_needed >= vlt_amount, "ovf")
         let faucet_vlt_balance: u64 = get_balance_for_asset(vlt_asset).unwrap_or(0)
         require(faucet_vlt_balance >= total_vlt_needed, "insfaucetvlt")

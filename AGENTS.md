@@ -99,3 +99,30 @@ Flattened `TransactionTypeBuilder`, **snake_case** keys at top level of params:
 - Order + config steps: `docs/DEPLOYMENT_GUIDE.md` (13 phases, 37 core contracts; +14 brainstorming contracts exist in repo, 51 total).
 - After EACH deployment/config: update `docs/DEPLOYMENTS.md`, commit to GitHub.
 - Record tx hashes as contract addresses. Verify state via `get_contract_data` after each config step.
+
+# v11.5 BUILD LOG (Super Z audit fixes applied + compile fixes)
+
+## Compilation status — 34/34 core contracts OK (commit adb13f0 + local fixes)
+
+Fixes applied on top of adb13f0 (Silex requires fn/const defined BEFORE use; len() returns u32):
+
+1. **AirdropTracker.slx**: moved `fn build_leaderboard_index` before `entry finalize_distribution`
+   (was called at line 623, defined at 721 → "No matching function found").
+   Also: `require(!s.load(K).unwrap_or(false))` split into typed let + require;
+   `emit_event(... s.load(QUALIFIED_COUNT_KEY).unwrap_or(0).to_string(...))` split into typed let.
+2. **FeeDistributor.slx**: moved `fn is_authorized_fee_source` before `fn only_protocol_contract`;
+   loop var `let i: u64` → `u32` (names.len() is u32).
+3. **VaultChat.slx**: moved `const RELAYER_BOND_PREFIX` + `const MIN_RELAYER_BOND` from line ~2229
+   to top constants section (used at line 521 by set_relayer F-13 fix).
+4. **FaucetContract.slx**: `xel_amount * addresses.len()` → `* (addresses.len() as u64)` (2 sites).
+
+AnalyticsCollector NOT in the 38-core deploy list (DO NOT DEPLOY YET) — left untouched.
+
+## Next: regenerate docs/entry_chunk_ids.json for the 34 core contracts, then deploy
+## per docs/DEPLOYMENT_GUIDE.md phases 1–8,10–13 (Phase 9 Insurance SKIPPED per owner).
+
+## ✅ Chunk map régénéré (docs/entry_chunk_ids.json)
+34 contrats core, 1031 chunks Entry/All mappés depuis le compile tool (sortie sur STDERR,
+pas stdout — piège subprocess). Bytecodes dans /tmp/deploy_<Name>.hex et /tmp/chunkmap_<Name>.hex.
+
+## PROCHAINE ÉTAPE: déploiement phases 1-8, 10-13 (Phase 9 Insurance SKIPPED)

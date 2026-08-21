@@ -66,6 +66,12 @@ const RELAYER_PREFIX: string = "relayer_"
 const GROUPS_COUNT_KEY: string = "gc"
 const MINER_CONTRACT_KEY: string = "mc"
 
+// ── R3: Relayer Bonding (caution) ────────────────────────────────────────
+// Relayers must stake a bond to become relayers
+// Bond can be slashed if they misbehave
+const RELAYER_BOND_PREFIX: string = "rbond_"
+const MIN_RELAYER_BOND: u64 = 5000000000  // 50 VLT
+
 const CHAT_SERVICE_ID: u64 = 2
 
 const EMERGENCY_REQUEST_TOPO_KEY: string = "ert"
@@ -2223,11 +2229,6 @@ entry update_free_tier(free_daily_limit: u64, free_wallet_slots: u64) -> u64 {
 // v10.0: PHASE 1 RELAYER IMPROVEMENTS (from external audit)
 // ============================================================================
 
-// ── R3: Relayer Bonding (caution) ────────────────────────────────────────
-// Relayers must stake a bond to become relayers
-// Bond can be slashed if they misbehave
-const RELAYER_BOND_PREFIX: string = "rbond_"
-const MIN_RELAYER_BOND: u64 = 5000000000  // 50 VLT
 
 // Relayer stakes a bond (required to become relayer)
 entry stake_relayer_bond(bond_amount: u64) -> u64 {

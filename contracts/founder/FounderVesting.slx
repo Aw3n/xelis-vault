@@ -125,6 +125,19 @@ fn only_guardian_or_admin() {
 
 // Entry 0: Claim vested tokens (founder only)
 // After cliff, linear vesting over 3 years
+// F-14 fix (MEDIUM): the previous version updated CLAIMED_KEY before the
+//   cross-contract VLT transfer and discarded the transfer's return value
+//   (`let _ = vlt.call(...)`). If the VLT call returned a non-zero (failure)
+//   status without the runtime reverting, claimed accounting would advance
+//   while tokens never actually left the vesting contract — permanently
+//   under-paying the founder with no way to re-claim.
+//   Now we:
+//     1) perform the transfer FIRST (capture result),
+//     2) require(result == 0, "xferfail") before updating CLAIMED_KEY,
+//     3) use the native transfer() instead of an invalid vlt.call(4u16, ...)
+//        — VLTToken chunk 4 is create_asset (no args), not transfer_to.
+//        The vesting contract holds its own VLT balance and transfers it
+//        directly to the founder EOA via the native asset transfer.
 entry claim_founder_tokens() -> u64 {
     when_not_paused()
     non_reentrant_fv()
@@ -151,16 +164,20 @@ entry claim_founder_tokens() -> u64 {
     let claimable: u64 = vested - claimed
     require(claimable > 0, "nothing")
 
-    // Update claimed amount
-    s.store(CLAIMED_KEY, claimed + claimable)
+    // F-14 fix: perform the transfer FIRST and verify it succeeded.
+    // Use native transfer() — VLT is held by this contract as a regular asset
+    // balance, so we move it directly to the founder EOA. No VLTToken entry
+    // call is needed (and chunk 4 is create_asset, not transfer_to).
+    let vlt_asset_opt: optional<Hash> = s.load(VLT_ASSET_KEY)
+    let asset: Hash = Hash::zero()  // default to XEL if VLT_ASSET_KEY not set
+    if vlt_asset_opt.is_some() {
+        asset = vlt_asset_opt.expect("err")
+    }
+    let ok: bool = transfer(founder, claimable, asset)
+    require(ok, "xferfail")
 
-    // Transfer VLT to founder
-    let vlt_contract_opt: optional<Hash> = s.load(VLT_CONTRACT_KEY)
-    require(vlt_contract_opt.is_some(), "novlt")
-    let vlt_hash: Hash = vlt_contract_opt.expect("err")
-    let vlt: Contract = Contract::new(vlt_hash).expect("err")
-    // VLTToken entry 4 = transfer_to (transfer tokens to an address)
-    let _ = vlt.call(4u16, [founder, claimable], {})
+    // F-14 fix: only update CLAIMED_KEY AFTER the transfer succeeds.
+    s.store(CLAIMED_KEY, claimed + claimable)
 
     emit_event(0u64, ["FounderTokensClaimed", claimable.to_string(10u32)])
     release_reentrancy_fv()

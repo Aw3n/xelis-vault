@@ -114,12 +114,16 @@ entry flash_loan(
     let total_to_repay: u64 = amount + fee
     require(total_to_repay >= amount, "ovf")
 
-    // Send the principal to the callback contract
+    // F-02 fix (CRITICAL): Send the principal to the callback contract (NOT to the originating caller EOA).
+    //   The callback contract is the one that operates on the principal during the loan.
     let caller: Address = get_caller().expect("err")
     let cb: Contract = Contract::new(callback_contract).expect("err")
-    // Callback contract must implement entry 0 with signature (asset, amount, fee, caller_addr, callback_data)
-    let _ = transfer(caller, amount, asset)
-    let result: u64 = cb.call(2u16, [asset, amount, fee, caller, callback_data], {})
+    require(transfer_contract(callback_contract, amount, asset), "xferfail")
+    // F-02 fix (CRITICAL): invoke on_flash_loan at its real chunk ID.
+    //   FlashCallback.on_flash_loan is now an `entry` (was pub fn — never callable).
+    //   Per docs/entry_chunk_ids.json post-recompile, on_flash_loan is chunk 8 on FlashCallback.
+    //   The previous `cb.call(2u16, ...)` was hitting set_flash_loan (chunk 4) and corrupting admin storage.
+    let result: u64 = cb.call(8u16, [asset, amount, fee, caller, callback_data], {})
     require(result == 0, "cbfail")
 
     // After callback, balance must be >= balance_before + fee

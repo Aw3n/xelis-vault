@@ -74,6 +74,8 @@ const SHARE_COUNT_KEY: string = "shc"
 const FOUNDER_PENDING_KEY: string = "fp"       // founder's accumulated revenue
 const TOTAL_DISTRIBUTED_KEY: string = "td"     // all-time total distributed
 const TOTAL_RECEIVED_KEY: string = "tr"        // all-time total received from FeeDistributor
+// F-04 fix (HIGH): stored hash of the canonical FeeDistributor contract.
+const FEE_DISTRIBUTOR_KEY: string = "fdh"
 
 const MAX_CONTRIBUTORS: u64 = 10
 const MAX_SHARE_BPS: u64 = 5000                // max 50% per contributor
@@ -136,15 +138,24 @@ fn only_guardian_or_admin() {
     only_admin()
 }
 
-// Only FeeDistributor contract can call receive_fee
+// Only the registered FeeDistributor contract can call receive_fee.
+// F-04 fix (HIGH): the previous version accepted ANY contract caller
+//   (only checked get_contract_caller().is_some()), allowing a throwaway
+//   contract to inject arbitrary asset/amount pairs into the revenue-share
+//   accounting. Now we store FEE_DISTRIBUTOR_KEY and compare explicitly.
 fn only_fee_distributor() {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     let admin: Address = s.load(ADMIN_KEY).expect("err")
     if caller == admin { return }
-    // Allow contract calls (FeeDistributor is a contract)
+    // F-04 fix: require that the contract caller is the registered FeeDistributor hash.
+    let fd_opt: optional<Hash> = s.load(FEE_DISTRIBUTOR_KEY)
+    require(fd_opt.is_some(), "nofd")
+    let fd: Hash = fd_opt.expect("err")
     let cc_opt: optional<Hash> = get_contract_caller()
     require(cc_opt.is_some(), "notauth")
+    let cc: Hash = cc_opt.expect("err")
+    require(cc == fd, "notfd")
 }
 
 // Calculate the effective percentage for a contributor at current topoheight
@@ -498,4 +509,23 @@ entry transfer_admin(new_admin: Address) -> u64 {
 // Entry 22: Get version
 entry get_version() -> string {
     return VERSION
+}
+
+// Entry 23 (after recompile): Set FeeDistributor contract hash (admin only) — F-04 fix.
+// Configures the canonical FeeDistributor whose receive_fee calls are accepted.
+entry set_fee_distributor(fdh: Hash) -> u64 {
+    only_admin()
+    require(fdh != Hash::zero(), "badhash")
+    let s: Storage = Storage::new()
+    s.store(FEE_DISTRIBUTOR_KEY, fdh)
+    emit_event(0u64, ["FeeDistributorSet", fdh.to_hex()])
+    return 0
+}
+
+// Pub fn: Get the configured FeeDistributor hash (Hash::zero() if not set).
+pub fn get_fee_distributor() -> Hash {
+    let s: Storage = Storage::new()
+    let fd_opt: optional<Hash> = s.load(FEE_DISTRIBUTOR_KEY)
+    if fd_opt.is_none() { return Hash::zero() }
+    return fd_opt.expect("err")
 }

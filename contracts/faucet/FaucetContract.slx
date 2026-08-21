@@ -149,6 +149,10 @@ entry refill_vlt(amount: u64) -> u64 {
 // The admin calls this with a list of addresses that requested testnet funds.
 // Each address receives 100 XEL + 200 VLT (configurable).
 // Cooldown and lifetime caps are enforced per address.
+// F-17 fix (LOW): pre-checks the faucet's own XEL and VLT balances against
+//   addresses.len() * amount BEFORE entering the loop, so a partially-funded
+//   faucet fails fast with a clear "insufficient faucet balance" message
+//   instead of reverting partway through the batch.
 // addresses: array of addresses (max 50 per call for gas limits)
 entry distribute(addresses: Address[]) -> u64 {
     when_not_paused()
@@ -163,8 +167,23 @@ entry distribute(addresses: Address[]) -> u64 {
     let vlt_cap: u64 = s.load(VLT_LIFETIME_CAP_KEY).unwrap_or(DEFAULT_VLT_CAP)
     let current_topo: u64 = get_current_topoheight()
 
+    // F-17 fix (LOW): pre-check faucet balance against total XEL needed.
+    let total_xel_needed: u64 = xel_amount * addresses.len()
+    require(total_xel_needed >= xel_amount, "ovf")
+    let faucet_xel_balance: u64 = get_balance_for_asset(Hash::zero()).unwrap_or(0)
+    require(faucet_xel_balance >= total_xel_needed, "insfaucetxel")
+
     let vlt_hash_opt: optional<Hash> = s.load(VLT_CONTRACT_KEY)
     let vlt_asset_opt: optional<Hash> = s.load(VLT_ASSET_KEY)
+
+    // F-17 fix (LOW): pre-check faucet balance against total VLT needed (if VLT configured).
+    if vlt_hash_opt.is_some() && vlt_asset_opt.is_some() {
+        let vlt_asset: Hash = vlt_asset_opt.expect("err")
+        let total_vlt_needed: u64 = vlt_amount * addresses.len()
+        require(total_vlt_needed >= vlt_amount, "ovf")
+        let faucet_vlt_balance: u64 = get_balance_for_asset(vlt_asset).unwrap_or(0)
+        require(faucet_vlt_balance >= total_vlt_needed, "insfaucetvlt")
+    }
 
     let i: u32 = 0
     while i < addresses.len() {
@@ -187,15 +206,18 @@ entry distribute(addresses: Address[]) -> u64 {
         require(xel_claimed + xel_amount <= xel_cap, "xlcap")
         require(vlt_claimed + vlt_amount <= vlt_cap, "vlcap")
 
-        // Transfer XEL to addr
-        let _ = transfer(addr, xel_amount, Hash::zero())
+        // Transfer XEL to addr — F-17 fix: check return value.
+        let ok_xel: bool = transfer(addr, xel_amount, Hash::zero())
+        require(ok_xel, "xferfail")
 
-        // Transfer VLT to addr (if VLT configured)
+        // Transfer VLT to addr (if VLT configured) — F-17 fix: use native transfer()
+        // with the VLT asset hash. VLT held by this contract as a regular asset
+        // balance moves directly to addr. (Previous code called vlt.call(4u16, ...)
+        // which is VLTToken.create_asset and does not transfer anything.)
         if vlt_hash_opt.is_some() && vlt_asset_opt.is_some() {
-            let vlt_hash: Hash = vlt_hash_opt.expect("err")
-            let vlt: Contract = Contract::new(vlt_hash).expect("err")
-            // VLTToken entry 4 = transfer_to
-            let _ = vlt.call(4u16, [addr, vlt_amount], {})
+            let vlt_asset: Hash = vlt_asset_opt.expect("err")
+            let ok_vlt: bool = transfer(addr, vlt_amount, vlt_asset)
+            require(ok_vlt, "vltfail")
         }
 
         // Update tracking
@@ -364,8 +386,11 @@ entry execute_emergency_withdraw() -> u64 {
         let vlt_asset: Hash = s.load(VLT_ASSET_KEY).expect("err")
         let vlt_balance: u64 = get_balance_for_asset(vlt_asset).unwrap_or(0)
         if vlt_balance > 0 {
-            let vlt: Contract = Contract::new(vlt_hash).expect("err")
-            let _ = vlt.call(4u16, [admin, vlt_balance], {})
+            // F-17-related fix: use native transfer() instead of vlt.call(4u16, ...)
+            //   (chunk 4 is mint_split, not transfer_to). The faucet holds its own
+            //   VLT asset balance; native transfer() moves it directly to admin.
+            let ok_vlt: bool = transfer(admin, vlt_balance, vlt_asset)
+            require(ok_vlt, "vltfail")
         }
     }
 

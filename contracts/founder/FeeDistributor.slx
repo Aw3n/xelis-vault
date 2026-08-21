@@ -130,16 +130,50 @@ fn only_guardian_or_admin() {
     only_admin()
 }
 
-// Only authorized protocol contracts can call collect_fee
+// Only authorized protocol contracts can call collect_fee.
+// F-05 fix (HIGH): the previous version accepted ANY contract caller
+//   (only checked get_contract_caller().is_some()), which would let a
+//   throwaway contract pollute burn/treasury/founder accounting. Now we
+//   resolve the registry and require that the contract caller is one of the
+//   registered fee-generating protocol contracts.
 fn only_protocol_contract() {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     let admin: Address = s.load(ADMIN_KEY).expect("err")
     let guardian: Address = s.load(GUARDIAN_KEY).expect("err")
     if caller == admin || caller == guardian { return }
-    // Allow any contract call (cross-contract from VaultSwap, PSM, etc.)
+    // F-05 fix: require an explicit contract caller AND that it is registered
+    //   in the ContractRegistry under one of the known fee-source names.
     let cc_opt: optional<Hash> = get_contract_caller()
     require(cc_opt.is_some(), "notauth")
+    let cc: Hash = cc_opt.expect("err")
+    require(is_authorized_fee_source(cc), "notauth")
+}
+
+// F-05 fix: check whether `caller_hash` matches one of the registered
+//   protocol fee-source contracts. Returns true on match, false otherwise.
+//   Reads the registry hash from storage; if the registry is not configured,
+//   returns false (fails closed) so the admin MUST wire the registry before
+//   the protocol can send fees.
+fn is_authorized_fee_source(caller_hash: Hash) -> bool {
+    let s: Storage = Storage::new()
+    let reg_opt: optional<Hash> = s.load(REGISTRY_KEY)
+    if reg_opt.is_none() { return false }
+    let reg_hash: Hash = reg_opt.expect("err")
+    if reg_hash == Hash::zero() { return false }
+    let reg: Contract = Contract::new(reg_hash).expect("err")
+    // Iterate the known protocol fee-source names. Use ContractRegistry's
+    //   non-panicking try_get_entry (chunk 14, F-05 fix) so a missing name
+    //   returns Hash::zero() instead of reverting the whole call.
+    let names: string[] = ["VaultSwapV2", "PSM", "VaultEngineV3", "FlashLoan", "VaultChat", "LendingMarket", "PeerLoan", "SyndicatePool", "InsurancePool", "SealedBidAuction"]
+    let i: u64 = 0
+    while i < names.len() {
+        let name: string = names[i]
+        let h: Hash = reg.call(14u16, [name], {})
+        if h != Hash::zero() && h == caller_hash { return true }
+        i += 1
+    }
+    return false
 }
 
 // Entry 0: Collect fee from a protocol contract

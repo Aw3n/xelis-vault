@@ -739,7 +739,9 @@ pub fn distribute_reward(miner_addr: Address, service_id: u8, is_valid: bool) ->
 
     let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("err")
     let vlt: Contract = Contract::new(vlt_hash).expect("err")
-    let _ = vlt.call(4u16, [miner_addr, reward], {})
+    // F-18r-related fix: VLTToken chunk 27 = mint_to_entry (chunk 4 is mint_split, chunk 9 = create_asset).
+    let mint_result: u64 = vlt.call(27u16, [miner_addr, reward], {})
+    require(mint_result == 0, "mintfail")
 
     miner.total_rewards_earned += reward
     miner.valid_submissions += 1

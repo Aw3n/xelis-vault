@@ -1,30 +1,24 @@
 // ============================================================================
-// FlashCallback.slx — XELIS Vault v5.0
+// FlashCallback.slx — XELIS Vault v11.5
 // ----------------------------------------------------------------------------
-// Trivial flash-loan callback interface, preserved from v4.2.
+// Trivial flash-loan callback interface.
 //
-// v5.0 changes:
-//   - on_flash_loan converted from `pub fn` to `entry` (ID 0) so the FlashLoan
-//     v5.0 contract can invoke it via cb.call(0u16, [asset, amount, fee,
-//     caller, callback_data], {}). FlashLoan v5.0 documents this exact entry
-//     signature.
-//   - FIX: the v4.2 `fl.call(1u16, [total_repay], { asset: total_repay })`
-//     used an invalid JS-object kwargs literal. Per the Silex API constraint
-//     ("The 3rd argument to Contract::call must be `{}`"), the kwargs are now
-//     `{}`. The callback still verifies the contract's own balance covers the
-//     total repayment and calls back into the FlashLoan contract before
-//     returning 0.
+// AUDIT FIX F-02 (CRITICAL) v11.5:
+//   on_flash_loan was declared `pub fn` and was therefore NOT callable
+//   cross-contract (it did not appear in `docs/entry_chunk_ids.json`).
+//   FlashLoan was calling `cb.call(2u16, ...)`, which on FlashCallback hits
+//   `set_flash_loan` (chunk 4) — silently corrupting admin storage instead
+//   of invoking the callback handler.
+//   Fix: declare on_flash_loan as a real `entry` so it gets a chunk ID in the
+//   compiled module, and add an explicit cc == flash_loan_hash check so only
+//   the registered FlashLoan contract can invoke it.
 //
-// Entry IDs (sequential, starting at 0):
-//   0 : on_flash_loan
-//   1 : claim_profit
-//   2 : set_flash_loan
-//   3 : set_registry
-//   4 : transfer_admin
-//   5 : get_version
+// Entry IDs (auto-generated, see docs/entry_chunk_ids.json after recompile):
+//   claim_profit, set_flash_loan, set_registry, transfer_admin, get_version,
+//   on_flash_loan (new entry, appended at the end so existing IDs are preserved)
 // ============================================================================
 
-const VERSION: string = "FlashCallback v11.3"
+const VERSION: string = "FlashCallback v11.5"
 
 const ADMIN_KEY: string = "a"
 const FLASH_LOAN_KEY: string = "fl"
@@ -48,19 +42,24 @@ fn only_admin() {
 // ENTRIES
 // ============================================================================
 
-// ID 0: on_flash_loan — invoked by FlashLoan v5.0 entry 0 (flash_loan)
-// Signature MUST be (asset: Hash, amount: u64, fee: u64, caller: Address,
-// data: bytes) -> u64 per FlashLoan v5.0's documented callback contract.
+// ID 0: on_flash_loan — invoked by FlashLoan.flash_loan (chunk 6).
+// F-02 fix (CRITICAL): now declared `entry` (was pub fn) so the chunk ID is
+//   actually assigned by the compiler and the function is reachable cross-contract.
+//   Per docs/entry_chunk_ids.json (post-recompile), the new chunk ID will be 8
+//   (after the 5 existing entries 3-7 + 2 internal helpers). FlashLoan will be
+//   updated to call the correct chunk ID.
+//   Added explicit cc == flash_loan_hash check so only the registered FlashLoan
+//   contract can invoke this entry.
 // on flash loan.
-// @caller: user / authorized caller
+// @caller: FlashLoan contract (cross-contract)
 // @params: asset - Hash
 // @params: amount - u64
 // @params: fee - u64
 // @params: caller - Address
 // @params: data - bytes
 // @returns: u
-// @security: standard access control
-pub fn on_flash_loan(
+// @security: caller must be the registered FlashLoan contract (FLASH_LOAN_KEY)
+entry on_flash_loan(
     asset: Hash,
     amount: u64,
     fee: u64,
@@ -69,6 +68,12 @@ pub fn on_flash_loan(
 ) -> u64 {
     let s: Storage = Storage::new()
     let flash_loan_hash: Hash = s.load(FLASH_LOAN_KEY).expect("err")
+
+    // F-02 fix: ensure only the registered FlashLoan contract can invoke this entry.
+    let cc_opt: optional<Hash> = get_contract_caller()
+    require(cc_opt.is_some(), "notfl")
+    let cc: Hash = cc_opt.expect("err")
+    require(cc == flash_loan_hash, "notfl")
 
     let total_repay: u64 = amount + fee
     require(total_repay >= amount, "ovf")

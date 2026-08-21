@@ -309,3 +309,24 @@ pub fn get_previous(name: string) -> Hash {
 // @returns: 0 on success
 // @security: only_admin — note: pub fn in Silex is read-only; prefer entry set_timelock (ID 8) for state mutation
 pub fn set_timelock_tl(tl: Hash) -> u64 { only_admin() Storage::new().store(TIMELOCK_KEY, tl) return 0 }
+
+// ============================================================================
+// AUDIT FIX F-05/F-06/F-07 (v11.5) — try_get_entry
+// ----------------------------------------------------------------------------
+// Non-panicking variant of get_entry (chunk 2). Returns Hash::zero() if `name`
+// is not registered instead of reverting. Lets access-control guards in
+// FeeDistributor / AnalyticsCollector / CreditScore iterate candidate
+// protocol-contract names without risking a revert on the first miss.
+// Appended at the end so existing entry IDs 0..=13 are preserved.
+// ============================================================================
+// ID 14 (after recompile): try_get_entry
+// @caller: anyone (read-only, cross-contract callable)
+// @params: name - contract name to look up
+// @returns: registered hash, or Hash::zero() if not found
+// @security: read-only, no access restrictions
+entry try_get_entry(name: string) -> Hash {
+    let s: Storage = Storage::new()
+    let h_opt: optional<Hash> = s.load(CURRENT_PREFIX + name)
+    if h_opt.is_none() { return Hash::zero() }
+    return h_opt.expect("err")
+}

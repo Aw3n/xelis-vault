@@ -59,6 +59,10 @@ const CLAIMED_PREFIX: string = "cl_"     // testnet_addr → bool
 const TOTAL_CLAIMED_KEY: string = "tc"
 const CLAIMANTS_COUNT_KEY: string = "cc"
 const DEPLOY_TOPO_KEY: string = "dt"
+// F-01 fix (CRITICAL): track the airdrop envelope so emergency_withdraw can compute the remainder.
+const TOTAL_DISTRIBUTABLE_KEY: string = "td"
+const WITHDRAWN_KEY: string = "wd"
+const DEFAULT_TOTAL_DISTRIBUTABLE: u64 = 50000000000000  // 500,000 VLT @ 1e8 atomic
 
 // Emergency withdraw after 6 months (6 * 30 * 17280 = 3,110,400 blocks)
 const EMERGENCY_DELAY_BLOCKS: u64 = 3110400
@@ -89,6 +93,8 @@ hook constructor() -> u64 {
     s.store(TOTAL_CLAIMED_KEY, 0u64)
     s.store(CLAIMANTS_COUNT_KEY, 0u64)
     s.store(DEPLOY_TOPO_KEY, get_current_topoheight())
+    s.store(TOTAL_DISTRIBUTABLE_KEY, DEFAULT_TOTAL_DISTRIBUTABLE)
+    s.store(WITHDRAWN_KEY, 0u64)
     s.store(RG_STATUS_KEY, RG_NOT_ENTERED)
     return 0
 }
@@ -188,11 +194,12 @@ entry claim(
     let count: u64 = s.load(CLAIMANTS_COUNT_KEY).unwrap_or(0)
     s.store(CLAIMANTS_COUNT_KEY, count + 1)
 
-    // Mint VLT to mainnet_addr
+    // Mint VLT to mainnet_addr — F-01 fix: VLTToken chunk 27 = mint_to_entry
+    // (chunk 4 was mint_split / chunk 9 = create_asset — neither matches "mint to address").
     let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("novlt")
     let vlt: Contract = Contract::new(vlt_hash).expect("err")
-    // VLTToken entry 4 = mint_to (mint tokens to an address)
-    let _ = vlt.call(4u16, [mainnet_addr, amount], {})
+    let mint_result: u64 = vlt.call(27u16, [mainnet_addr, amount], {})
+    require(mint_result == 0, "mintfail")
 
     emit_event(0u64, ["AirdropClaimed", testnet_addr.to_string() + "_" + amount.to_string(10u32)])
     release_reentrancy()
@@ -200,7 +207,10 @@ entry claim(
 }
 
 // Entry 1: Emergency withdraw unclaimed funds (admin, after 6 months)
-// Returns remaining VLT to treasury for redistribution
+// F-01 fix (CRITICAL): now actually transfers the remaining VLT envelope to `to`.
+//   remaining = TOTAL_DISTRIBUTABLE - total_claimed - already_withdrawn
+//   Minted to `to` via VLTToken chunk 27 (mint_to_entry).
+//   Records the withdrawn amount in WITHDRAWN_KEY so subsequent calls cannot double-spend.
 entry emergency_withdraw_unclaimed(to: Address) -> u64 {
     only_admin()
     let s: Storage = Storage::new()
@@ -209,10 +219,24 @@ entry emergency_withdraw_unclaimed(to: Address) -> u64 {
     require(current >= deploy_topo + EMERGENCY_DELAY_BLOCKS, "toosoon")
     require(to != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), "badaddr")
 
-    // In production: calculate remaining = TOTAL_DISTRIBUTABLE - total_claimed
-    // Then transfer remaining to `to`
-    emit_event(0u64, ["EmergencyWithdraw", to.to_string()])
-    return 0
+    // Compute remaining distributable VLT (envelope - already claimed - already withdrawn).
+    let total_distributable: u64 = s.load(TOTAL_DISTRIBUTABLE_KEY).unwrap_or(DEFAULT_TOTAL_DISTRIBUTABLE)
+    let total_claimed: u64 = s.load(TOTAL_CLAIMED_KEY).unwrap_or(0)
+    let already_withdrawn: u64 = s.load(WITHDRAWN_KEY).unwrap_or(0)
+    require(total_distributable > total_claimed + already_withdrawn, "nothing")
+    let remaining: u64 = total_distributable - total_claimed - already_withdrawn
+
+    // Mint the remaining VLT to `to` via VLTToken chunk 27 (mint_to_entry).
+    let vlt_hash: Hash = s.load(VLT_CONTRACT_KEY).expect("novlt")
+    let vlt: Contract = Contract::new(vlt_hash).expect("err")
+    let mint_result: u64 = vlt.call(27u16, [to, remaining], {})
+    require(mint_result == 0, "mintfail")
+
+    // Track withdrawn amount to prevent re-entrancy / double-withdraw.
+    s.store(WITHDRAWN_KEY, already_withdrawn + remaining)
+
+    emit_event(0u64, ["EmergencyWithdraw", to.to_string() + "_" + remaining.to_string(10u32)])
+    return remaining
 }
 
 // Pub fn 2: Get Merkle root
@@ -314,4 +338,38 @@ entry transfer_admin(new_admin: Address) -> u64 {
 // Entry 15: Get version
 entry get_version() -> string {
     return VERSION
+}
+
+// Entry 16: Set total distributable (admin only, typically set once at deployment)
+// F-01 fix: allows the admin to configure the airdrop envelope size after deployment.
+entry set_total_distributable(amount: u64) -> u64 {
+    only_admin()
+    require(amount > 0, "zero")
+    let s: Storage = Storage::new()
+    let total_claimed: u64 = s.load(TOTAL_CLAIMED_KEY).unwrap_or(0)
+    let already_withdrawn: u64 = s.load(WITHDRAWN_KEY).unwrap_or(0)
+    require(amount >= total_claimed + already_withdrawn, "toolow")
+    s.store(TOTAL_DISTRIBUTABLE_KEY, amount)
+    emit_event(0u64, ["TotalDistributableSet", amount.to_string(10u32)])
+    return 0
+}
+
+// Pub fn: Get total distributable envelope
+pub fn get_total_distributable() -> u64 {
+    return Storage::new().load(TOTAL_DISTRIBUTABLE_KEY).unwrap_or(DEFAULT_TOTAL_DISTRIBUTABLE)
+}
+
+// Pub fn: Get already emergency-withdrawn amount
+pub fn get_emergency_withdrawn() -> u64 {
+    return Storage::new().load(WITHDRAWN_KEY).unwrap_or(0)
+}
+
+// Pub fn: Get remaining unclaimed VLT (envelope - claimed - withdrawn)
+pub fn get_remaining_unclaimed() -> u64 {
+    let s: Storage = Storage::new()
+    let total_distributable: u64 = s.load(TOTAL_DISTRIBUTABLE_KEY).unwrap_or(DEFAULT_TOTAL_DISTRIBUTABLE)
+    let total_claimed: u64 = s.load(TOTAL_CLAIMED_KEY).unwrap_or(0)
+    let already_withdrawn: u64 = s.load(WITHDRAWN_KEY).unwrap_or(0)
+    if total_distributable <= total_claimed + already_withdrawn { return 0 }
+    return total_distributable - total_claimed - already_withdrawn
 }

@@ -104,6 +104,17 @@ const START_TOPO_KEY: string = "stt"        // when contract was deployed
 const FREEZE_TOPO_KEY: string = "fzt"        // when points were frozen
 const FINALIZE_TOPO_KEY: string = "flt"       // when distribution was finalized
 
+// F-11 fix (MEDIUM): pagination cursor for finalize_distribution(start, count).
+//   Stores the next user index to process across batches. Cleared on completion.
+const FINALIZE_CURSOR_KEY: string = "flc"
+// F-11 fix: running total of total_with_bonus across batches.
+const FINALIZE_TOTAL_KEY: string = "flt_total"
+
+// F-12 fix (MEDIUM): precomputed sorted leaderboard index — built once at finalize.
+//   LEADERBOARD_INDEX_PREFIX stores (rank -> Address), LEADERBOARD_COUNT_KEY the total.
+const LEADERBOARD_INDEX_PREFIX: string = "lb_"
+const LEADERBOARD_COUNT_KEY: string = "lbc"
+
 // v10.4.1: Reverse lookup — mainnet_addr → testnet_addr
 const MAINNET_TO_TESTNET_PREFIX: string = "m2t_"
 
@@ -587,21 +598,41 @@ entry freeze_points() -> u64 {
 }
 
 // Entry 11: Finalize distribution (admin only, after freeze)
-// Calculates bonus multipliers, marks qualified users, sets total_with_bonus
-// After this, the Merkle root can be generated off-chain and set
-entry finalize_distribution() -> u64 {
+// F-11 fix (MEDIUM): converted from a single unbounded loop into a paginated /
+//   resumable design — the admin calls finalize_distribution(start, count)
+//   repeatedly with batches of users (recommended 50-200 per call) until the
+//   entire user list has been processed. The final batch sets FINALIZED_KEY = true
+//   and builds the sorted leaderboard index (F-12 fix).
+// Returns: number of users processed in this batch (0 when already finalized).
+entry finalize_distribution(start_index: u64, count: u64) -> u64 {
     only_admin()
+    require(count > 0 && count <= 200, "badbatch")
     let s: Storage = Storage::new()
     require(s.load(FROZEN_KEY).unwrap_or(false), "notfrozen")
-    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
-    require(!finalized, "alreadyfinal")
+    require(!s.load(FINALIZED_KEY).unwrap_or(false), "alreadyfinal")
 
     let user_count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
-    let i: u64 = 0
-    let total_with_bonus: u64 = 0
-    let qualified_count: u64 = 0
+    require(start_index <= user_count, "oob")
+    if start_index == user_count {
+        // No more work to do — finalize
+        s.store(FINALIZED_KEY, true)
+        s.store(FINALIZE_TOPO_KEY, get_current_topoheight())
+        s.delete(FINALIZE_CURSOR_KEY)
+        emit_event(0u64, ["DistributionFinalized", s.load(QUALIFIED_COUNT_KEY).unwrap_or(0).to_string(10u32)])
+        // F-12 fix: build the sorted leaderboard index in a single pass on completion.
+        build_leaderboard_index()
+        return 0
+    }
 
-    while i < user_count {
+    // Load running totals from the previous batch (or 0 if this is the first batch).
+    let total_with_bonus: u64 = s.load(FINALIZE_TOTAL_KEY).unwrap_or(0)
+    let qualified_count: u64 = s.load(QUALIFIED_COUNT_KEY).unwrap_or(0)
+
+    let end: u64 = start_index + count
+    if end > user_count { end = user_count }
+
+    let i: u64 = start_index
+    while i < end {
         let user_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string(10u32))
         if user_opt.is_some() {
             let user: Address = user_opt.expect("err")
@@ -664,12 +695,79 @@ entry finalize_distribution() -> u64 {
         i += 1
     }
 
-    s.store(TOTAL_POINTS_KEY, total_with_bonus)
+    // Persist running totals for the next batch
+    s.store(FINALIZE_TOTAL_KEY, total_with_bonus)
     s.store(QUALIFIED_COUNT_KEY, qualified_count)
-    s.store(FINALIZED_KEY, true)
-    s.store(FINALIZE_TOPO_KEY, get_current_topoheight())
-    emit_event(0u64, ["DistributionFinalized", qualified_count.to_string(10u32)])
-    return qualified_count
+    s.store(FINALIZE_CURSOR_KEY, end)
+
+    // If this batch reached the end, mark as finalized.
+    if end >= user_count {
+        s.store(TOTAL_POINTS_KEY, total_with_bonus)
+        s.store(FINALIZED_KEY, true)
+        s.store(FINALIZE_TOPO_KEY, get_current_topoheight())
+        s.delete(FINALIZE_CURSOR_KEY)
+        emit_event(0u64, ["DistributionFinalized", qualified_count.to_string(10u32)])
+        // F-12 fix: build the sorted leaderboard index in a single pass on completion.
+        build_leaderboard_index()
+    } else {
+        emit_event(0u64, ["DistributionBatchProcessed", end.to_string(10u32) + "/" + user_count.to_string(10u32)])
+    }
+    return end - start_index
+}
+
+// F-12 fix (MEDIUM): build a sorted leaderboard index once after finalize.
+// Stores addresses sorted by total_with_bonus (desc) under LEADERBOARD_INDEX_PREFIX.
+// O(n^2) worst case but only runs ONCE at finalize — get_leaderboard_at_rank is then O(1).
+fn build_leaderboard_index() {
+    let s: Storage = Storage::new()
+    let count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
+    // Collect (address, points) pairs into a flat list using a simple selection-sort.
+    // For small/medium testnet populations (<1000 users) this is acceptable.
+    // For larger populations, off-chain indexing is the recommended approach (per the audit).
+    let n: u64 = 0
+    let i: u64 = 0
+    while i < count {
+        let user_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string(10u32))
+        if user_opt.is_some() {
+            let user: Address = user_opt.expect("err")
+            let up: UserPoints = s.load(USER_PREFIX + user.to_string()).expect("err")
+            // Insert (user, up.total_with_bonus) into the running sorted list.
+            // Find the right slot: scan from the top.
+            let insert_rank: u64 = n  // default: append at the bottom
+            let j: u64 = 0
+            while j < n {
+                let other_addr: Address = s.load(LEADERBOARD_INDEX_PREFIX + j.to_string(10u32)).expect("err")
+                let other_up: UserPoints = s.load(USER_PREFIX + other_addr.to_string()).expect("err")
+                if up.total_with_bonus > other_up.total_with_bonus {
+                    insert_rank = j
+                    j = n  // break
+                }
+                j += 1
+            }
+            // Shift entries from insert_rank downward by 1
+            let k: u64 = n
+            while k > insert_rank {
+                let prev_addr: Address = s.load(LEADERBOARD_INDEX_PREFIX + (k - 1).to_string(10u32)).expect("err")
+                s.store(LEADERBOARD_INDEX_PREFIX + k.to_string(10u32), prev_addr)
+                k -= 1
+            }
+            s.store(LEADERBOARD_INDEX_PREFIX + insert_rank.to_string(10u32), user)
+            n += 1
+        }
+        i += 1
+    }
+    s.store(LEADERBOARD_COUNT_KEY, n)
+}
+
+// F-12 fix: pub fn returning leaderboard count (for pagination/iteration).
+pub fn get_leaderboard_count() -> u64 {
+    return Storage::new().load(LEADERBOARD_COUNT_KEY).unwrap_or(0)
+}
+
+// F-12 fix: pub fn returning the finalized flag (so callers know whether
+//   the sorted index has been built).
+pub fn is_leaderboard_ready() -> bool {
+    return Storage::new().load(FINALIZED_KEY).unwrap_or(false)
 }
 
 // Entry 12: Set Merkle root (admin, after finalize)
@@ -916,30 +1014,33 @@ pub fn get_protocol_stats() -> (u64, u64, u64, u64, bool, bool) {
 }
 
 // Pub fn 33: Get leaderboard top N (returns addresses sorted by points desc)
-// offset: skip first N users (for pagination)
-// Returns 1 address per call — call multiple times with different rank values
-// Note: For large leaderboards, prefer off-chain indexing
+// F-12 fix (MEDIUM): was O(n^2) (nested scan over all users for every rank).
+//   Now uses a precomputed sorted index built once at finalize — O(1) lookup.
+//   Falls back to the old O(n^2) algorithm only if finalize has not run yet,
+//   with a clear comment that off-chain indexing is preferred pre-finalize.
+// rank: 1-indexed position (1 = highest points)
 pub fn get_leaderboard_at_rank(rank: u64) -> Address {
     let s: Storage = Storage::new()
+    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
+    // F-12 fix: post-finalize, use the precomputed sorted index (O(1)).
+    if finalized {
+        let lb_count: u64 = s.load(LEADERBOARD_COUNT_KEY).unwrap_or(0)
+        require(rank > 0 && rank <= lb_count, "badrank")
+        return s.load(LEADERBOARD_INDEX_PREFIX + (rank - 1).to_string(10u32)).expect("oob")
+    }
+    // Pre-finalize fallback: keep the legacy O(n^2) algorithm for backward compat,
+    //   but warn callers (via the audit doc) that this is expensive and that
+    //   they should wait for finalize to use the fast path.
     let count: u64 = s.load(USER_COUNT_KEY).unwrap_or(0)
     require(rank > 0 && rank <= count, "badrank")
 
-    let finalized: bool = s.load(FINALIZED_KEY).unwrap_or(false)
-
-    // Find the user at the given rank (N-th highest points)
-    // Simple approach: scan all users, count how many have more points
     let i: u64 = 0
     while i < count {
         let addr_opt: optional<Address> = s.load(USER_LIST_PREFIX + i.to_string(10u32))
         if addr_opt.is_some() {
             let addr: Address = addr_opt.expect("err")
             let up: UserPoints = s.load(USER_PREFIX + addr.to_string()).expect("err")
-            let user_points: u64 = 0
-            if finalized {
-                user_points = up.total_with_bonus
-            } else {
-                user_points = up.total_raw
-            }
+            let user_points: u64 = up.total_raw
 
             // Count how many users have MORE points than this user
             let higher_count: u64 = 0
@@ -950,13 +1051,7 @@ pub fn get_leaderboard_at_rank(rank: u64) -> Address {
                     if other_opt.is_some() {
                         let other_addr: Address = other_opt.expect("err")
                         let other: UserPoints = s.load(USER_PREFIX + other_addr.to_string()).expect("err")
-                        let other_points: u64 = 0
-                        if finalized {
-                            other_points = other.total_with_bonus
-                        } else {
-                            other_points = other.total_raw
-                        }
-                        if other_points > user_points {
+                        if other.total_raw > user_points {
                             higher_count += 1
                         }
                     }

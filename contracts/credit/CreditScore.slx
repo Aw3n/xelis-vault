@@ -148,15 +148,42 @@ fn only_guardian_or_admin() {
 }
 
 // Only authorized lending contracts (PeerLoan, SyndicatePool, LendingMarket) can record events
+// F-07 fix (HIGH): was accepting ANY contract caller (only checked
+//   get_contract_caller().is_some()). A forged contract could arbitrarily
+//   inflate or destroy a target address's on-chain credit score, with direct
+//   financial consequences on borrowing terms. Now resolves the registry and
+//   requires that the contract caller is one of the three authorized lenders.
 fn only_authorized_lender() {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     let admin: Address = s.load(ADMIN_KEY).expect("err")
     let guardian: Address = s.load(GUARDIAN_KEY).expect("err")
     if caller == admin || caller == guardian { return }
-    // Allow registered contracts via registry (in production, would call registry)
+    // F-07 fix: require an explicit contract caller AND that it is one of the
+    //   three registered lending contracts (PeerLoan, SyndicatePool, LendingMarket).
     let cc_opt: optional<Hash> = get_contract_caller()
     require(cc_opt.is_some(), "notlender")
+    let cc: Hash = cc_opt.expect("err")
+    require(is_authorized_lender(cc), "notlender")
+}
+
+// F-07 fix: check whether `caller_hash` matches one of the three registered lenders.
+fn is_authorized_lender(caller_hash: Hash) -> bool {
+    let s: Storage = Storage::new()
+    let reg_opt: optional<Hash> = s.load(REGISTRY_KEY)
+    if reg_opt.is_none() { return false }
+    let reg_hash: Hash = reg_opt.expect("err")
+    if reg_hash == Hash::zero() { return false }
+    let reg: Contract = Contract::new(reg_hash).expect("err")
+    let names: string[] = ["PeerLoan", "SyndicatePool", "LendingMarket"]
+    let i: u64 = 0
+    while i < names.len() {
+        let name: string = names[i]
+        let h: Hash = reg.call(14u16, [name], {})
+        if h != Hash::zero() && h == caller_hash { return true }
+        i += 1
+    }
+    return false
 }
 
 fn get_or_init_stats(user: Address) -> CreditStats {

@@ -140,15 +140,40 @@ fn only_guardian_or_admin() {
 }
 
 // Only authorized protocol contracts can record events
+// F-06 fix (MEDIUM): was accepting ANY contract caller (only checked
+//   get_contract_caller().is_some()). Now resolves the registry and requires
+//   that the contract caller is registered under one of the known protocol
+//   contract names.
 fn only_protocol_contract() {
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     let admin: Address = s.load(ADMIN_KEY).expect("err")
     let guardian: Address = s.load(GUARDIAN_KEY).expect("err")
     if caller == admin || caller == guardian { return }
-    // Allow any contract call (cross-contract)
+    // F-06 fix: require an explicit contract caller AND that it is registered.
     let cc_opt: optional<Hash> = get_contract_caller()
     require(cc_opt.is_some(), "notauth")
+    let cc: Hash = cc_opt.expect("err")
+    require(is_authorized_protocol_contract(cc), "notauth")
+}
+
+// F-06 fix: check whether `caller_hash` matches one of the registered protocol contracts.
+fn is_authorized_protocol_contract(caller_hash: Hash) -> bool {
+    let s: Storage = Storage::new()
+    let reg_opt: optional<Hash> = s.load(REGISTRY_KEY)
+    if reg_opt.is_none() { return false }
+    let reg_hash: Hash = reg_opt.expect("err")
+    if reg_hash == Hash::zero() { return false }
+    let reg: Contract = Contract::new(reg_hash).expect("err")
+    let names: string[] = ["VaultSwapV2", "PSM", "VaultEngineV3", "FlashLoan", "VaultChat", "LendingMarket", "PeerLoan", "SyndicatePool", "InsurancePool", "SealedBidAuction", "GovernanceVault", "AirdropTracker", "XelisVaultMiner", "StakedOracle"]
+    let i: u64 = 0
+    while i < names.len() {
+        let name: string = names[i]
+        let h: Hash = reg.call(14u16, [name], {})
+        if h != Hash::zero() && h == caller_hash { return true }
+        i += 1
+    }
+    return false
 }
 
 // Helper: get day number from topoheight (1 day = 17280 blocks)

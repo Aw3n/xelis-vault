@@ -511,7 +511,18 @@ entry get_group_members_count_entry(group_id: u64) -> u64 {
 // set relayer.
 entry set_relayer(addr: Address, enabled: bool) -> u64 {
     only_admin()
-    Storage::new().store(RELAYER_PREFIX + addr.to_string(), enabled)
+    let s: Storage = Storage::new()
+    // F-13 fix (MEDIUM): when enabling a relayer, require that they have staked
+    //   at least MIN_RELAYER_BOND. The two mechanisms (bond + whitelist) were
+    //   previously stored and checked independently — an admin could whitelist
+    //   a relayer with zero bond, defeating the anti-abuse economics.
+    //   Disabling a relayer remains unconditional (no bond requirement).
+    if enabled {
+        let bond: u64 = s.load(RELAYER_BOND_PREFIX + addr.to_string()).unwrap_or(0)
+        require(bond >= MIN_RELAYER_BOND, "bonddneed")
+    }
+    s.store(RELAYER_PREFIX + addr.to_string(), enabled)
+    emit_event(0u64, ["RelayerSet", addr.to_string() + "_" + (enabled ? "true" : "false")])
     return 0
 }
 
@@ -761,6 +772,10 @@ const MSG_COUNT_PREFIX: string = "msgc_"
 const MSG_DELETED_PREFIX: string = "msgd_"
 const CONV_DELETED_PREFIX: string = "convd_"
 const MAX_ONCHAIN_MESSAGES: u64 = 50
+// F-16 fix (LOW): max encrypted_blob size (in bytes) before hex encoding.
+// 16 KB is generous for a chat message; chain-level limits will also apply
+// but this gives the contract a clear early-fail for storage-bloat attacks.
+const MAX_BLOB_SIZE: u64 = 16384
 
 // Store an encrypted message on-chain (called by sender or relayer)
 // The encrypted blob is stored so the recipient can retrieve it later
@@ -771,6 +786,8 @@ entry store_message(
     timestamp: u64
 ) -> u64 {
     when_not_paused()
+    // F-16 fix (LOW): enforce an explicit upper bound on encrypted_blob size.
+    require(encrypted_blob.len() <= MAX_BLOB_SIZE, "toobig")
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     // The sender IS the caller — no impersonation possible
@@ -955,6 +972,8 @@ entry store_group_message(
     timestamp: u64
 ) -> u64 {
     when_not_paused()
+    // F-16 fix (LOW): enforce an explicit upper bound on encrypted_blob size.
+    require(encrypted_blob.len() <= MAX_BLOB_SIZE, "toobig")
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     let sender: Address = caller
@@ -1086,8 +1105,13 @@ entry pay_premium_message(relayer: Address) -> u64 {
     }
     
     // Grant 1 premium message credit (resets on next store_message)
+    // F-15 fix (LOW): explicit underflow guard before decrementing count.
+    //   The preceding require(remaining == 0, "stillfree") should guarantee
+    //   count > 0, but this direct assertion is clearer to audit and prevents
+    //   any future refactor from accidentally allowing underflow.
     let today: u64 = get_current_topoheight() / 17280
     let count: u64 = s.load(DAILY_COUNT_PREFIX + caller.to_string()).unwrap_or(0)
+    require(count > 0, "underflow")
     s.store(DAILY_COUNT_PREFIX + caller.to_string(), count - 1)  // decrement to give 1 free slot
     
     return 0
@@ -1224,6 +1248,8 @@ entry store_ephemeral_message(
     ttl_blocks: u64
 ) -> u64 {
     when_not_paused()
+    // F-16 fix (LOW): enforce an explicit upper bound on encrypted_blob size.
+    require(encrypted_blob.len() <= MAX_BLOB_SIZE, "toobig")
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     
@@ -2084,6 +2110,8 @@ entry send_direct_message(
     timestamp: u64
 ) -> u64 {
     when_not_paused()
+    // F-16 fix (LOW): enforce an explicit upper bound on encrypted_blob size.
+    require(encrypted_blob.len() <= MAX_BLOB_SIZE, "toobig")
     let s: Storage = Storage::new()
     let caller: Address = get_caller().expect("err")
     

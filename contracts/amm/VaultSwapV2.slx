@@ -55,6 +55,8 @@ const TREASURY_KEY: string = "tr"
 const ORACLE_KEY: string = "or"
 const XUSD_ASSET_KEY: string = "xa"
 const XUSD_CONTRACT_KEY: string = "xc"
+// F-10 fix (MEDIUM): canonical PSM contract hash — VaultSwapV2 delegates psm_mint/psm_redeem to PSM.slx.
+const PSM_CONTRACT_KEY: string = "psm"
 fn get_xel_asset() -> Hash { return Hash::zero() }
 
 const POOL_PREFIX: string = "p"
@@ -289,7 +291,9 @@ entry create_pool(asset_a: Hash, asset_b: Hash, is_psm: bool) -> u64 {
     require(asset_a != asset_b, "sameasset")
     let s: Storage = Storage::new()
     let key: string = get_pool_key(asset_a, asset_b)
-    let existing: optional<Hash> = s.load(key)
+    // F-03 fix (HIGH): existence check now loads as the same type that is stored (Pool),
+    //   so a duplicate pool is correctly detected instead of silently overwriting reserves.
+    let existing: optional<Pool> = s.load(key)
     require(existing.is_none(), "exists")
     let pool: Pool = Pool {
         asset_a: asset_a,
@@ -328,7 +332,10 @@ entry add_liquidity(asset_a: Hash, asset_b: Hash, amount_a: u64, amount_b: u64) 
 
     if pool.reserve_a > 0 && pool.reserve_b > 0 {
         let expected_b: u64 = (pool.reserve_b as u128 * amount_a as u128 / pool.reserve_a as u128) as u64
-        require(amount_b == expected_b, "badratio")
+        // F-08 fix (MEDIUM): allow ±1 tolerance on the ratio to absorb integer
+        //   division truncation. Was: require(amount_b == expected_b, "badratio")
+        //   which failed-closed on every economically-correct deposit.
+        require(amount_b + 1 >= expected_b && amount_b <= expected_b + 1, "badratio")
     }
 
     let caller: Address = get_caller().expect("err")
@@ -407,15 +414,21 @@ entry swap(
     require(amount_out >= min_amount_out, "slippage")
 
     let new_price: u64 = price_after_swap(pool, amount_in, is_a_to_b, fee_bps)
-    if pool.last_price > 0 && new_price > 0 {
+    // F-09 fix (MEDIUM): compare new_price against the TWAP, not last_price.
+    //   last_price was the previous single trade's resulting price, so a single
+    //   large trade could move it and the next trade would be checked against
+    //   an already-moved reference. TWAP is computed in this file already.
+    let reference_price: u64 = twap_get(key)
+    if reference_price == 0 { reference_price = pool.last_price }
+    if reference_price > 0 && new_price > 0 {
         let diff: u64 = 0
-        if new_price > pool.last_price {
-            diff = new_price - pool.last_price
+        if new_price > reference_price {
+            diff = new_price - reference_price
         } else {
-            diff = pool.last_price - new_price
+            diff = reference_price - new_price
         }
 
-        let pct_bps: u64 = (diff as u128 * 10000u128 / pool.last_price as u128) as u64
+        let pct_bps: u64 = (diff as u128 * 10000u128 / reference_price as u128) as u64
         let max_vol: u64 = s.load(MAX_VOLATILITY_BPS_KEY).unwrap_or(DEFAULT_MAX_VOL)
         require(pct_bps <= max_vol, "cbtrip")
     }
@@ -454,108 +467,69 @@ entry swap(
     return 0
 }
 
-// ID 3: psm_mint — oracle pub-fn chunk 22 (All) get_price_for_asset
-// Mint xUSD from XEL via the PSM pool at the oracle XEL/USD price (no AMM curve, fixed price).
+// ID 3: psm_mint — F-10 fix (MEDIUM): delegates to PSM.slx entry mint (chunk 8)
+// instead of duplicating the mint logic locally. PSM.slx is the single source of truth
+// for XEL<->xUSD conversions and prevents reserve desynchronization.
 // @caller: any user
 // @params: xel_amount - amount of XEL to deposit
 // @params: min_xusd_out - slippage protection (minimum net xUSD accepted)
 // @returns: 0 on success
-// @security: when_not_paused, non_reentrant, requires PSM pool configured, oracle price > 0 enforced, cross-contract call to xUSD.mint_split
-// psm mint.
+// @security: when_not_paused, non_reentrant, requires PSM contract configured
 entry psm_mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     when_not_paused()
     non_reentrant()
-
     require(xel_amount > 0, "amtgt0")
     require(min_xusd_out > 0, "noslippage")
-
     let s: Storage = Storage::new()
-    let xusd_asset: Hash = s.load(XUSD_ASSET_KEY).expect("err")
-
-    let key: string = get_pool_key(get_xel_asset(), xusd_asset)
-    let pool: Pool = s.load(key).expect("err")
-    require(pool.is_psm, "notpsm")
-
-    let oracle: Contract = get_oracle()
-    let xel_price: u64 = oracle.call(22u16, [Hash::zero()], {})
-    require(xel_price > 0, "noprice")
-
-    let gross_xusd: u64 = (xel_amount as u128 * xel_price as u128 / PRICE_DECIMALS as u128) as u64
-    let mint_fee_bps: u64 = s.load(PSM_MINT_FEE_KEY).unwrap_or(DEFAULT_PSM_MINT_FEE)
-    let fee: u64 = (gross_xusd as u128 * mint_fee_bps as u128 / 10000u128) as u64
-    let net_xusd: u64 = gross_xusd - fee
-
-    require(net_xusd >= min_xusd_out, "slippage")
-
+    // F-10 fix: delegate to the canonical PSM.slx contract (entry mint = chunk 8).
+    // If PSM_CONTRACT_KEY is not configured, fail closed with a clear error.
+    let psm_hash_opt: optional<Hash> = s.load(PSM_CONTRACT_KEY)
+    require(psm_hash_opt.is_some(), "nopsm")
+    let psm_hash: Hash = psm_hash_opt.expect("err")
+    require(psm_hash != Hash::zero(), "nopsm")
+    let psm: Contract = Contract::new(psm_hash).expect("err")
+    // Caller must pre-deposit XEL into this contract so we can forward it to PSM.slx.
     let caller: Address = get_caller().expect("err")
     let dep: u64 = get_deposit_for_asset(get_xel_asset()).expect("err")
     require(dep >= xel_amount, "insdep")
     if dep > xel_amount {
         let _ = transfer(caller, dep - xel_amount, get_xel_asset())
     }
-
-    let treasury: Address = s.load(TREASURY_KEY).expect("err")
-    let xusd_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("err")
-    let xusd: Contract = Contract::new(xusd_hash).expect("err")
-
-    let _ = xusd.call(4u16, [caller, net_xusd, treasury, fee], {})
-
-    pool.reserve_a += xel_amount
-    s.store(key, pool)
-
+    // Forward the XEL to PSM.slx so it can pull it during its own mint flow.
+    require(transfer_contract(psm_hash, xel_amount, get_xel_asset()), "xferfail")
+    // Delegate the mint to PSM.slx entry mint (chunk 8).
+    let result: u64 = psm.call(8u16, [xel_amount, min_xusd_out], {})
+    require(result == 0, "psmfail")
     release_reentrancy()
     return 0
 }
 
-// ID 4: psm_redeem — oracle pub-fn chunk 22 (All) get_price_for_asset
-// Burn xUSD and receive XEL from the PSM pool at the oracle price.
-// @caller: any user
-// @params: xusd_amount - amount of xUSD to burn
-// @params: min_xel_out - slippage protection (minimum net XEL accepted)
-// @returns: 0 on success
-// @security: when_not_paused, non_reentrant, requires PSM pool configured, oracle price > 0 enforced, XEL reserve sufficiency, cross-contract call to xUSD.burn_tokens
-// psm redeem.
+// ID 4: psm_redeem — F-10 fix (MEDIUM): delegates to PSM.slx entry redeem (chunk 9)
+// instead of duplicating the redeem logic locally. PSM.slx is the single source of truth.
 entry psm_redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     when_not_paused()
     non_reentrant()
-
     require(xusd_amount > 0, "amtgt0")
     require(min_xel_out > 0, "noslippage")
-
     let s: Storage = Storage::new()
+    let psm_hash_opt: optional<Hash> = s.load(PSM_CONTRACT_KEY)
+    require(psm_hash_opt.is_some(), "nopsm")
+    let psm_hash: Hash = psm_hash_opt.expect("err")
+    require(psm_hash != Hash::zero(), "nopsm")
+    let psm: Contract = Contract::new(psm_hash).expect("err")
+    // Caller must pre-deposit xUSD into this contract so we can forward it to PSM.slx.
     let xusd_asset: Hash = s.load(XUSD_ASSET_KEY).expect("err")
-    let key: string = get_pool_key(get_xel_asset(), xusd_asset)
-    let pool: Pool = s.load(key).expect("err")
-    require(pool.is_psm, "notpsm")
-
-    let oracle: Contract = get_oracle()
-    let xel_price: u64 = oracle.call(22u16, [Hash::zero()], {})
-    require(xel_price > 0, "noprice")
-
-    let gross_xel: u64 = (xusd_amount as u128 * PRICE_DECIMALS as u128 / xel_price as u128) as u64
-    let redeem_fee_bps: u64 = s.load(PSM_REDEEM_FEE_KEY).unwrap_or(DEFAULT_PSM_REDEEM_FEE)
-    let fee_xel: u64 = (gross_xel as u128 * redeem_fee_bps as u128 / 10000u128) as u64
-    let net_xel: u64 = gross_xel - fee_xel
-
-    require(net_xel >= min_xel_out, "slippage")
-    require(pool.reserve_a >= net_xel, "insreserve")
-
-    let xusd_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("err")
-    let _ = transfer_contract(xusd_hash, xusd_amount, xusd_asset)
-    let xusd: Contract = Contract::new(xusd_hash).expect("err")
-    let _ = xusd.call(5u16, [xusd_amount], {})
-
-    let caller: Address = get_caller().expect("err")
-    let _ = transfer(caller, net_xel, get_xel_asset())
-
-    if fee_xel > 0 {
-        let treasury: Address = s.load(TREASURY_KEY).expect("err")
-        let _ = transfer(treasury, fee_xel, get_xel_asset())
+    let dep: u64 = get_deposit_for_asset(xusd_asset).expect("err")
+    require(dep >= xusd_amount, "insdep")
+    if dep > xusd_amount {
+        let caller_refund: Address = get_caller().expect("err")
+        let _ = transfer(caller_refund, dep - xusd_amount, xusd_asset)
     }
-
-    pool.reserve_a -= net_xel + fee_xel
-    s.store(key, pool)
-
+    // Forward the xUSD to PSM.slx so it can burn it during its own redeem flow.
+    require(transfer_contract(psm_hash, xusd_amount, xusd_asset), "xferfail")
+    // Delegate the redeem to PSM.slx entry redeem (chunk 9).
+    let result: u64 = psm.call(9u16, [xusd_amount, min_xel_out], {})
+    require(result == 0, "psmfail")
     release_reentrancy()
     return 0
 }
@@ -1069,4 +1043,27 @@ pub fn set_timelock_tl(tl: Hash) -> u64 {
     only_admin()
     Storage::new().store(TIMELOCK_KEY, tl)
     return 0
+}
+
+// ============================================================================
+// AUDIT FIX F-10 (MEDIUM) v11.5 — set_psm_contract
+// ----------------------------------------------------------------------------
+// Configures the canonical PSM.slx contract hash that psm_mint / psm_redeem
+// delegate to. Without this configuration, psm_mint / psm_redeem revert with
+// "nopsm" — there is no longer a duplicate local mint/redeem path.
+// ============================================================================
+entry set_psm_contract(psm: Hash) -> u64 {
+    only_admin()
+    require(psm != Hash::zero(), "badhash")
+    Storage::new().store(PSM_CONTRACT_KEY, psm)
+    emit_event(0u64, ["PSMContractSet", psm.to_hex()])
+    return 0
+}
+
+// pub fn: read the configured PSM contract hash (Hash::zero() if not configured)
+pub fn get_psm_contract() -> Hash {
+    let s: Storage = Storage::new()
+    let psm_opt: optional<Hash> = s.load(PSM_CONTRACT_KEY)
+    if psm_opt.is_none() { return Hash::zero() }
+    return psm_opt.expect("err")
 }

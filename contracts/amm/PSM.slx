@@ -1,10 +1,17 @@
 // ============================================================================
-// PSM.slx — XELIS Vault v5.0 (Peg Stability Module)
+// PSM.slx — XELIS Vault v11.5 (Peg Stability Module)
 // ----------------------------------------------------------------------------
 // FIX #12: get_xel_price() calls oracle.call(22u16, [Hash::zero()], {})
 //          (StakedOracle pub-fn get_price_for_asset, chunk 22 = All access —
 //          cross-contract calls require All chunks, NOT Entry chunks).
 // FIX #14: Two-step emergency_withdraw at IDs 11/12 with 17280-block delay.
+//
+// v11.5 PSM FIX (CRITICAL): the previous `mint` was calling
+//   `xusd.call(17u16, [self_hash, net_xusd], {})` after `s.load("sh")` which
+//   NEVER exists — reverting every mint. Restored `mint_split` (chunk 4) so
+//   `net_xusd` goes to the caller and `fee` to the treasury.
+//   `redeem` now requires a pre-deposit of xUSD (symmetric to mint's XEL pre-deposit),
+//   so the PSM has the xUSD to burn via `burn_tokens` (chunk 5).
 //
 // Entry IDs (sequential, starting at 0):
 //   0  : mint(xel_amount, min_xusd_out)
@@ -31,12 +38,12 @@
 //   21 : transfer_admin
 //   22 : get_version
 //
-// Cross-contract calls (v5.0 entry IDs):
-//   mint   : xusd.call(4u16, [caller, net_xusd, treasury, fee], {})   // xUSD.mint_split (chunk 4)
-//   redeem : xusd.call(5u16, [xusd_amount], {})                       // xUSD.burn_tokens (chunk 5)
+// Cross-contract calls (v11.5 chunk IDs from docs/entry_chunk_ids.json):
+//   mint   : xusd.call(4u16, [caller, net_xusd, treasury, fee], {})   // xUSD.mint_split (All chunk 4)
+//   redeem : xusd.call(5u16, [xusd_amount], {})                      // xUSD.burn_tokens (All chunk 5)
 // ============================================================================
 
-const VERSION: string = "PSM v11.3"
+const VERSION: string = "PSM v11.5"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"
@@ -142,13 +149,11 @@ fn get_xel_price() -> u64 {
 // ENTRIES (sequential IDs starting at 0)
 // ============================================================================
 
-// ID 0: mint
-// Mint xUSD by depositing XEL at the oracle XEL/USD price, charging a mint fee to treasury.
-// @caller: any user
-// @params: xel_amount - amount of XEL to deposit (in atomic units)
-// @params: min_xusd_out - slippage protection (minimum net xUSD accepted)
-// @returns: 0 on success
-// @security: when_not_paused, daily mint cap enforced, slippage check, requires pre-deposit of XEL via get_deposit_for_asset
+// ID 0: mint — Mint xUSD by depositing XEL at the oracle XEL/USD price,
+// charging a mint fee to treasury.
+// v11.5 fix: use mint_split (chunk 4) which mints `net_xusd + fee` and sends
+// `net_xusd` to the caller + `fee` to the treasury. The XEL deposit stays in
+// PSM as XEL reserve for the redeem path.
 // mint.
 entry mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     when_not_paused()
@@ -173,19 +178,17 @@ entry mint(xel_amount: u64, min_xusd_out: u64) -> u64 {
     require(net_xusd >= min_xusd_out, "slippage")
     let xusd_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("err")
     let xusd: Contract = Contract::new(xusd_hash).expect("err")
-        let self_hash: Hash = s.load("sh").expect("err")
-    let _ = xusd.call(17u16, [self_hash, net_xusd], {})
+    let treasury: Address = s.load(TREASURY_KEY).expect("err")
+    // mint_split (chunk 4) mints `net_xusd + fee`, sends `net_xusd` to caller, `fee` to treasury.
+    let result: u64 = xusd.call(4u16, [caller, net_xusd, treasury, fee], {})
+    require(result == 0, "mintfail")
     s.store(DAILY_MINT_USED_KEY, daily_mint_used + xel_amount)
     return 0
 }
 
-// ID 1: redeem
-// Burn xUSD and receive XEL at the oracle price, charging a redeem fee to treasury.
-// @caller: any user (must hold xUSD via deposit)
-// @params: xusd_amount - amount of xUSD to burn
-// @params: min_xel_out - slippage protection (minimum net XEL accepted)
-// @returns: 0 on success
-// @security: when_not_paused, daily redeem cap enforced, slippage check, XEL reserve sufficiency check, xUSD burn via cross-contract call
+// ID 1: redeem — Burn xUSD and receive XEL at the oracle price, charging a redeem fee to treasury.
+// v11.5 fix: requires pre-deposit of xUSD into PSM (symmetric to mint's XEL pre-deposit).
+// The PSM burns the deposited xUSD via burn_tokens (chunk 5).
 // redeem.
 entry redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     when_not_paused()
@@ -197,6 +200,13 @@ entry redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     let daily_redeem_used: u64 = s.load(DAILY_REDEEM_USED_KEY).unwrap_or(0)
     let daily_redeem_cap: u64 = s.load(DAILY_REDEEM_CAP_KEY).unwrap_or(DEFAULT_DAILY_REDEEM_CAP)
     require(daily_redeem_used + xusd_amount <= daily_redeem_cap, "dailycap")
+    let xusd_asset: Hash = s.load(XUSD_ASSET_KEY).expect("err")
+    // v11.5 fix: pre-deposit check — caller must have deposited xUSD into PSM first.
+    let dep: u64 = get_deposit_for_asset(xusd_asset).expect("err")
+    require(dep >= xusd_amount, "insdep")
+    if dep > xusd_amount {
+        let _ = transfer(caller, dep - xusd_amount, xusd_asset)
+    }
     let price: u64 = get_xel_price()
     let gross_xel: u64 = (xusd_amount as u128 * PRICE_DECIMALS as u128 / price as u128) as u64
     let redeem_fee_bps: u64 = s.load(REDEEM_FEE_BPS_KEY).unwrap_or(DEFAULT_REDEEM_FEE_BPS)
@@ -205,9 +215,11 @@ entry redeem(xusd_amount: u64, min_xel_out: u64) -> u64 {
     require(net_xel >= min_xel_out, "slippage")
     let xel_balance: u64 = get_balance_for_asset(get_xel_asset()).unwrap_or(0)
     require(xel_balance >= net_xel, "insreserve")
+    // Burn the deposited xUSD. PSM has it (from the deposit above), so burn_tokens works.
     let xusd_hash: Hash = s.load(XUSD_CONTRACT_KEY).expect("err")
     let xusd: Contract = Contract::new(xusd_hash).expect("err")
-    let _ = xusd.call(5u16, [xusd_amount], {})
+    let result: u64 = xusd.call(5u16, [xusd_amount], {})
+    require(result == 0, "burnfail")
     let ok: bool = transfer(caller, net_xel, get_xel_asset())
     require(ok, "txfail")
     if fee_xel > 0 {

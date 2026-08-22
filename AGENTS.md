@@ -1,8 +1,83 @@
 # XELIS Vault — Operator Notes (AGENTS.md)
 
-## Live Environment
+## ⚠️ LEÇON N°1 — get_deposit_for_asset est TRANSITOIRE (par-tx) — v12.1
 
-# XELIS Vault — Operator Notes (AGENTS.md)
+Découverte clé du 2026-08-22 (validée par contrats probe déployés) :
+
+- `get_deposit_for_asset(asset)` ne voit que les deposits passés **dans le MÊME tx**
+  que l'entry exécutée. Retourne `None` sinon → `.expect("err")` panique `"err"`.
+- Un « pré-dépôt » fait dans un tx SÉPARÉ crédite la **balance du contrat**
+  (`get_contract_balance` l'affiche) mais **PAS le tracker per-caller**.
+- `transfer_contract(A→B)` ne crédite PAS non plus le tracker du caller chez B :
+  tout pattern « forward puis re-lecture du dépôt » cross-contract est **impossible**.
+
+### Patterns qui FONCTIONNENT (validés on-chain)
+```python
+# PSM.mint (chunk 8) — deposit intégré au MÊME invoke :
+p.wallet.invoke(PSM, 8, [val_u64(xel_amt), val_u64(min_out)],
+                deposits={"0"*64: {"amount": xel_amt}})
+# PSM.redeem (chunk 9) — idem avec l'asset xUSD en deposit
+```
+✅ mint 0.0595 xUSD + redeem 800k raw testés OK sur v12.1 (admin).
+
+### Patterns CASSÉS en v12.1 (fix code requis en v12.2)
+- `VaultSwapV2.psm_mint/psm_redeem` → `PSM.mint_cross/redeem_cross` : mint_cross
+  relit `get_deposit_for_asset` alors que les fonds arrivent par `transfer_contract`
+  → panic `"err"` systématique. Fix: lire `get_balance_for_asset` dans *_cross,
+  ou faire porter le dépôt par le tx d'origine et ne plus relire.
+- `PSM.redeem` : `burn_tokens` (chunk 5) brûle depuis la balance du **contrat xUSD**
+  (pas du dépôt PSM). Workaround testnet: financer le contrat xUSD en xUSD
+  (invoke entry quelconque + deposits). Fix propre: `transfer_contract(xusd_hash, …)`
+  avant `call(5)` dans redeem.
+- Dépôts orphelins: les pré-dépôts ratés ont laissé ~8 XEL de réserve dans PSM
+  (utile pour les redeems, comptabilisé comme réserve).
+
+## 🔧 Config oracle/miner ajustée on-chain (2026-08-22, admin)
+
+| Clé | Contrat | Ancien | Nouveau | Entry |
+|---|---|---|---|---|
+| `hsb` hard_stale | StakedOracle | 100 blocs | **500** (~22 min) | chunk 56 |
+| `hi` hb_interval | Miner | 100 | **900** | chunk 34 |
+| `ht` hb_timeout | Miner | 300 | **4000** | chunk 35 |
+
+Keeper (`scripts/oracle_keeper3.py`) recalibré économie:
+- submit_price + poke `aggregate_now` toutes les **300 blocs** (~13.5 min < hsb)
+- heartbeats toutes les **1000 blocs** (~45 min, entre interval 900 et timeout 4000)
+- fee fixe **0.001 XEL/tx** (wallet accepte jusqu'à 0.0001; marge ×10)
+- burn total ≈ **0.4 XEL/jour pour les 3 providers** (avant: ~8 XEL/h !)
+- jitter ±1% (spread < max_dev 500bps), top-up providers: 50 XEL chacun le 08-22
+
+## 🐛 Deadlock alreadysub (design oracle)
+
+Si TOUS les miners soumettent avant l'ouverture de la fenêtre d'agrégation,
+personne ne peut re-déclencher `try_aggregate` (le check `alreadysub` précède)
+→ cycle bloqué indéfiniment (`sc_N=3`, cy figé). Le keeper poke donc
+`aggregate_now` (chunk 17, sans access-control) AVANT chaque round de soumissions.
+Fix contrat possible: déplacer try_aggregate avant le check, ou entry publique dédiée.
+
+## 🧪 Résultats tests flux v12.1 (2026-08-22, admin wallet)
+
+| Flux | Statut | Notes |
+|---|---|---|
+| Oracle E2E (submit→agg→rewards VLT) | ✅ | fg_0 frais chaque cycle keeper |
+| PSM.mint XEL→xUSD | ✅ | 0.0595 xUSD (deposit même tx OBLIGATOIRE) |
+| PSM.redeem xUSD→XEL | ✅ | nécessite xUSD contract financé (voir bug burn) |
+| VaultSwap.psm_mint | ❌ | bug forward+re-read → v12.2 |
+| VE3.deposit (vault 2 XEL) | ✅ | vault créé, borrow/repay/withdraw à tester |
+
+## 🛠️ Techniques de debug contract (éprouvées)
+
+- `get_contract_logs {caller: <tx>}` montre `exit_error` mais **sans localisation**.
+- **Contrats probe** = meilleur bissecteur : déployer un mini-.slx qui appelle
+  directement le chunk suspecté (ex: `/tmp/probe_minter.slx` a validé xUSD chunk 4).
+  - Compile: `xelis_compile_tool <in.slx> <out.hex>` (chunk map sur stderr)
+  - Deploy: build_transaction `deploy_contract` fee 1e8, hash = tx hash
+  - `set_minter(Hash, bool)` prend **2 params** (hash + enabled)
+- Balance asset wallet: RPC wallet `get_balance` avec `params: {"asset": <hash>}`
+  (sans params = XEL total).
+- **Maturité UTXO**: xUSD fraîchement minté non spendable pendant ~60+ blocs
+  → attendre ou tester des montants réduits.
+- Daemon n'expose pas le revert reason via get_transaction; passer par logs/probe.
 
 ## Live Environment
 

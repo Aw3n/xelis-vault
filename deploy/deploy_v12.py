@@ -201,7 +201,8 @@ def phase3(D: Deployer):
     miner = D.deploy("XelisVaultMiner")
     for fn, arg in [("set_registry", val_hash(reg)),
                     ("set_vlt_contract", val_hash(vltc)),
-                    ("set_vlt_asset", val_hash(vlt))]:
+                    ("set_vlt_asset", val_hash(vlt)),
+                    ("set_treasury", val_addr(admin_addr))]:
         D.invoke(miner, cid("XelisVaultMiner", fn), [arg], label=f"Miner.{fn}")
     D.register(reg, "XelisVaultMiner", miner)
     # StakedOracle
@@ -215,6 +216,10 @@ def phase3(D: Deployer):
               val_u64(1), val_u64(100_000_000_000)],
              label="Oracle.add_feed_entry(XEL/USD)")
     D.register(reg, "StakedOracle", oracle)
+    # v12.1: le Miner minte les récompenses via VLT.mint_to (chunk 4) —
+    # il DOIT être minter, sinon submit_price → aggregate → notminter
+    D.invoke(vltc, cid("VLTToken", "set_minter"), [val_hash(miner), val_bool(True)],
+             label="VLT.set_minter(miner)")
     D.invoke(miner, cid("XelisVaultMiner", "register_service"),
              [val_u8(1), val_hash(oracle)],
              max_gas=10_000_000, label="Miner.register_service(oracle,1)")

@@ -25,7 +25,9 @@ PROVIDERS = [
 ]
 FEED_ID = 0
 BASE_PRICE = 5_000_000        # 0.05 USD @8dp
-JITTER = [200_000, 0, -200_000]
+# v12.1: spread max accepté par StakedOracle.aggregate = 500 bps (5%).
+# ±200k (±4%) → spread 800 bps → branche slash-all à chaque agrégat.
+JITTER = [50_000, 0, -50_000]  # ±1% → spread ~200 bps, sous le seuil
 HEARTBEAT_EVERY = 60          # blocks (< interval 100)
 LOG = "/tmp/oracle_keeper3.log"
 
@@ -51,6 +53,7 @@ def main() -> None:
 
     chunk_submit = cid("StakedOracle", "submit_price")
     chunk_hb = cid("XelisVaultMiner", "submit_heartbeat")
+    chunk_agg = cid("StakedOracle", "aggregate_now")
 
     wallets = []
     for url, idx in PROVIDERS:
@@ -104,6 +107,12 @@ def main() -> None:
             log(f"heartbeats @topo {topo}")
 
         if topo >= last_topo + 5:
+            # Anti-deadlock v12.1: si tous les miners ont déjà soumis dans le
+            # cycle courant, plus personne ne peut déclencher try_aggregate
+            # (le check alreadysub précède l'appel). Un poke explicite
+            # aggregate_now ouvre le cycle suivant avant les soumissions.
+            send(wallets[0][1], oracle_c, chunk_agg, [val_u64(FEED_ID)])
+            time.sleep(4)
             okc = 0
             for (idx, pw), jit in zip(wallets, JITTER):
                 price = BASE_PRICE + jit

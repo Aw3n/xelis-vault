@@ -1,3 +1,18 @@
+## [v12.1 testnet] — 2026-08-22
+
+Full clean redeploy of v11.7 contracts (phases 1-8, 10-13, Phase 9 skipped).
+Addresses & incidents: `docs/DEPLOYMENTS_V12_1.md`. Highlights:
+
+- Oracle pipeline END-TO-END operational: 3 providers submit → aggregate →
+  VLT rewards minted via fixed chunk-4 path; reputation rising.
+- Config gaps found & fixed during bring-up (now in deploy_v12.py):
+  `VLT.set_minter(Miner)`, `Miner.set_treasury(admin)`, MD wiring
+  (miner/oracle `set_delegation_contract`).
+- Keeper hardening (`scripts/oracle_keeper3.py`): jitter ±1% (spread must
+  stay under oracle max_dev 500 bps) + periodic `aggregate_now` poke
+  (fixes alreadysub deadlock when every miner submitted before the
+  aggregation window opened).
+
 ## [v7.1 CLI] — 2026-08-21
 
 ### xvault-miner — Zero-config onboarding wizard

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Oracle keeper: 3 provider wallets keep the XEL/USD feed alive.
 
-Each cycle (~AGGREGATION_BLOCKS=5 blocks):
-  - every provider submits a price (small jitter around BASE_PRICE)
-Every HEARTBEAT_EVERY blocks:
-  - each provider submits a heartbeat to stay active
-Reverts ("alreadysub", nonce races) are tolerated; the loop just continues.
+Cadence économique (config on-chain: hard_stale=500, hb interval=900,
+timeout=4000):
+  - submit_price + poke aggregate_now toutes les SUBMIT_EVERY blocks (~13 min)
+  - heartbeats toutes les HEARTBEAT_EVERY blocks (~45 min)
+Fee 0.001 XEL/tx → burn total ≈ 0.4 XEL/jour pour les 3 providers.
+Reverts ("alreadysub", nonce races) sont tolérés; la boucle continue.
 """
 import json
 import sys
@@ -28,7 +29,9 @@ BASE_PRICE = 5_000_000        # 0.05 USD @8dp
 # v12.1: spread max accepté par StakedOracle.aggregate = 500 bps (5%).
 # ±200k (±4%) → spread 800 bps → branche slash-all à chaque agrégat.
 JITTER = [50_000, 0, -50_000]  # ±1% → spread ~200 bps, sous le seuil
-HEARTBEAT_EVERY = 60          # blocks (< interval 100)
+SUBMIT_EVERY = 200            # blocks (~9 min) < hard_stale 500 avec marge
+HEARTBEAT_EVERY = 1000        # blocks (~45 min), interval 900 / timeout 4000 (on-chain)
+TX_FEE = 100_000              # 0.001 XEL/tx — burn ≈ 0.4 XEL/jour pour les 3 providers
 LOG = "/tmp/oracle_keeper3.log"
 
 
@@ -74,7 +77,7 @@ def main() -> None:
                     "parameters": params,
                     "deposits": {},
                     "permission": "all"},
-                "fee": {"fixed": 10_000_000}, "broadcast": True})["hash"]
+                "fee": {"fixed": TX_FEE}, "broadcast": True})["hash"]
         try:
             tx = _with_retries(_b)
             pw.wait(tx, timeout=120)
@@ -106,7 +109,7 @@ def main() -> None:
             last_hb_topo = topo
             log(f"heartbeats @topo {topo}")
 
-        if topo >= last_topo + 5:
+        if topo >= last_topo + SUBMIT_EVERY:
             # Anti-deadlock v12.1: si tous les miners ont déjà soumis dans le
             # cycle courant, plus personne ne peut déclencher try_aggregate
             # (le check alreadysub précède l'appel). Un poke explicite

@@ -60,10 +60,32 @@ Fix contrat possible: déplacer try_aggregate avant le check, ou entry publique 
 | Flux | Statut | Notes |
 |---|---|---|
 | Oracle E2E (submit→agg→rewards VLT) | ✅ | fg_0 frais chaque cycle keeper |
-| PSM.mint XEL→xUSD | ✅ | 0.0595 xUSD (deposit même tx OBLIGATOIRE) |
+| PSM.mint XEL→xUSD | ✅ | 0.0595 puis +10.0485 xUSD (deposit même tx OBLIGATOIRE) |
 | PSM.redeem xUSD→XEL | ✅ | nécessite xUSD contract financé (voir bug burn) |
-| VaultSwap.psm_mint | ❌ | bug forward+re-read → v12.2 |
-| VE3.deposit (vault 2 XEL) | ✅ | vault créé, borrow/repay/withdraw à tester |
+| VE3 deposit/borrow/repay/withdraw | ✅ | CYCLE COMPLET vault#1: 2 XEL collatéral, borrow 0.03, repay full, withdraw OK |
+| VaultSwap create_pool / add_liquidity / swap | ✅ | pool XEL/xUSD 0.4:1.98 @ prix oracle; swap 0.002 XEL OK |
+| VaultSwap.psm_mint / psm_redeem | ❌ | bug forward+re-read → v12.2 |
+| SavingsRate deposit/withdraw | ✅ | 0.015 déposé, 0.01 retiré |
+| Faucet refill/set_claim_amounts/distribute | ✅ | claim réduit à 1 XEL + 5 VLT/user (default 100 XEL trop gros) |
+
+### Pièges rencontrés pendant les tests (NE PAS REFAIRE)
+- **Unités prix**: oracle 4,950,000 raw = 0.0495 $/XEL → 203 XEL ≈ 10 xUSD
+  (PAS 2 !). min_out en RAW xUSD 8dp.
+- **VaultSwap CB**: `toobig` = swap > max_swap_pct du pool; `cbtrip` = écart
+  prix exécution vs TWAP > max_volatility_bps (default 1000). Sur un mini-pool,
+  même 5% du pool trip le CB → swiper ≤1% du pool ou élargir la config (entry 32).
+- **Address[] en paramètre RPC**: format tableau ValueCell =
+  `{"type":"object","value":[val_addr(x), …]}` (ValueCell::Object(CellArray),
+  xelis-vm/types/src/values/cell/mod.rs; Map = paires clé/valeur, PAS un tableau).
+- **Lire une valeur retournée par un contrat**: la faire `return` depuis une
+  entry probe → visible dans get_contract_logs champ `exit_code`.
+- **Maturité UTXO ~60+ blocs**: après chaque mint/gros crédit, attendre ~4 min
+  avant de re-déposer ("not enough funds … available: X" au BUILD).
+- **VE3**: COUNTER_KEY="n" démarre à 1 → premier vault = v_1; repay brûle
+  depuis le solde du contrat xUSD (comme PSM.redeem) → financer xUSD contract
+  avant gros repay; treasury=admin ⇒ fees récupérées par l'admin au borrow.
+- **Faucet**: refill_xel=4, distribute=6 (Address[] format object);
+  defaults claim 100 XEL/user → set_claim_amounts(7) recommandé.
 
 ## 🛠️ Techniques de debug contract (éprouvées)
 

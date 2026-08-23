@@ -186,7 +186,7 @@ entry create_asset() -> u64 {
     let existing: optional<Hash> = s.load(ASSET_HASH_KEY)
     require(existing.is_none(), "exists")
     let asset: Asset = Asset::create(
-        MAX_SUPPLY, "XELIS Vault", "VLT", DECIMALS, MaxSupplyMode::None
+        MAX_SUPPLY, "XELIS Vault", "VLT", DECIMALS, MaxSupplyMode::Mintable { max_supply: MAX_SUPPLY }
     ).expect("err")
     let hash: Hash = asset.get_hash()
     s.store(ASSET_HASH_KEY, hash)

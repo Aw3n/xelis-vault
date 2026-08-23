@@ -1,5 +1,128 @@
 # XELIS Vault — Operator Notes (AGENTS.md)
 
+## 🚨 FORK + ROLLBACK (2026-08-22) — chaîne canonique rétablie, redéploiement v12R
+
+### ⚠️ FAUX MYSTÈRE "wallet cache corrompu" — résolu : c'était un revert silencieux
+- **Symptôme** : soldes VLT gelés après des mints "confirmés" ; warnings
+  `DAG reorg detected … deleting changes` à chaque bloc dans le log wallet.
+- **Vraie cause** : un mint manuel de `2e15` atomiques (= **20M VLT**) dépassait la
+  MAX_SUPPLY 10M → contrat reverté `supmax`. La tx se CONFIRME quand même (nonce
+  consommé) mais ne crédite rien ; `WalletClient.invoke` brut NE vérifie PAS le
+  revert (seul `Deployer.invoke` le fait via `revert_reason`). Le wallet affichait
+  donc correctement 951 VLT.
+- Les warnings `DAG reorg detected` sont du BRUIT NORMAL en DAG miné localement
+  (coinbase admin à chaque bloc + réordonnancement topo de blocs frères) — présents
+  aussi bien avant le rollback. Ne pas les prendre pour un fork.
+- **Reconstruction wallet** (faite pendant le debug, utile à savoir) :
+  seed récupérable via CLI interactif (`./xelis_wallet --wallet-path … --password …`
+  puis commande `seed`, mot de passe redemandé). Recréation: stopper wallet,
+  déplacer `db`, relancer avec `--seed "<25 mots>"`, puis RE-TRACKER les assets
+  (`track_asset` VLT/xUSD) — le tracking est stocké dans le db, pas dans les keys.
+  Backups: `/Users/adrien/xelis/wallet_v125/db.bak_frozen_0215`.
+
+
+
+**Ce qui s'est passé** :
+- Le nœud officiel `testnet-node.xelis.io` était **stalled à topo 155,716** ; notre daemon
+  a miné une branche privée jusqu'à 174,941 (~19k blocs orphelins). Ancêtres communs
+  vérifiés identiques aux topos 100k/140k/150k/155k.
+- **TOUTES les déploiements v11 ET v12 sont morts** sur la chaîne canonique (audit:
+  `get_contract_module` → `no contract module available` pour les 36 hash de
+  deployment_state.json ET les hash v12 originaux).
+- L'admin garde son historique ancien : **nonce canonique 4688**, solde **57,334 XEL**
+  (vs 63,737 sur la branche forkée — la diff = récompenses minières perdues).
+
+**Rollback exécuté** :
+- Keeper tué, LaunchAgents stack+daemon déchargés, miner tué.
+- Backup data dir → `/Users/adrien/xelis/data_forked_backup_*` (137 Mo).
+- Resync from scratch: `./xelis_daemon ... --allow-fast-sync`
+  ⚠️ **fast-sync et boost-sync sont MUTUELLEMENT EXCLUSIFS** (sinon erreur `Invalid config sync mode`).
+  Fast-sync terminé en 1m37s, bootstrap metadata de 711 contrats externes.
+- Daemon tourne via **nohup** (`launchctl bootstrap com.xelisvault.daemon` →
+  `Input/output error`, agent à réparer). Log: `/tmp/xelis_daemon_fresh.log`.
+- Miner relancé (plist `.disabled`, nohup PID ~69659): **blocs acceptés par le réseau** ✓,
+  alignement vérifié local=officiel=155,746 avec hash identiques @155,744. Pas de re-fork.
+  Version officielle: `1.25.0-a6ae4cd9` vs notre build patché `1.25.0-a39e295` — compatible.
+- Wallet admin **redémarré obligatoirement** après rollback: il croyait nonce=0 alors que
+  la chaîne attendait 4688 → `Invalid TX nonce`. Après restart, get_nonce renvoie 4688 ✓.
+
+**Redéploiement complet "v12R" en cours** (orchestrateur deploy/deploy_v12.py) :
+- État reset: docs/deployment_state.json vierge ; backup ancien état →
+  docs/deployment_state_forked_0822.json.
+- Fix bug deploy_v12.py phase3: `admin_addr` indéfini → remplacé par `ADMIN` import.
+- Les hash v12R sont consignés au fil des phases dans docs/deployment_state.json +
+  section « v12R REDEPLOY » ci-dessous.
+
+## 🔧 FIX v12R — VLT max supply visible protocole (2026-08-22)
+
+L'asset VLT du premier passage v12R a été créé avec `MaxSupplyMode::None` → l'explorer
+affichait "no max supply" (le cap 10M n'existait qu'au niveau logique contrat, clé `ms`).
+
+**Fix**: `contracts/token/VLTToken.slx` create_asset →
+`MaxSupplyMode::Mintable { max_supply: MAX_SUPPLY }` (=10_000_000 VLT @8dp).
+⚠️ Syntaxe Silex: variante avec payload = style STRUCT `Mintable { max_supply: X }`,
+PAS `Mintable(X)` (erreur `unexpected type 'MaxSupplyMode'`).
+Bytecode recompilé → /tmp/deploy_VLTToken.hex ; entry chunks 4–27 inchangés.
+Redéploiement complet relancé depuis la phase 1 (registry neuf ⇒ noms libres).
+Ancien état partiel archivé: docs/deployment_state_v12R_partial_maxsupply0.json.
+xUSD reste volontairement en MaxSupplyMode::None (stable adossé au collatéral).
+
+## ✅ Reconfiguration post-v12R (2026-08-23, complète)
+
+| Élément | État |
+|---|---|
+| Config oracle/miner | hsb=500 (chunk 56), hi=900 (34), ht=4000 (35) ✓ |
+| Faucet | VLT wiring (12/13), claims 100XEL+100VLT (7), financé **40k XEL + 500k VLT** ✓ |
+| Providers p1/p2/p3 | fund 1100 VLT + 5 XEL chacun → `register_miner` (15) stake 1000 VLT mask=1 ✓ |
+| PSM réserve XEL | **100 XEL** via invoke get_reserves_entry(10)+deposit ✓ |
+| protocol.py | VLT/XUSD assets + 36 CONTRACT_HASHES v12R ✓ |
+| cli_backend.py | _FALLBACK régénéré depuis deployment_state.json ✓ |
+| Keeper oracle | nohup `scripts/oracle_keeper3.py`, **prix réel** CoinEx+MEXC médiane $0.2107, submit x3 OK, feed `fg_0=[21070000,…]` ✓ |
+
+⚠️ Pièges rencontrés (NE PAS REFAIRE):
+- `Faucet.refill_vlt` (chunk 5) prend **1 param u64** ET le transfert se fait en attachant
+  le dépôt au même invoke (l'entry ne fait qu'émettre l'event).
+- Pour créditer un contrat en XEL/VLT: invoquer n'importe quelle entry **sans param**
+  du contrat cible (ex chunk 10 get_reserves_entry pour PSM) avec `deposits={…}`.
+- Les warnings wallet `DAG reorg detected … deleting changes` sont normaux en DAG
+  miné localement — voir section « FAUX MYSTÈRE » ci-dessus.
+
+## ✅ v12R REDEPLOY — hash définitifs (2026-08-22, après fix max supply)
+
+| ContractRegistry | `19161543b9e5aef00c5a3e226058b946d847c78941f0c89e9b996c6332204970` |
+| ComplianceModule | `1c0f143207c24d3b3e7fd04000cd1425e498505171de45ca980238e9f71c7f4a` |
+| VLTToken | `020f228fbd61e3a6cd2d570083e14c02f7073f293c79ee4059359b896e217d84` |
+| xUSD | `4836190ca2f2278cfc3e8ad8c7e05bbd0070de253c64615f6eea2c19885063a1` |
+| FaucetContract | `0169707c19522269e8126edf36066e2c83c384e8c31f8072667f7cfad06631ec` |
+| XelisVaultMiner | `6c70647e233dd634aa05cd6bdca06b521947c4c682d7decac0700d8a79d4b024` |
+| StakedOracle | `e89bc25043c320fdac9c2030bc99e4b5bd94c9e0043132d10f66cd93576fa515` |
+| MinerPool | `de744e0ccf45252070eb8fe83d0d16d36736ab7af1014a69405f358fb63c439b` |
+| InterestRateModel | `e9f716b07628fb8793adf3e20142348082a5021d671f316dad1e02cfb70f9c6d` |
+| VaultEngineV3 | `844cab735a8156f55c3055c2ff56a6824ad6d55b32f7dfb866655bde2bfa2054` |
+| SavingsRate | `139caff55ca74911eb0c2631e5aab623a53ee56c7b24143328ecef3a610a9738` |
+| FlashCallback | `a84fc6d305b4ed1a6e15c310461799172272ec1cabf209316e724c3ede420f40` |
+| FlashLoan | `f8505eb95c5bb070e4f2a7f2d80826e13d140d2ee03b6bfdfaf1b7772c4be9f4` |
+| VaultSwapV2 | `5defc37154200f1cabb5b5fa43510565ab791e34b20f2cf4132ec7d9ac4e2041` |
+| PSM | `977ddf73305dd21c29ffbe69dc2bdb29a12a62f4ff8bbc3140cafd4b51d5c2e1` |
+| LendingMarket | `cb8f489382368b2f1b27bffcba346ede50aa180ebefac89ac444995bc95255bc` |
+| PeerLoan | `ec1ed4f280fef7cd7b13cb0231be12cfb53ddc57b38eaa822e00497221d82d36` |
+| SyndicatePool | `5980cbd860081e613d32fd86d1c474fd798c8a7da262177078ad2eeb8dcb5cb0` |
+| SealedBidAuction | `ac0c5a4e22a8348d3e98ff6183fdab23117f06f4a154098c1d7c84b24c3097f5` |
+| PrivacyMixer | `d54cc19be3d16a86a3849be4389e44a9c123ebb0042a88e94f4e91893f940ab8` |
+| AssetVault | `d16f7671f3e5399e1da826f9c4743f6fd5161e54048c945da6bea25d1032ff64` |
+| TreasuryVault | `01d3851249e13354465766306e65be15497a9a9df6f46e35fe417879c4a5ab84` |
+| RevenueShare | `49c363dae4d32473d6d3c26ce0482cf735f7d656c665094002c1d21a6978c94b` |
+| Payroll | `44ce12fb3d143f360c84664fe4849f01fb31ce5b45aebda38b037c70b4079b30` |
+| GovernanceVault | `52cb2f100984319c7f41bbec03fb3e7679279eafdd4abb44ff5d8fdd7631cf97` |
+| Timelock | `b925d8e30ccd7bcffdc1376a6aecd8daaaa71603a3d0a4c9413d9e4a8ed11082` |
+| GuardianMultisig | `9792a5894877a5982c9efdfb91f94c1536fe5f21c017a56c59691776413e4929` |
+| Governor | `608eec92282bcba466e88d7e70d616be5653e9a120997866d738838e783862c3` |
+| OracleGovernance | `bab86ca4a01c3250ce90b5c5d569b87ab221a212321848e104eb89500c28c953` |
+| VLT asset | `3f1f9a3c0a90a0a548670a069e8edad5c0c20914b20b289426b2857c6715f58f` |
+| XUSD asset | `be39794c4a32f231d410c8be3a4d9e80455c667d902c5edf8527dea52533356e` |
+
+
+
 ## ⚠️ LEÇON N°1 — get_deposit_for_asset est TRANSITOIRE (par-tx) — v12.1
 
 Découverte clé du 2026-08-22 (validée par contrats probe déployés) :
@@ -107,8 +230,8 @@ Fix contrat possible: déplacer try_aggregate avant le check, ou entry publique 
 - **Daemon RPC**: `http://127.0.0.1:18081/json_rpc` (no auth)
 - **Wallet RPC**: `http://127.0.0.1:18082/json_rpc`, basic auth `wallet:testpass`
 - **Admin**: `xet:czr9q8k5xlzqdptq7n2vapyjfduldts6tw3e6apl99vknzvmu4zsq8z9j8v`
-- **Processes**: daemon `./xelis_daemon --network testnet --dir-path /Users/adrien/xelis/data/`, miner (8 threads), wallet v1.25.0 binary `/Users/adrien/xelis/xelis_wallet` (`--wallet-path /Users/adrien/xelis/wallet_v125`). LaunchAgents: `com.xelisvault.daemon`, `.miner`, `.stack`, `.keeper`, `.provider18082/18084/18085`. **Unloaded the keeper+providers on 2026-08-20 (they spammed StakedOracle entry 16 submit_price → `alreadysub` every block, flooding the mempool and blocking admin txs from confirming). Restart only after fixing the subscribe-once logic.**
-- **Wallet nonce**: after a daemon restart the wallet's stored nonce lags the chain; poll `get_nonce` (wallet RPC) between txs and wait for it to advance, or restart the wallet (fast with `--precomputed-tables-path`).
+- **Processes (post-rollback 2026-08-22)**: daemon `./xelis_daemon --network testnet --dir-path /Users/adrien/xelis/data/ --rpc-bind-address 127.0.0.1:18081 --allow-fast-sync` via **nohup** (LaunchAgent `.daemon` cassé: `Input/output error`). Miner 8 threads via nohup (blocs acceptés par le réseau officiel ✓). Wallets admin 18082 + providers 18086/18087/18088 tournent en continu et se reconnectent au daemon. LaunchAgents: `com.xelisvault.daemon`, `.stack`, `.keeper`, `.miner.plist.disabled`, `.provider18082/18084/18085`. **Unloaded the keeper+providers on 2026-08-20 (they spammed StakedOracle entry 16 submit_price → `alreadysub` every block, flooding the mempool and blocking admin txs from confirming). Restart only after fixing the subscribe-once logic.**
+- **Wallet nonce**: after a daemon restart or chain rollback the wallet's stored nonce lags (ou diverge) ; restart le wallet puis vérifier `get_nonce` == nonce attendu par la chaîne avant tout build. Pendant les déploiements, poll `get_nonce` entre txs.
 - **Deployment helper**: `/tmp/deploy_ops.py` (`deploy()`, `invoke()`, `get_data()`, `val_*` value builders).
 - **Block time**: ~2.7s. Wait 5–12s between sequential TXs (proof-verification race → `Proof verification error`); nonce race → `Invalid TX ... nonce, got X expected Y` — both fixed by sleeping and retrying once. "Contract not found" right after deploy → wrong hash or too soon; cross-check with `cur_<Name>` in the registry.
 - **Registry (ContractRegistry `840b81...`)**: register (entry 3) is ONE-WAY per name (`exists` revert); upgrade (entry 4, admin) enforces 720-block cooldown (`UPGRADE_TOPO_PREFIX`, unlock = register topo + 720). Upgrades preserve `prev_<Name>` for rollback. Names registered (count 33): ContractRegistry, ComplianceModule, VLTToken, xUSD, FaucetContract, XelisVaultMiner, StakedOracle, MinerPool, InterestRateModel, VaultEngine, SavingsRate, FlashLoan, FlashCallback, **VaultSwap** (not "VaultSwapV2"), PSM, LendingMarket, PeerLoan, SyndicatePool, SealedBidAuction, PrivacyMixer, AssetVault, TreasuryVault, RevenueShare, Payroll, InsurancePool, PrivateInsurance, GovernanceVault, Timelock, Governor, GuardianMultisig, OracleGovernance, VaultChat, FounderVesting4y, FounderVesting10y, FeeDistributor, MinerDelegation.

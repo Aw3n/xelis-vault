@@ -6,18 +6,27 @@ timeout=4000):
   - submit_price + poke aggregate_now toutes les SUBMIT_EVERY blocks (~13 min)
   - heartbeats toutes les HEARTBEAT_EVERY blocks (~45 min)
 Fee 0.001 XEL/tx → burn total ≈ 0.4 XEL/jour pour les 3 providers.
+
+PRIX RÉEL: chaque provider récupère le prix XEL/USDT médian sur les
+exchanges publiques (CoinEx, MEXC) à CHAQUE cycle et le soumet tel quel.
+Si toutes les sources échouent → fallback sur le dernier bon prix
+(persisté sur disque) pour ne jamais laisser le feed devenir stale.
 Reverts ("alreadysub", nonce races) sont tolérés; la boucle continue.
 """
 import json
+import statistics
 import sys
 import time
 from pathlib import Path
+
+import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from protocol import Protocol, val_u64, _with_retries
 
 STATE_PATH = Path(__file__).resolve().parent.parent / "docs" / "deployment_state.json"
 DMAP_PATH = Path(__file__).resolve().parent.parent / "docs" / "entry_chunk_ids.json"
+PRICE_CACHE_PATH = Path("/tmp/oracle_last_good_price.json")
 
 PROVIDERS = [
     ("http://127.0.0.1:18086/json_rpc", 1),
@@ -25,10 +34,22 @@ PROVIDERS = [
     ("http://127.0.0.1:18088/json_rpc", 3),
 ]
 FEED_ID = 0
-BASE_PRICE = 5_000_000        # 0.05 USD @8dp
-# v12.1: spread max accepté par StakedOracle.aggregate = 500 bps (5%).
-# ±200k (±4%) → spread 800 bps → branche slash-all à chaque agrégat.
-JITTER = [50_000, 0, -50_000]  # ±1% → spread ~200 bps, sous le seuil
+FEED_DECIMALS = 8
+# Sources réelles listant XEL/USDT (testées 2026-08-22: coinex+mexc OK,
+# bitget/gate ne référencent pas XEL mais restent tolérées si elles répondent).
+PRICE_SOURCES = [
+    ("coinex", "https://api.coinex.com/v2/spot/ticker",
+     {"market": "XELUSDT"}, ("data", 0, "last")),
+    ("mexc", "https://api.mexc.com/api/v3/ticker/price",
+     {"symbol": "XELUSDT"}, ("price",)),
+    ("bitget", "https://api.bitget.com/api/v2/spot/market/tickers",
+     {"symbol": "XELUSDT"}, ("data", 0, "lastPr")),
+    ("gate", "https://api.gateio.ws/api/v4/spot/tickers",
+     {"currency_pair": "XEL_USDT"}, (0, "last")),
+]
+SANITY_MIN = 0.001            # USD
+SANITY_MAX = 10_000.0         # USD
+MIN_SOURCES = 1               # resilient: 1 source vivante suffit
 SUBMIT_EVERY = 200            # blocks (~9 min) < hard_stale 500 avec marge
 HEARTBEAT_EVERY = 1000        # blocks (~45 min), interval 900 / timeout 4000 (on-chain)
 TX_FEE = 100_000              # 0.001 XEL/tx — burn ≈ 0.4 XEL/jour pour les 3 providers
@@ -43,6 +64,48 @@ def log(msg: str) -> None:
             f.write(line + "\n")
     except OSError:
         pass
+
+
+def _load_cached_price() -> int | None:
+    try:
+        return int(json.loads(PRICE_CACHE_PATH.read_text())["price_atomic"])
+    except Exception:
+        return None
+
+
+def _save_cached_price(price_atomic: int, sources: list[str]) -> None:
+    try:
+        PRICE_CACHE_PATH.write_text(json.dumps({
+            "price_atomic": price_atomic, "sources": sources,
+            "ts": int(time.time()),
+        }))
+    except OSError:
+        pass
+
+
+def fetch_real_price() -> tuple[int | None, str]:
+    """Median XEL/USD across public exchanges → (atomic, description).
+
+    Returns (None, reason) when no source yields a sane price.
+    """
+    vals = []
+    for name, url, params, path in PRICE_SOURCES:
+        try:
+            r = requests.get(url, params=params, timeout=8)
+            r.raise_for_status()
+            d = r.json()
+            for p in path:
+                d = d[int(p)] if isinstance(p, int) else d[p]
+            price = float(d)
+            if SANITY_MIN < price < SANITY_MAX:
+                vals.append((name, price))
+        except Exception as e:
+            log(f"  source {name}: {str(e)[:60]}")
+    if len(vals) < MIN_SOURCES:
+        return None, "no valid source"
+    med = statistics.median([p for _, p in vals])
+    used = ",".join(n for n, p in vals)
+    return int(round(med * 10 ** FEED_DECIMALS)), f"median {med:.6f} USD [{used}]"
 
 
 def main() -> None:
@@ -67,6 +130,10 @@ def main() -> None:
     p0 = wallets[0][1]
     last_topo = 0
     last_hb_topo = 0
+    last_good_price = _load_cached_price()
+    if last_good_price:
+        log(f"dernier bon prix en cache: {last_good_price} atomic "
+            f"({last_good_price / 10**FEED_DECIMALS:.6f} USD)")
 
     def send(pw: Protocol, contract: str, chunk: int, params: list) -> bool:
         def _b():
@@ -117,10 +184,23 @@ def main() -> None:
             send(wallets[0][1], oracle_c, chunk_agg, [val_u64(FEED_ID)])
             time.sleep(4)
             okc = 0
-            for (idx, pw), jit in zip(wallets, JITTER):
-                price = BASE_PRICE + jit
+            for idx, pw in wallets:
+                # Prix RÉEL, récupéré indépendamment par chaque provider
+                # (variance naturelle inter-exchanges << spread max 500 bps).
+                price, desc = fetch_real_price()
+                if price is None:
+                    if last_good_price is not None:
+                        price = last_good_price
+                        desc = f"FALLBACK dernier bon prix ({desc})"
+                    else:
+                        log(f"  provider{idx}: aucun prix disponible ({desc}), skip")
+                        continue
+                okc += 1
+                log(f"  provider{idx}: submit {price} atomic = "
+                    f"{price / 10**FEED_DECIMALS:.6f} USD ({desc})")
                 if send(pw, oracle_c, chunk_submit, [val_u64(FEED_ID), val_u64(price)]):
-                    okc += 1
+                    last_good_price = price
+                    _save_cached_price(price, desc)
                 time.sleep(4)
             # lecture directe de l'agrégat
             try:

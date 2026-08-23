@@ -202,7 +202,7 @@ def phase3(D: Deployer):
     for fn, arg in [("set_registry", val_hash(reg)),
                     ("set_vlt_contract", val_hash(vltc)),
                     ("set_vlt_asset", val_hash(vlt)),
-                    ("set_treasury", val_addr(admin_addr))]:
+                    ("set_treasury", val_addr(ADMIN))]:
         D.invoke(miner, cid("XelisVaultMiner", fn), [arg], label=f"Miner.{fn}")
     D.register(reg, "XelisVaultMiner", miner)
     # StakedOracle

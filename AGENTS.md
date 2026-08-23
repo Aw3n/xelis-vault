@@ -392,3 +392,17 @@ PHASE 12 ✅ FV4y=7e64b686…abec(⚠️1M VLT, excès 500k verrouillé) FV10y=b
 phase12 patchée: instances par hash explicite (cache deploy() fusionnait les 2 vestings).
 PHASE 13 ✅ AirdropTracker v11.6=e1f0ec8f…eb8d1 + 7 recorders (Hash) — DÉPLOIEMENT COMPLET
 protocol.py: VLT/XUSD assets + 37 CONTRACT_HASHES v12. docs/DEPLOYMENTS_V12.md complet.
+
+# INCIDENT 2026-08-23 ~09:30-10:40 — "fork" testnet: nœud officiel GELÉ, pas nous
+Symptôme: explorer/officiel figé à topo 170999 (37a286a7) pendant que notre daemon avançait (171962+).
+Diagnostic: dernier bloc commun = 170999 EXACTEMENT (get_block_at_topoheight, PAS get_block qui n'existe pas).
+Le nœud officiel refuse TOUT depuis 171000: blocs vides ET transactions (mempool=0 malgré 31MB envoyés).
+Bloc 171000 = bloc vide sans tx → rien d'empoisonné, leur node est gelé/buggé en interne.
+Le testnet dépend de notre hashrate: sans nos blocs la chaîne publique est à l'arrêt total.
+Décision: rester sur NOTRE branche (plus lourde), miner+keeper relancés dessus.
+Dès que le node officiel débloquera, le DAG convergera vers la branche la plus lourde = la nôtre.
+Vérif convergence: comparer hash get_block_at_topoheight(171000) local (d76f76c1…) vs officiel.
+État critique safe des deux côtés: tous les déploiements v12R + config sont ≤170999.
+Seules les txs post-170999 seraient à rejouer si un jour on abandonnait notre branche (non prévu).
+RPC daemon utile: p2p_status (best/median/our_topoheight), get_peers (bytes_recv/sent).
+Miner PID nohup /tmp/miner.log; keeper nohup /tmp/oracle_keeper.log (plist .keeper obsolète, ne pas utiliser).

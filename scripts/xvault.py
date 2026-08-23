@@ -640,7 +640,7 @@ def main():
               f"{C.RED}○ daemon offline{C.RESET}"
         wal = f"{C.GREEN}● wallet open{C.RESET}" if wallet_ok else \
               f"{C.YELLOW}○ no wallet{C.RESET}"
-        addr = short_addr(cfg.get("miner_address")) if cfg.get("miner_address") else "—"
+        addr = short_addr(cfg.get("miner_address")) if cfg.get("miner_address") else short_addr(b.address)
         print(f"  {net}   {wal}   Address: {addr}")
         print()
 

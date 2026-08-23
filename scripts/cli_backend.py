@@ -199,7 +199,13 @@ class Backend:
 
     @property
     def address(self) -> str:
-        return self.cfg.get("miner_address") or ""
+        addr = self.cfg.get("miner_address") or ""
+        if addr:
+            return addr
+        try:
+            return self.wallet.address() or ""
+        except Exception:
+            return ""
 
     @property
     def has_wallet(self) -> bool:
@@ -306,7 +312,7 @@ class Backend:
                  (self.vlt_asset, self.xusd_asset)]
         for a, b in pairs:
             lo, hi = (a, b) if a < b else (b, a)
-            pool = self.daemon.read_key(vs, f"p_{lo}_{hi}")
+            pool = self.daemon.read_key(vs, f"p{lo}_{hi}")
             if isinstance(pool, list) and len(pool) >= 6:
                 pools.append({"a": str(pool[0]), "b": str(pool[1]),
                               "reserve_a": int(pool[2]), "reserve_b": int(pool[3])})
@@ -321,7 +327,7 @@ class Backend:
         total = int(n) if isinstance(n, int) else 0
         vaults = []
         for i in range(1, min(total, 200) + 1):
-            snap = self.daemon.read_key(ve, f"v_{i}")
+            snap = self.daemon.read_key(ve, f"v{i}")
             if isinstance(snap, list) and len(snap) >= 10:
                 owner = str(snap[0])
                 if owner == addr:

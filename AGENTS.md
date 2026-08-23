@@ -67,6 +67,31 @@ Redéploiement complet relancé depuis la phase 1 (registry neuf ⇒ noms libres
 Ancien état partiel archivé: docs/deployment_state_v12R_partial_maxsupply0.json.
 xUSD reste volontairement en MaxSupplyMode::None (stable adossé au collatéral).
 
+## ✅ Tests E2E v12R (2026-08-23, passe complète)
+
+| Flow | Résultat | Notes |
+|---|---|---|
+| PSM.mint / redeem | ✅ | redeem exige le **contrat xUSD financé en xUSD** (burn depuis SA balance, pattern v12.1 confirmé). Refill: invoke idempotent `xUSD.set_registry`(13) + dépôt attaché |
+| VE3 deposit→borrow→repay→withdraw | ✅ cycle complet x2 | health checks validés (2 `unhealthy` correctement levés). COUNTER "n" démarre à 1 → vault#1 = premier |
+| SavingsRate deposit/withdraw/claim | ✅ | |
+| VaultSwap create_pool/add_liq/swap | ✅ | `cbtrip` = circuit breaker TWAP (max_vol 1000bps) → pour 1er swap sur pool neuf: set_max_volatility_bps(32) temporaire |
+| PrivacyMixer deposit ×3 + auto-mix | ✅ | mix auto au 3e dépôt (threshold=3). refund impossible en test: timeout min 17280 blocs (1j) |
+| Faucet.distribute | ✅ | **chunk 6** (16=set_guardian!). Arrays RPC: `{"type":"object","value":[val,…]}` |
+| GovernanceVault stake/unstake | ✅ | stake ids démarrent à 0; unstake avant lock → "locked" (correct) |
+| FounderVesting claim | ✅ | "cliffnotpassed" (correct) |
+| MinerDelegation.register_profile | ✅ | `(name:str, description:str, commission_bps:u64)` |
+| VaultChat.register_session | ✅ | |
+| Oracle prix réel + heartbeats providers | ✅ | $0.2165, rewards protocole XEL reçus par providers (+45 XEL chacun) |
+
+### 🔧 Fixes appliqués pendant la passe
+1. **PSM.set_oracle(23) + VS.set_oracle(37) manquaient** → ajoutés à deploy_v12.py
+   phase5. Sans eux: PSM.mint revert `err`, swap sans prix.
+2. Encodage JSON-RPC des arrays (Silex): variante **`object`** avec value=list de
+   ValueCells (`{"type":"object","value":[…]}`); variantes RPC acceptées:
+   primitive/bytes/object/map UNIQUEMENT.
+3. Maturité balances chiffrées ~60 blocs APRÈS chaque mint — les attaches de
+   dépôts échouent (`lowbal`/proof error) si on réutilise des fonds tout frais.
+
 ## ✅ Reconfiguration post-v12R (2026-08-23, complète)
 
 | Élément | État |

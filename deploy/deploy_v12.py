@@ -301,7 +301,8 @@ def phase5(D: Deployer):
     for fn, arg in [("set_registry", val_hash(reg)),
                     ("set_xusd_contract", val_hash(xusd)),
                     ("set_xusd_asset", val_hash(xasset)),
-                    ("set_treasury", val_addr(admin_addr))]:
+                    ("set_treasury", val_addr(admin_addr)),
+                    ("set_oracle", val_hash(oracle))]:
         D.invoke(vs, cid("VaultSwapV2", fn), [arg], label=f"VS.{fn}")
     D.set_minter(xusd, vs)
     D.set_burner(xusd, vs)
@@ -309,7 +310,8 @@ def phase5(D: Deployer):
     for fn, arg in [("set_registry", val_hash(reg)),
                     ("set_xusd_contract", val_hash(xusd)),
                     ("set_xusd_asset", val_hash(xasset)),
-                    ("set_treasury", val_addr(admin_addr))]:
+                    ("set_treasury", val_addr(admin_addr)),
+                    ("set_oracle", val_hash(oracle))]:
         D.invoke(psm, cid("PSM", fn), [arg], label=f"PSM.{fn}")
     D.set_minter(xusd, psm)
     D.set_burner(xusd, psm)

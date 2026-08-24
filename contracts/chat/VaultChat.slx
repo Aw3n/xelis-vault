@@ -229,7 +229,7 @@ entry create_group(group_pubkey: Hash) -> u64 {
     s.store(GROUP_PREFIX + id.to_string(10u32), group)
     s.store(GROUP_MEMBERS_COUNT_PREFIX + id.to_string(10u32), 0u64)
     s.store(GROUPS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // ID 2: add_group_member
@@ -821,7 +821,7 @@ entry store_message(
     s.store(msg_key, msg_data)
     s.store(count_key, count + 1)
     
-    return count
+    return 0
 }
 
 // Retrieve an encrypted message from on-chain storage
@@ -1008,7 +1008,7 @@ entry store_group_message(
     s.store(msg_key, msg_data)
     s.store(count_key, count + 1)
     
-    return count
+    return 0
 }
 
 // Get a group message from on-chain storage
@@ -1206,7 +1206,7 @@ entry rotate_group_key(group_id: u64, new_group_pubkey: Hash) -> u64 {
     group.group_pubkey = new_group_pubkey
     s.store(GROUP_PREFIX + group_id.to_string(10u32), group)
     
-    return old_version + 1
+    return 0
 }
 
 // Get current key version for a group (members check this to know if they need new keys)
@@ -1283,7 +1283,7 @@ entry store_ephemeral_message(
     let expire_topo: u64 = get_current_topoheight() + ttl_blocks
     s.store(EPHEMERAL_PREFIX + recipient.to_string() + "_" + slot.to_string(10u32), expire_topo)
     
-    return count
+    return 0
 }
 
 // Check if an ephemeral message has expired
@@ -1343,7 +1343,7 @@ entry register_as_relayer(endpoint: string, free_daily_limit: u64, free_wallet_s
     s.store(RELAY_REG_PREFIX + "idx_" + count.to_string(10u32), caller.to_string())
     s.store(RELAY_REG_COUNT_KEY, count + 1)
     
-    return count
+    return 0
 }
 
 pub fn get_relayer_count() -> u64 {
@@ -1393,7 +1393,7 @@ entry claim_free_slot() -> u64 {
                 // Claim slot
                 s.store(FREE_SLOT_PREFIX + caller.to_string() + "_" + relayer_str, free_limit)
                 s.store(FREE_SLOT_COUNT_PREFIX + relayer_str, used + 1)
-                return i  // Return relayer index
+                return 0
             }
         }
         i += 1
@@ -1435,7 +1435,7 @@ entry report_free_usage(user: Address) -> u64 {
     let remaining: u64 = s.load(slot_key).unwrap_or(0)
     require(remaining > 0, "nofree")
     s.store(slot_key, remaining - 1)
-    return remaining - 1
+    return 0
 }
 
 // ── Flexible Pricing Plans ────────────────────────────────────────────────
@@ -1467,7 +1467,7 @@ entry create_plan(plan_type: u8, amount: u64, duration_blocks: u64, msg_count: u
     s.store(plan_key, plan_data)
     s.store(count_key, plan_id + 1)
     
-    return plan_id
+    return 0
 }
 
 // Relayer updates an existing plan
@@ -1583,7 +1583,7 @@ entry consume_credit(user: Address) -> u64 {
     let credits: u64 = s.load(key).unwrap_or(0)
     require(credits > 0, "nocredits")
     s.store(key, credits - 1)
-    return credits - 1
+    return 0
 }
 
 // ── Batched Anchoring (gas optimization) ──────────────────────────────────
@@ -1644,7 +1644,7 @@ entry anchor_batch(merkle_root: Hash, message_count: u64) -> u64 {
         }
     }
     
-    return batch_count + 1
+    return 0
 }
 
 // ── Relayer Reliability Score ─────────────────────────────────────────────
@@ -1699,7 +1699,7 @@ entry blacklist_relayer(bad_relayer: Address, reason: string) -> u64 {
     let bl_count: u64 = s.load(RELAY_BLACKLIST_COUNT_KEY + "_" + bad_relayer.to_string()).unwrap_or(0)
     s.store(RELAY_BLACKLIST_COUNT_KEY + "_" + bad_relayer.to_string(), bl_count + 1)
     
-    return bl_count + 1
+    return 0
 }
 
 // How many relayers have blacklisted this relayer?
@@ -1906,7 +1906,7 @@ entry create_payment_request(
     s.store(req_key, data)
     s.store(PAYREQ_COUNT_KEY, id + 1)
     
-    return id
+    return 0
 }
 
 // Fulfill a payment request (sends payment to the requester)
@@ -2021,7 +2021,7 @@ entry create_giveaway(
     s.store(key, data)
     s.store(GIVEAWAY_COUNT_KEY, id + 1)
     
-    return id
+    return 0
 }
 
 // Claim a giveaway (first come first served)
@@ -2064,7 +2064,7 @@ entry claim_giveaway(giveaway_id: u64) -> u64 {
     let new_data: string = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + new_claimed.to_string(10u32) + "|" + parts[5] + "|" + new_active.to_string(10u32)
     s.store(key, new_data)
     
-    return new_claimed
+    return 0
 }
 
 // Cancel giveaway (refund remaining to creator)
@@ -2097,7 +2097,7 @@ entry cancel_giveaway(giveaway_id: u64) -> u64 {
     let new_data: string = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + parts[4] + "|" + parts[5] + "|0"
     s.store(key, new_data)
     
-    return remaining
+    return 0
 }
 
 // Get giveaway details
@@ -2154,7 +2154,7 @@ entry send_direct_message(
     s.store(msg_key, msg_data)
     s.store(count_key, count + 1)
     
-    return count
+    return 0
 }
 
 // Get a direct on-chain message
@@ -2300,7 +2300,7 @@ entry slash_relayer_bond(relayer: Address, slash_bps: u64, reason: string) -> u6
         }
     }
     
-    return slash_amount
+    return 0
 }
 
 // Relayer withdraws bond (must not be active relayer)

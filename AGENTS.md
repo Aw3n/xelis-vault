@@ -532,3 +532,28 @@ lag node public) | Mixer deposit ×3 (auto-mix au 3e) ✓ | faucet_distribute �
 register) | PSM.redeem ✓ | AMM swap ✓ | Savings deposit/withdraw ✓ | vault_repay
 full ✓ | vault_withdraw ✓.
 ⚠️ my_vaults() lit via daemon configuré (public): prévoir lag propagation ~1-2 min.
+
+# ✅ FIX v12R-4 — VaultChat conforme « return 0 » + suite relayers verte (2026-08-24)
+Le même bug VM que VE3/Mixer/Faucet frappait VaultChat dès qu'un compteur > 0:
+`create_group` retournait l'id → écritures jetées silencieusement (le 1er run
+17/17 du 24/08 passait car TOUS les compteurs partaient de 0!).
+- **18 entrées mutantes patchées** → `return 0`: create_group, store_message,
+  store_group_message, store_ephemeral_message, send_direct_message,
+  register_as_relayer, claim_free_slot (return i), rotate_group_key,
+  anchor_batch, blacklist_relayer, create_plan, consume_credit,
+  report_free_usage, create_payment_request, create_giveaway, claim_giveaway,
+  cancel_giveaway, slash_relayer_bond. Les entries de LECTURE pure gardent
+  leurs retours (correct). mark_read était déjà OK.
+- Chunk map INCHANGÉE (7/8/9/11/20/48/51/56/66/95/96/121 vérifiés identiques).
+- **Nouveau hash**: `54fbd12e40b5e039b9a1c7c0b9475cebc0fd77ec72cbf35a9551712a59ea0bbd`
+  (registry upgrade entry 4, prev_ préservé). Config refaite: set_vlt_asset(96),
+  set_treasury(95)=admin (clé storage `tr`). Hash maj dans deployment_state.json
+  + protocol.py + cli_backend _FALLBACK (l'ancien _FALLback datait de v11!).
+- ⚠️ Le bond VLT de p2 (50) est PERDU dans l'ancien contrat 73f7b78b (escrow
+  orphelin) — top-up automatique ajouté au préflight de test_chat.py (+maturité).
+- test_chat.py: **17/17 PASS** sur la nouvelle instance (sessions, groupes,
+  message membre, anchor, bond→whitelist→register→fee→claim, négatif notrelayer).
+- ⚠️ AUTRES CONTRATS À AUDITER pour le même pattern (mutants retournant ≠0):
+  GovernanceVault.stake (ids démarrent à 0 → premier stake passe, les suivants
+  échouent!), AssetVault.mint, PeerLoan, SyndicatePool, Auction, etc. Sweep
+  complet recommandé avant tout usage réel de ces flux.

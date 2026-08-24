@@ -24,7 +24,7 @@ from tui import (
     C, clear, hide_cursor, show_cursor, read_key, read_key_timeout,
     menu, text_input, confirm, info_box, progress_bar, BANNER,
 )
-from cli_backend import Backend, DECIMALS
+from cli_backend import Backend, DECIMALS, OpResult
 
 VAULT_DIR = Path.home() / ".xelis-vault"
 CONFIG_PATH = VAULT_DIR / "config" / "config.json"
@@ -101,9 +101,14 @@ def show_result(res, action: str):
             "",
             f"Tx hash:",
             f"{C.DIM}{res.tx[:62]}{C.RESET}",
-            *(f"{C.DIM}{res.tx[i:i+62]}{C.RESET}" for i in range(62, len(res.tx), 62)),
-            "",
-            f"{C.GRAY}It will confirm within a few seconds.{C.RESET}",
+            *(            f"{C.DIM}{res.tx[i:i+62]}{C.RESET}" for i in range(62, len(res.tx), 62)),
+            *(["",
+               f"{C.GREEN}✔ Confirmée on-chain"
+               + (f" — bloc {str(getattr(res, 'topo'))[:12]}…" if getattr(res, 'topo') else "")
+               + f" en {getattr(res, 'secs', 0):.0f} s{C.RESET}"]
+              if getattr(res, "confirmed", None) else
+              ["", f"{C.YELLOW}⏳ Pas encore visible dans un bloc après "
+                   f"{getattr(res, 'secs', 0):.0f} s — vérifie via 'History'.{C.RESET}"]),
         ], color=C.GREEN)
     else:
         friendly = _friendly_error(res.reason or "")
@@ -120,6 +125,54 @@ def show_result(res, action: str):
                 "",
                 f"Reason: {res.reason}",
             ], color=C.RED)
+
+
+def ask_amount(b: Backend, asset: str, prompt_text: str, default: str = "1"):
+    """text_input with the live balance always visible in the prompt."""
+    try:
+        bal = b.fmt(b.wallet.balance(asset))
+    except Exception:
+        bal = "?"
+    return text_input(f"{prompt_text}  [balance: {bal}]", default=default)
+
+
+def wait_confirm(b: Backend, tx: str, max_s: int = 90):
+    """Poll the daemon until the tx lands in a block. Returns (ok, topo)."""
+    t0 = time.time()
+    while time.time() - t0 < max_s:
+        r = b.daemon.get_transaction(tx)
+        if isinstance(r, dict):
+            topo = (r.get("executed_in_block") or r.get("block_topoheight")
+                    or r.get("topoheight"))
+            if topo or r.get("blocks"):
+                return True, topo
+        time.sleep(3)
+    return False, None
+
+
+def run_tx(b: Backend, fn, action: str):
+    """Pending indicator + confirmation feedback around a write op."""
+    print(f"\n{C.DIM}⏳ Transaction en cours — signature → broadcast → attente du "
+          f"bloc (~5-15 s)…{C.RESET}", flush=True)
+    t0 = time.time()
+    try:
+        res = fn()
+    except Exception as e:
+        sys.stdout.write("\r\x1b[K"); sys.stdout.flush()
+        show_result(OpResult(False, reason=str(e)[:200]), action)
+        return None
+    if not res.ok:
+        sys.stdout.write("\r\x1b[K"); sys.stdout.flush()
+        show_result(res, action)
+        return None
+    ok, topo = wait_confirm(b, res.tx)
+    secs = time.time() - t0
+    sys.stdout.write("\r\x1b[K"); sys.stdout.flush()
+    res.confirmed = ok
+    res.topo = topo
+    res.secs = secs
+    show_result(res, action)
+    return res
 
 
 def _friendly_error(msg: str):
@@ -268,50 +321,50 @@ def screen_vault(b: Backend):
                     f"Debt: {b.fmt(v['borrow_amount'], 'xUSD')}   HF: {hf_s}")
             info_box("My vaults", lines or ["empty"], color=C.CYAN)
         elif choice == "deposit":
-            amt = text_input("XEL amount to deposit as collateral:", default="1")
+            amt = ask_amount(b, b.xel_asset, "XEL amount to deposit as collateral:")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if not _check_balance(b, b.xel_asset, atomic):
                 continue
             if confirm(f"Deposit {amt} XEL into the Vault?"):
-                show_result(b.vault_deposit(atomic), "Vault deposit")
+                run_tx(b, lambda: b.vault_deposit(atomic), "Vault deposit")
         elif choice == "borrow":
             vid = text_input("Vault id:", default=str(vaults[0]["id"]))
             try:
                 vid_i = int(vid)
             except ValueError:
                 continue
-            amt = text_input("xUSD amount to borrow:")
+            amt = ask_amount(b, b.xusd_asset, "xUSD amount to borrow:", "10")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if confirm(f"Borrow {amt} xUSD against vault #{vid_i}?"):
-                show_result(b.vault_borrow(vid_i, atomic), "Borrow")
+                run_tx(b, lambda: b.vault_borrow(vid_i, atomic), "Borrow")
         elif choice == "repay":
             vid = text_input("Vault id:", default=str(vaults[0]["id"]))
             try:
                 vid_i = int(vid)
             except ValueError:
                 continue
-            amt = text_input("xUSD amount to repay:")
+            amt = ask_amount(b, b.xusd_asset, "xUSD amount to repay:", "10")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if confirm(f"Repay {amt} xUSD on vault #{vid_i}?"):
-                show_result(b.vault_repay(vid_i, atomic), "Repay")
+                run_tx(b, lambda: b.vault_repay(vid_i, atomic), "Repay")
         elif choice == "withdraw":
             vid = text_input("Vault id:", default=str(vaults[0]["id"]))
             try:
                 vid_i = int(vid)
             except ValueError:
                 continue
-            amt = text_input("XEL amount to withdraw:")
+            amt = ask_amount(b, b.xel_asset, "XEL amount to withdraw:", "1")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if confirm(f"Withdraw {amt} XEL from vault #{vid_i}?"):
-                show_result(b.vault_withdraw(vid_i, atomic), "Withdraw")
+                run_tx(b, lambda: b.vault_withdraw(vid_i, atomic), "Withdraw")
 
 
 def screen_swap(b: Backend):
@@ -333,7 +386,7 @@ def screen_swap(b: Backend):
         if choice is None:
             return
         if choice == "mint":
-            amt = text_input("XEL amount to convert to xUSD:", default="1")
+            amt = ask_amount(b, b.xel_asset, "XEL amount to convert to xUSD:")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
@@ -341,7 +394,7 @@ def screen_swap(b: Backend):
                 continue
             est = atomic / 10 ** DECIMALS * (usd or 1)
             if confirm(f"Mint {amt} XEL → ≈{est:.4f} xUSD ?"):
-                show_result(b.psm_mint(atomic), "Mint xUSD")
+                run_tx(b, lambda: b.psm_mint(atomic), "Mint xUSD")
         elif choice == "redeem":
             avail = 0
             try:
@@ -358,7 +411,7 @@ def screen_swap(b: Backend):
                 continue
             est = atomic / 10 ** DECIMALS / (usd or 1) if usd else 0
             if confirm(f"Redeem {amt} xUSD → ≈{est:.4f} XEL ?"):
-                show_result(b.psm_redeem(atomic), "Redeem xUSD")
+                run_tx(b, lambda: b.psm_redeem(atomic), "Redeem xUSD")
         elif choice == "swap":
             pick = menu("Select direction", [
                 ("XEL → xUSD", (b.xel_asset, b.xusd_asset)),
@@ -369,14 +422,14 @@ def screen_swap(b: Backend):
                 continue
             ain, aout = pick
             sym_in = "XEL" if ain == b.xel_asset else ("xUSD" if ain == b.xusd_asset else "VLT")
-            amt = text_input(f"{sym_in} amount to swap:", default="1")
+            amt = ask_amount(b, ain, f"{sym_in} amount to swap:")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if not _check_balance(b, ain, atomic):
                 continue
             if confirm(f"Swap {amt} {sym_in} via AMM?"):
-                show_result(b.amm_swap(ain, aout, atomic), "AMM swap")
+                run_tx(b, lambda: b.amm_swap(ain, aout, atomic), "AMM swap")
         elif choice == "pools":
             lines = []
             if not pools:
@@ -412,24 +465,24 @@ def screen_savings(b: Backend):
         if choice is None:
             return
         if choice == "dep":
-            amt = text_input("xUSD amount to deposit:", default="10")
+            amt = ask_amount(b, b.xusd_asset, "xUSD amount to deposit:", "10")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if not _check_balance(b, b.xusd_asset, atomic):
                 continue
             if confirm(f"Deposit {amt} xUSD into Savings?"):
-                show_result(b.savings_deposit(atomic), "Savings deposit")
+                run_tx(b, lambda: b.savings_deposit(atomic), "Savings deposit")
         elif choice == "wd":
-            amt = text_input("xUSD amount to withdraw:", default="10")
+            amt = ask_amount(b, b.xusd_asset, "xUSD amount to withdraw:", "10")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if confirm(f"Withdraw {amt} xUSD from Savings?"):
-                show_result(b.savings_withdraw(atomic), "Savings withdraw")
+                run_tx(b, lambda: b.savings_withdraw(atomic), "Savings withdraw")
         elif choice == "claim":
             if confirm("Claim all accrued savings interest?"):
-                show_result(b.savings_claim_interest(), "Interest claim")
+                run_tx(b, lambda: b.savings_claim_interest(), "Interest claim")
 
 
 def screen_privacy(b: Backend):
@@ -453,7 +506,7 @@ def screen_privacy(b: Backend):
                 info_box("Invalid address", ["Please enter a full xet: address."],
                          color=C.RED)
                 continue
-            amt = text_input("XEL amount to send privately:", default="0.1")
+            amt = ask_amount(b, b.xel_asset, "XEL amount to send privately:", "0.1")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
@@ -461,14 +514,14 @@ def screen_privacy(b: Backend):
                 continue
             if confirm(f"Privately send {amt} XEL?\nFunds are pooled and mixed "
                        f"(min anonymity 3) before delivery."):
-                show_result(b.mixer_send(dest, atomic), "Private send")
+                run_tx(b, lambda: b.mixer_send(dest, atomic), "Private send")
         elif choice == "exec":
             if confirm("Execute mixer pooling now?\n(Also runs automatically when a pool fills.)"):
-                show_result(b.mixer_execute_mix(), "Mix execution")
+                run_tx(b, lambda: b.mixer_execute_mix(), "Mix execution")
         elif choice == "refund":
             if confirm("Request refund of your pending mixer deposit?\n"
                        "(Only possible after the pool timeout.)"):
-                show_result(b.mixer_refund(), "Mixer refund")
+                run_tx(b, lambda: b.mixer_refund(), "Mixer refund")
         elif choice == "help":
             info_box("How the mixer works", [
                 "1. You deposit XEL with a recipient address.",
@@ -499,22 +552,22 @@ def screen_treasury(b: Backend):
         if choice is None:
             return
         if choice == "fund":
-            amt = text_input("XEL amount to deposit into treasury:", default="1")
+            amt = ask_amount(b, b.xel_asset, "XEL amount to deposit into treasury:")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if confirm(f"Deposit {amt} XEL into the Treasury?"):
-                show_result(b.treasury_deposit(b.xel_asset, atomic), "Treasury deposit")
+                run_tx(b, lambda: b.treasury_deposit(b.xel_asset, atomic), "Treasury deposit")
         elif choice == "propose":
             dest = text_input("Destination address (xet:...):").strip()
             if not dest.startswith("xet:"):
                 continue
-            amt = text_input("XEL amount to propose spending:", default="1")
+            amt = ask_amount(b, b.xel_asset, "XEL amount to propose spending:")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if confirm(f"Propose spending {amt} XEL to {short_addr(dest)}?"):
-                show_result(b.treasury_propose(b.xel_asset, dest, atomic), "Proposal")
+                run_tx(b, lambda: b.treasury_propose(b.xel_asset, dest, atomic), "Proposal")
         elif choice in ("confirm", "execute"):
             pid = text_input("Proposal id:")
             try:
@@ -524,7 +577,7 @@ def screen_treasury(b: Backend):
             verb = "Confirm" if choice == "confirm" else "Execute"
             fn = b.treasury_confirm if choice == "confirm" else b.treasury_execute
             if confirm(f"{verb} proposal #{pid_i}?"):
-                show_result(fn(pid_i), f"Proposal {verb}")
+                run_tx(b, lambda: fn(pid_i), f"Proposal {verb}")
 
 
 def screen_rwa(b: Backend):
@@ -545,12 +598,12 @@ def screen_rwa(b: Backend):
             dest = text_input("Recipient address (xet:...):").strip()
             if not dest.startswith("xet:"):
                 continue
-            amt = text_input("Token amount to transfer:", default="1")
+            amt = ask_amount(b, ah, "Token amount to transfer:", "1")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if confirm(f"Transfer {amt} RWA tokens to {short_addr(dest)}?"):
-                show_result(b.rwa_transfer(dest, atomic), "RWA transfer")
+                run_tx(b, lambda: b.rwa_transfer(dest, atomic), "RWA transfer")
         elif choice == "create":
             coming_soon("Asset registration", [
                 "Creating new RWA assets from the CLI is being finalized.",
@@ -576,7 +629,7 @@ def screen_faucet(b: Backend):
                 info_box("No address", ["Configure your wallet first."], color=C.RED)
                 continue
             if confirm(f"Distribute faucet funds to {short_addr(b.address)}?"):
-                show_result(b.faucet_distribute([b.address]), "Faucet distribution")
+                run_tx(b, lambda: b.faucet_distribute([b.address]), "Faucet distribution")
         elif choice == "info":
             lines = [
                 f"XEL per claim:  {b.fmt(f.get('xel_per_claim'), 'XEL')}",
@@ -629,14 +682,14 @@ def screen_miner_tools(b: Backend):
     ]
     choice = menu("Miner tools", mopts)
     if choice == "hb":
-        show_result(b.miner_heartbeat(), "Heartbeat")
+        run_tx(b, lambda: b.miner_heartbeat(), "Heartbeat")
     elif choice == "stake":
-        amt = text_input("VLT amount to add to miner stake:", default="100")
+        amt = ask_amount(b, b.vlt_asset, "VLT amount to add to miner stake:", "100")
         atomic = parse_amount(amt)
         if atomic is None:
             return
         if confirm(f"Stake {amt} VLT more?"):
-            show_result(b.miner_increase_stake(atomic), "Stake increase")
+            run_tx(b, lambda: b.miner_increase_stake(atomic), "Stake increase")
     elif choice == "start":
         from pathlib import Path as _P
         cfg_obj = _load_cfg()

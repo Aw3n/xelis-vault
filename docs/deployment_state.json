@@ -29,13 +29,14 @@
     "GuardianMultisig": "9792a5894877a5982c9efdfb91f94c1536fe5f21c017a56c59691776413e4929",
     "Governor": "608eec92282bcba466e88d7e70d616be5653e9a120997866d738838e783862c3",
     "OracleGovernance": "bab86ca4a01c3250ce90b5c5d569b87ab221a212321848e104eb89500c28c953",
-    "VaultChat": "73f7b78bef94c20a5115f8fdc9ed2cd8d8792cdb398f01a7f254163b30958e24",
+    "VaultChat": "54fbd12e40b5e039b9a1c7c0b9475cebc0fd77ec72cbf35a9551712a59ea0bbd",
     "FounderVesting": "fa07e6f5b5273c6d48994e846a05363099366661c4128f76b1fe41d15d1055a4",
     "FounderVesting4y": "fa07e6f5b5273c6d48994e846a05363099366661c4128f76b1fe41d15d1055a4",
     "FounderVesting10y": "fa07e6f5b5273c6d48994e846a05363099366661c4128f76b1fe41d15d1055a4",
     "FeeDistributor": "c7e23f4cbe34ecb411811e7edbdbd55e428f2884b36d067be94ca4ca425491f7",
     "MinerDelegation": "5eb34079fd84ee3626e410c0e9cbf5d568c76cabeaf36c0d00b5e21693033685",
-    "AirdropTracker": "ef896baa1c88d64462500b48c8a6d0fb47b92b46718d1949c79d8d0268769dca"
+    "AirdropTracker": "ef896baa1c88d64462500b48c8a6d0fb47b92b46718d1949c79d8d0268769dca",
+    "VaultChat_v4R3": "54fbd12e40b5e039b9a1c7c0b9475cebc0fd77ec72cbf35a9551712a59ea0bbd"
   },
   "assets": {
     "REGISTRY": "19161543b9e5aef00c5a3e226058b946d847c78941f0c89e9b996c6332204970",
@@ -281,7 +282,11 @@
     "[02:31:40] OK Faucet.refill_xel(4k) (chunk 4) -> 68fb85d8970594bbad38\u2026",
     "[02:33:41] SKIP Faucet.refill_xel(4k) (d\u00e9j\u00e0 fait)",
     "[02:33:46] OK Faucet.refill_vlt(event) (chunk 5) -> fde84ab2e0b8a9e43d13\u2026",
-    "[02:34:14] OK Faucet.refill_vlt(500k)+deposit (chunk 5) -> 36a9e62e88c9105adac1\u2026"
+    "[02:34:14] OK Faucet.refill_vlt(500k)+deposit (chunk 5) -> 36a9e62e88c9105adac1\u2026",
+    "[20:11:56] DEPLOY VaultChat_v4R3 -> 54fbd12e40b5e039b9a1c7c0b9475cebc0fd77ec72cbf35a9551712a59ea0bbd",
+    "[20:12:06] OK upgrade \"VaultChat\" (chunk 4) -> aa9d457ba1edd7d8b22e\u2026",
+    "[20:12:46] OK chat.set_vlt_asset(96) (chunk 96) -> f76f0e69019fce1f398f\u2026",
+    "[20:13:06] OK chat.set_treasury(95) (chunk 95) -> 47674a7a68002671399c\u2026"
   ],
   "steps": [
     "Compliance.set_registry@1c0f143207c2",
@@ -434,6 +439,9 @@
     "Faucet.claims(100XEL/100VLT)@0169707c1952",
     "Faucet.refill_xel(4k)@0169707c1952",
     "Faucet.refill_vlt(event)@0169707c1952",
-    "Faucet.refill_vlt(500k)+deposit@0169707c1952"
+    "Faucet.refill_vlt(500k)+deposit@0169707c1952",
+    "upgrade \"VaultChat\"@19161543b9e5",
+    "chat.set_vlt_asset(96)@54fbd12e40b5",
+    "chat.set_treasury(95)@54fbd12e40b5"
   ]
 }

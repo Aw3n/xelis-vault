@@ -248,3 +248,36 @@ SKIPPED by design: airdrop share (500k VLT) minted to admin for manual distribut
 
 - VaultEngine v2 live (`2c22a613…`), StakedOracle v3 live (`159594c8…`).
 - Guarded/All-chunk configs deferred to governance path (documented above).
+
+---
+
+# v12R-3 — CANONICAL CHAIN (2026-08-24) — ÉTAT ACTUEL
+
+⚠️ **Les phases 1-13 ci-dessus décrivent l'HISTORIQUE (pré-rollback + fork abandonné).**
+Après le rollback du 08-22 et le re-alignement fast-sync du 08-24, la source de vérité
+des adresses est **`docs/deployment_state.json`** + résolution live via
+`ContractRegistry cur_<Name>` (hash registre: `19161543b9e5aef00c5a3e226058b946d847c78941f0c89e9b996c6332204970`).
+
+## Upgrades v12R-3 (registry entry 4)
+
+| Contract | cur_ hash | Raison |
+|---|---|---|
+| VaultEngineV3 | `dcefbd7bd5de056247b3e4195d52df42b32fa510361cd1dc31ed115d65450e48` | deposit retournait id≥1 → écritures jetées par la VM stock |
+| PrivacyMixer | `1ade068cf7a970c9315a687983b27ab5359af9cadc8f79b71825738f717fa7e3` | idem (return pool_count) |
+| FaucetContract | `ed6e2f58c9a98bd098534efce6f430a3b2abb77cf015e5e5b193c4f37d7e16a4` | idem (return len) |
+| VaultChat | `73f7b78bef94c20a5115f8fdc9ed2cd8d8792cdb398f01a7f254163b30958e24` | v12R-2: collision gm_/gk_ |
+
+Convention VM stock: **toute entry qui mute retourne 0** (sinon exit_code≠0 silencieux
++ état jeté, tx confirmée quand même). Les requires loggent `exit_error` avec message;
+un abort silencieux = panic/return-non-zéro.
+
+## Re-seed canon post-fork (08-24)
+PSM réserve XEL (+40), contrat xUSD financé 16 xUSD (burn reserve redeem/repay),
+pool VaultSwap XEL/xUSD créé + liq 2 XEL : 0.3464 xUSD + CB 3000 bps,
+faucet refillé 10k XEL + 50k VLT (claims 1 XEL + 5 VLT), admin register_miner
+(stake 1000 VLT = 1e11 atomiques).
+
+## Validation E2E (écrites, via Backend CLI)
+`scripts/test_cli_ops.py` 14/14 · `scripts/test_chat.py` 17/17.
+Non encore exercés en auto: TreasuryVault multisig, GovernanceVault, FlashLoan,
+PeerLoan/SyndicatePool/Auction, flux confidentiels VE3, mixer refund (timeout 1j).

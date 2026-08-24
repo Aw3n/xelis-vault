@@ -8,7 +8,7 @@ CDP stablecoin · Decentralized oracle · AMM + PSM · Governance · Privacy mix
 
 [![Network](https://img.shields.io/badge/network-testnet-blue)](https://testnet-explorer.xelis.io/)
 [![Contracts](https://img.shields.io/badge/contracts-51%20Silex-blueviolet)](contracts/)
-[![Version](https://img.shields.io/badge/version-v11.3-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v12R--3-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -31,11 +31,26 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex
 
 All three methods install **both** `xvault` (community CLI) and `xvault-miner` (miner dashboard).
 
-> **IMPORTANT — Testnet deployment in progress**
+> **✅ LIVE ON TESTNET (v12R-3, 2026-08-24)**
 >
-> Contracts are being deployed methodically on the XELIS testnet following `docs/DEPLOYMENT_GUIDE.md` (13 phases, 37 core contracts). Deployed addresses and configuration records are tracked in [docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md).
+> The core protocol is deployed and verified end-to-end on XELIS testnet.
+> Authoritative addresses: [docs/deployment_state.json](docs/deployment_state.json)
+> (resolved live via `ContractRegistry cur_<Name>`). Deployment history:
+> [docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md).
 >
-> `xvault` and `xvault-miner` will connect to the protocol once the core contracts are live. Run `xvault-miner --setup` (or `xvault --setup`) to configure the addresses.
+> | Flow | Status |
+> |---|---|
+> | PSM mint / redeem (XEL ↔ xUSD) | ✅ verified on-chain |
+> | Vault Engine V3 — deposit / borrow / repay / withdraw | ✅ full cycle verified |
+> | VaultSwap AMM swap (xUSD → XEL) | ✅ verified |
+> | SavingsRate deposit / withdraw | ✅ verified |
+> | PrivacyMixer deposits + auto-mix | ✅ verified |
+> | Faucet distribute · Miner register + heartbeat | ✅ verified |
+> | VaultChat E2E (sessions, groups, anchoring, relayers) | ✅ 17/17 |
+> | CLI write-path suite (`scripts/test_cli_ops.py`) | ✅ 14/14 |
+>
+> Governance/multisig, flash loans, auctions and confidential vault flows are
+> deployed but not yet exercised in the automated suites.
 
 ---
 
@@ -147,7 +162,7 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex -Args "--uninstal
 ## Architecture
 
 ```
-XELIS Vault v11.3 — 51 Silex contracts
+XELIS Vault v12R-3 — 51 Silex contracts
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    CONTRACT REGISTRY                         │

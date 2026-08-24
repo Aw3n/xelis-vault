@@ -1,3 +1,21 @@
+## [v12R-3 testnet] — 2026-08-24
+
+Canonical-chain redeploy after the 08-22 rollback + fast-sync realignment, with
+the critical stock-VM discovery: **any entry returning non-zero has its storage
+writes discarded silently** (tx still confirms). All mutating entries now follow
+the `return 0` convention; values are exposed via storage keys (`lvid`, `lpc`).
+
+- Redeployed + registry-upgraded: VaultEngineV3 `dcefbd7b…`,
+  PrivacyMixer `1ade068c…`, FaucetContract `ed6e2f58…` (chunk maps unchanged).
+- VaultChat v12R-2 fix (gm_/gk_ type collision) — suite 17/17.
+- CLI write-path E2E (`scripts/test_cli_ops.py`): PSM, Vault Engine V3 full
+  cycle, AMM swap, Savings, Mixer auto-mix, Faucet, Miner register/heartbeat —
+  14/14 PASS through the exact Backend used by the TUI.
+- Canon re-seeded post-fork: PSM XEL reserve, xUSD contract burn reserve,
+  VaultSwap XEL/xUSD pool (+liquidity), Faucet refill, admin miner registered.
+- xvault CLI: remote-node mode (reads via public node), auto wallet relaunch,
+  miner start/stop over wss, registry-resolved contract hashes.
+
 ## [v12.1 testnet] — 2026-08-22
 
 Full clean redeploy of v11.7 contracts (phases 1-8, 10-13, Phase 9 skipped).

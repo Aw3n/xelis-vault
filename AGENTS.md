@@ -406,3 +406,14 @@ Vérif convergence: comparer hash get_block_at_topoheight(171000) local (d76f76c
 Seules les txs post-170999 seraient à rejouer si un jour on abandonnait notre branche (non prévu).
 RPC daemon utile: p2p_status (best/median/our_topoheight), get_peers (bytes_recv/sent).
 Miner PID nohup /tmp/miner.log; keeper nohup /tmp/oracle_keeper.log (plist .keeper obsolète, ne pas utiliser).
+
+# RÉSOLUTION SYNC 2026-08-24 — daemon aligné via fast-sync + monitor auto-reset
+Cause racine du blocage genesis-resync: txs historiques testnet à preuves ZK invalides selon code actuel
+(bloc 42865 tx e50b4d30… nonce 324, puis nonce-drift be4eeec1… @47k). Aucun full-resync possible.
+Solution finale (choix owner): daemon compilé depuis commit EXACT a6ae4cd9 (branche dev = leur build 1.25.0,
+master est resté étiqueté 1.24.0!) + DB vierge + --allow-fast-sync vers 74.208.251.149 → aligné instantané.
+⚠️ Le n° de version du binaire DOIT matcher le node officiel (get_info.version).
+Monitor permanent: scripts/sync_monitor.py (nohup, log /tmp/sync_monitor.log) — compare local↔officiel
+chaque minute; fork/stall persistant → wipe data/testnet + re-fastsync auto (cooldown 20 min).
+Superviseur PTY dispo si commandes prompt nécessaires: /tmp/daemon_pty.py + echo cmd > /tmp/dcmd.
+Miner/keeper/wallets: relancer SEULEMENT une fois le node officiel dégelé et stable.

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import platform
+import re
 import sys
 import time
 from pathlib import Path
@@ -105,11 +106,51 @@ def show_result(res, action: str):
             f"{C.GRAY}It will confirm within a few seconds.{C.RESET}",
         ], color=C.GREEN)
     else:
-        info_box("Transaction failed", [
-            f"{C.RED}{action} was rejected by the chain{C.RESET}",
-            "",
-            f"Reason: {res.reason}",
-        ], color=C.RED)
+        friendly = _friendly_error(res.reason or "")
+        if friendly:
+            info_box("Insufficient balance", [
+                f"{C.RED}{action}: {friendly}{C.RESET}",
+                "",
+                f"{C.GRAY}Tip: mint xUSD first (Swap > Mint) or lower the amount."
+                f"{C.RESET}",
+            ], color=C.RED)
+        else:
+            info_box("Transaction failed", [
+                f"{C.RED}{action} was rejected by the chain{C.RESET}",
+                "",
+                f"Reason: {res.reason}",
+            ], color=C.RED)
+
+
+def _friendly_error(msg: str):
+    """Translate raw wallet PROOF errors into human text (FR/EN mix kept short)."""
+    if "not enough funds" in msg:
+        m = re.search(r"required:\s*(\d+),\s*available:\s*(\d+)", msg)
+        if m:
+            req, av = int(m.group(1)), int(m.group(2))
+            return (f"available {av / 10**DECIMALS:.6g}, "
+                    f"required {req / 10**DECIMALS:.6g}")
+        return "not enough funds for amount + fee"
+    return None
+
+
+def _check_balance(b: Backend, asset: str, atomic: int) -> bool:
+    """True if the wallet can spend `atomic` of `asset`; offers max otherwise."""
+    try:
+        avail = b.wallet.balance(asset)
+    except Exception:
+        return True                      # cannot check — let the chain decide
+    if atomic <= avail:
+        return True
+    info_box("Insufficient balance", [
+        f"{C.RED}Not enough funds in this wallet.{C.RESET}",
+        "",
+        f"Available: {C.BOLD}{b.fmt(avail)}{C.RESET}",
+        f"Requested: {b.fmt(atomic)}",
+        "",
+        f"{C.GRAY}Lower the amount or top up your wallet.{C.RESET}",
+    ], color=C.RED)
+    return False
 
 
 def coming_soon(name: str, desc: str):
@@ -231,6 +272,8 @@ def screen_vault(b: Backend):
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
+            if not _check_balance(b, b.xel_asset, atomic):
+                continue
             if confirm(f"Deposit {amt} XEL into the Vault?"):
                 show_result(b.vault_deposit(atomic), "Vault deposit")
         elif choice == "borrow":
@@ -294,13 +337,24 @@ def screen_swap(b: Backend):
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
+            if not _check_balance(b, b.xel_asset, atomic):
+                continue
             est = atomic / 10 ** DECIMALS * (usd or 1)
             if confirm(f"Mint {amt} XEL → ≈{est:.4f} xUSD ?"):
                 show_result(b.psm_mint(atomic), "Mint xUSD")
         elif choice == "redeem":
-            amt = text_input("xUSD amount to redeem for XEL:", default="1")
+            avail = 0
+            try:
+                avail = b.wallet.balance(b.xusd_asset)
+            except Exception:
+                pass
+            default = "1" if avail >= 10**DECIMALS else f"{avail / 10**DECIMALS:.6f}".rstrip("0").rstrip(".")
+            amt = text_input(f"xUSD amount to redeem for XEL (you hold {b.fmt(avail)}):",
+                             default=default or "0.5")
             atomic = parse_amount(amt)
             if atomic is None:
+                continue
+            if not _check_balance(b, b.xusd_asset, atomic):
                 continue
             est = atomic / 10 ** DECIMALS / (usd or 1) if usd else 0
             if confirm(f"Redeem {amt} xUSD → ≈{est:.4f} XEL ?"):
@@ -318,6 +372,8 @@ def screen_swap(b: Backend):
             amt = text_input(f"{sym_in} amount to swap:", default="1")
             atomic = parse_amount(amt)
             if atomic is None:
+                continue
+            if not _check_balance(b, ain, atomic):
                 continue
             if confirm(f"Swap {amt} {sym_in} via AMM?"):
                 show_result(b.amm_swap(ain, aout, atomic), "AMM swap")
@@ -360,6 +416,8 @@ def screen_savings(b: Backend):
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
+            if not _check_balance(b, b.xusd_asset, atomic):
+                continue
             if confirm(f"Deposit {amt} xUSD into Savings?"):
                 show_result(b.savings_deposit(atomic), "Savings deposit")
         elif choice == "wd":
@@ -398,6 +456,8 @@ def screen_privacy(b: Backend):
             amt = text_input("XEL amount to send privately:", default="0.1")
             atomic = parse_amount(amt)
             if atomic is None:
+                continue
+            if not _check_balance(b, b.xel_asset, atomic):
                 continue
             if confirm(f"Privately send {amt} XEL?\nFunds are pooled and mixed "
                        f"(min anonymity 3) before delivery."):

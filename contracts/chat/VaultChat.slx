@@ -47,6 +47,11 @@ const PAUSED_KEY: string = "pz"
 const SESSION_PREFIX: string = "session_"
 const GROUP_PREFIX: string = "group_"
 const GROUP_MEMBER_PREFIX: string = "gm_"
+// v12R-2 fix: encrypted group keys live under their own prefix ("gk_");
+// gm_ now strictly stores the boolean membership flag. Previously add_group_member
+// stored key bytes at gm_ while store_group_message loaded a bool from it —
+// any member post then failed with VM type error "Expected a value of type Bool".
+const GROUP_KEY_PREFIX: string = "gk_"
 const GROUP_MEMBERS_COUNT_PREFIX: string = "gmc_"
 const LAST_MERKLE_ROOT_KEY: string = "lmr"
 const LAST_ANCHOR_TOPO_KEY: string = "lat"
@@ -245,8 +250,10 @@ entry add_group_member(group_id: u64, member: Address, encrypted_group_key: byte
     require(group.active, "ginactive")
     let member_session: Session = s.load(SESSION_PREFIX + member.to_string()).expect("err")
     require(member_session.active, "minactive")
-    let key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    let key: string = GROUP_KEY_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
     s.store(key, encrypted_group_key)
+    let member_flag: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    s.store(member_flag, true)
     let count_key: string = GROUP_MEMBERS_COUNT_PREFIX + group_id.to_string(10u32)
     let count: u64 = s.load(count_key).unwrap_or(0)
     s.store(count_key, count + 1)
@@ -266,8 +273,10 @@ entry remove_group_member(group_id: u64, member: Address) -> u64 {
     let caller: Address = get_caller().expect("err")
     let group: Group = s.load(GROUP_PREFIX + group_id.to_string(10u32)).expect("err")
     require(group.creator == caller, "notcreator")
-    let key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    let key: string = GROUP_KEY_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
     s.delete(key)
+    let member_flag: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    s.delete(member_flag)
     let count_key: string = GROUP_MEMBERS_COUNT_PREFIX + group_id.to_string(10u32)
     let count: u64 = s.load(count_key).unwrap_or(0)
     if count > 0 {
@@ -443,12 +452,12 @@ entry get_group_entry(group_id: u64) -> (Hash, Address, u64, bool) {
 // @returns: encrypted group key Hash (zero if member not in group)
 // @security: read-only view, no access control
 // get group member key entry.
-entry get_group_member_key_entry(group_id: u64, member: Address) -> Hash {
-    let key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+entry get_group_member_key_entry(group_id: u64, member: Address) -> string {
+    let key: string = GROUP_KEY_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
     let s: Storage = Storage::new()
-    let opt: optional<Hash> = s.load(key)
+    let opt: optional<string> = s.load(key)
     if opt.is_none() {
-        return Hash::zero()
+        return ""
     }
     return opt.expect("err")
 }
@@ -681,12 +690,12 @@ pub fn get_group(group_id: u64) -> (Hash, Address, u64, bool) {
 // @returns: encrypted group key Hash (zero if member not in group)
 // @security: read-only view, no access control
 // get group member key.
-pub fn get_group_member_key(group_id: u64, member: Address) -> Hash {
-    let key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+pub fn get_group_member_key(group_id: u64, member: Address) -> string {
+    let key: string = GROUP_KEY_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
     let s: Storage = Storage::new()
-    let opt: optional<Hash> = s.load(key)
+    let opt: optional<string> = s.load(key)
     if opt.is_none() {
-        return Hash::zero()
+        return ""
     }
     return opt.expect("err")
 }
@@ -960,8 +969,10 @@ entry admin_kick_member(group_id: u64, member: Address) -> u64 {
     require(is_admin, "notadmin")
     
     // Remove their encrypted group key
-    let key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    let key: string = GROUP_KEY_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
     s.delete(key)
+    let member_flag: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    s.delete(member_flag)
     
     // Decrement member count
     let count_key: string = GROUP_MEMBERS_COUNT_PREFIX + group_id.to_string(10u32)
@@ -1216,7 +1227,7 @@ entry distribute_new_key(group_id: u64, member: Address, new_encrypted_key: byte
     require(is_admin, "notadmin")
     
     // Store new key for member
-    let key: string = GROUP_MEMBER_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
+    let key: string = GROUP_KEY_PREFIX + group_id.to_string(10u32) + "_" + member.to_string()
     s.store(key, new_encrypted_key)
     
     return 0

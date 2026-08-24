@@ -417,3 +417,37 @@ Monitor permanent: scripts/sync_monitor.py (nohup, log /tmp/sync_monitor.log) �
 chaque minute; fork/stall persistant → wipe data/testnet + re-fastsync auto (cooldown 20 min).
 Superviseur PTY dispo si commandes prompt nécessaires: /tmp/daemon_pty.py + echo cmd > /tmp/dcmd.
 Miner/keeper/wallets: relancer SEULEMENT une fois le node officiel dégelé et stable.
+
+# ✅ VaultChat E2E + RELAYERS — 17/17 PASS (2026-08-24) + BUG FIX v12R-2
+
+## Bug critique trouvé par les tests → corrigé et redéployé
+- `add_group_member` stockait la clé chiffrée à `gm_<gid>_<addr>` alors que
+  `store_group_message` charge un BOOL au même préfixe → toute publication membre
+  = VM type error "Expected a value of type Bool". Le getter `get_group_member_key*`
+  chargait en plus un `Hash` (3e type sur la même clé).
+- **Fix v12R-2**: nouveau const `GROUP_KEY_PREFIX="gk_"` pour les clés chiffrées;
+  `gm_` = bool membership strict. Getters retournent `string` (hex, "" si absent).
+  Chunk map INCHANGÉE (vérifiée: 7/8/9/11/15/20/48/51/56/66/95/96/121 identiques).
+- **Nouveau hash VaultChat**: `73f7b78bef94c20a5115f8fdc9ed2cd8d8792cdb398f01a7f254163b30958e24`
+  (deploy tx). Registry UPGRADE entry 4 utilisé pour la 1re fois: cur_VaultChat→nouveau,
+  prev_ préservé ✓ (cooldown ne s'appliquait pas: jamais upgradé avant).
+- Config nouvelle instance: set_vlt_asset(96)=VLT ✓, set_treasury(95)=admin ✓.
+  ⚠️ claim_relayer_fees revert "notset" tant que treasury non configuré!
+
+## Suite scripts/test_chat.py (17 assertions)
+Sessions admin+p1 (+read-back) | create_group id0 + gc=1 | add_group_member p1
+(+gm_=true) | store_group_message par le MEMBRE ✅(grâce au fix) | anchor_messages
+admin (merkle/count/senders/type u8) | Relayer p2: stake_relayer_bond 50 VLT
+(MIN_RELAYER_BOND=50, PAS 100; deposit attaché même tx OBLIGATOIRE) → set_relayer(20)
+admin (exige bond≥50 sinon "bonddneed") → register_as_relayer(66) endpoint+limit+slots
+→ set_relayer_fee(51) ≤1 XEL/msg token∈{0,1} → claim_relayer_fees(56) OK
+| relayer_=true read-back | négatif: fee par non-relayer → "notrelayer" ✓
+
+## Infra relancée post-fast-sync (2026-08-24) — TOUT FONCTIONNE
+- Miner 8 threads nohup (/tmp/miner.log), admin address miner → blocs acceptés,
+  on mine DEVANT le node officiel gelé @170999 (mode AHEAD du monitor = normal).
+- Wallets: admin 18082 (testpass) + VRAIS providers dans /Users/adrien/xelis/providers/
+  provider{1,2,3} ports 18086/87/88, mots de passe fichier = provider_pass_{1,2,3}
+  (⚠️ les vieux /Users/adrien/xelis/wallet_provider{1,2,3} sont d'autres wallets:
+   p1/p2 s'ouvrent avec "testpass", adresses DIFFÉRENTES des providers enregistrés!)
+- Keeper oracle_keeper3.py relancé ✓ (heartbeats OK, toosoon normal hors fenêtre).

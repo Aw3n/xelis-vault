@@ -69,9 +69,24 @@ while True:
                 log(f"SYNCHRONISE ✓ topo={lt:,} hash={lh[:16]}")
             consecutive_bad = 0
             last_progress = now
-        elif lt >= ot and lh != oh:
-            consecutive_bad += 1
-            log(f"DIVERGENCE: local {lt:,}/{lh[:12]} vs officiel {ot:,}/{oh[:12]} ({consecutive_bad})")
+        elif lt > ot:
+            # on est DEVANT l'officiel (normal si leur node stalle et qu'on mine):
+            # verifier que le bloc commun au topo officiel est identique
+            try:
+                b = requests.post(O, json={"jsonrpc": "2.0", "method": "get_block_at_topoheight",
+                                           "params": {"topoheight": ot}, "id": 1}, timeout=15).json().get("result")
+                lb = requests.post(L, json={"jsonrpc": "2.0", "method": "get_block_at_topoheight",
+                                            "params": {"topoheight": ot}, "id": 1}, timeout=15).json().get("result")
+                if b and lb and b["hash"] == lb["hash"]:
+                    consecutive_bad = 0
+                    last_progress = now
+                    if prev_local != lt:
+                        log(f"AHEAD (on mine devant node gelé): local {lt:,} vs off {ot:,} — ancêtre commun OK")
+                else:
+                    consecutive_bad += 1
+                    log(f"FORK réel @topo {ot}: hashes différents ({consecutive_bad})")
+            except Exception:
+                log("check ancêtre commun échoué")
         else:  # lt < ot : en retard / en cours de sync
             if lt > prev_local:
                 last_progress = now

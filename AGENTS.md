@@ -451,3 +451,84 @@ admin (exige bond≥50 sinon "bonddneed") → register_as_relayer(66) endpoint+l
   (⚠️ les vieux /Users/adrien/xelis/wallet_provider{1,2,3} sont d'autres wallets:
    p1/p2 s'ouvrent avec "testpass", adresses DIFFÉRENTES des providers enregistrés!)
 - Keeper oracle_keeper3.py relancé ✓ (heartbeats OK, toosoon normal hors fenêtre).
+
+# ✅ CLI xvault — mode NŒUD DISTANT sans daemon local (2026-08-24)
+Validations terrain qui fondent le design:
+- testnet-node.xelis.io expose TOUTES les lectures du CLI (get_info/get_nonce/
+  get_balance/get_contract_data avec ValueCell complet+topoheight:"latest"/get_mempool_summary)
+  ET LES MÉTHODES DE MINAGE (get_block_template {address} → template 248 hex;
+  xelis_miner se connecte en wss et reçoit des jobs — minage 100% distant OK).
+- xelis_wallet accepte --daemon-address https://testnet-node.xelis.io (création
+  non-interactive si le path n'existe pas + --password; seed affichée au log).
+Changements:
+- onboarding.py: PUBLIC_NODE=https://testnet-node.xelis.io ; ensure_daemon essaie
+  rpc_url puis PUBLIC_NODE puis local → cfg.mode remote/local ; bootstrap wallet
+  par défaut sur le node public ; find_miner/download_miner/start_miner/stop_miner
+  (+ miner.pid dans ~/.xelis-vault) ; ensure_miner_configured à l'onboarding ;
+  binaires cherchés dans ~/.xelis-vault/bin, ~/.xelis, ~/xelis, PATH.
+- xvault.py: ensure_wallet_alive() relance TRANSPARENTEMENT le wallet géré
+  (wallet_binary/path/password/port du config) au démarrage, timeout 180s (sync
+  distante initiale lente: ~90s création, 4s réouverture) ; écran Miner tools avec
+  Start/Stop/threads ; Config.save chmod 600.
+Flux first-run: onboarding → wallet créé/importé localement branché sur node public
+→ contracts bundle auto → miner auto-détecté. Zéro "non disponible": reads=remote,
+writes=wallet local relancé auto, mining=wss direct sur le node officiel.
+
+# 🚨 BUG VM CRITIQUE DÉCOUVERT + FIX v12R-3 — return non-zero = état jeté (2026-08-24)
+
+## Découverte majeure (via E2E écritures du CLI)
+Le daemon officiel v1.25.0-a6ae4cd (SANS notre ancien patch `ExitValue::is_success()`)
+traite tout `return != 0` d'un entry comme UN ÉCHEC: les logs montrent exit_code=N
+(silencieux, PAS de exit_error) + refund_deposits, et **TOUTES LES ÉCRITURES STORAGE
+SONT JETÉES** alors que la tx se confirme et consomme le nonce!
+- Prouvé par contrats probe: pB store struct + return 7 → exit_code=7 loggé mais clé
+  ABSENTE on-chain. PSM.mint (return 0) marche; VE3.deposit (return id≥1) échouait.
+- Les requires avec message loggent TOUJOURS exit_error ("onlyxel", "insdep"...) —
+  un abort SILENCIEUX (exit_code=1 sans message) = panic/return-non-zéro traité en échec.
+- Conséquence: les "tests VE3 cycle complet du 23/08" avaient tourné sur le FORK
+  abandonné (daemon patché). Sur canon n=1 à tous les topos — vérifiable via
+  get_contract_data {topoheight} historique + nœud public.
+
+## Fix v12R-3 (convention: les entries qui MUTENT retournent TOUJOURS 0)
+- VaultEngineV3.deposit: store("lvid", id) puis return 0 (lvid = dernier vault créé)
+- PrivacyMixer.deposit: store("lpc", pool_count) puis return 0
+- FaucetContract.distribute: return 0
+- Chunk maps INCHANGÉES. Nouveaux hash (registry upgrade entry 4 ×3):
+  - VaultEngineV3 `dcefbd7bd5de056247b3e4195d52df42b32fa510361cd1dc31ed115d65450e48`
+  - PrivacyMixer `1ade068cf7a970c9315a687983b27ab5359af9cadc8f79b71825738f717fa7e3`
+  - FaucetContract `ed6e2f58c9a98bd098534efce6f430a3b2abb77cf015e5e5b193c4f37d7e16a4`
+- Reconfig post-upgrade FAITE: VE3 set_registry/xusd_contract/xusd_asset/treasury +
+  xUSD.set_minter(18)/set_burner(19) → nouveau hash VE3 (val_bool PAS val_u64!).
+- Mixer set_treasury(19) prend un HASH (TreasuryVault), PAS une Address (bytecode fait foi).
+
+## Réveil canon post-fork — état réel découvert
+Le fast-sync a restauré l'état ≤170999 de LEUR node: beaucoup de configs "du 23/08"
+étaient en fait fork-side et N'existent PAS sur canon:
+- PSM réserve XEL vide → financée 40 XEL (chunk 10 + deposit)
+- Contrat xUSD vide → financé 16 xUSD (OBLIGATOIRE pour redeem/repay qui burnent
+  depuis SA balance)
+- VaultSwap: AUCUN pool sur canon (pc=0) → créé XEL/xUSD + liq 2 XEL:0.3464 xUSD
+  + set_max_volatility_bps(32)=3000
+- Faucet canon VIDE (les 40k XEL+500k VLT étaient fork-side) → refill 10k XEL +
+  50k VLT, claims 1 XEL+5 VLT
+- Admin enregistré comme miner (register_miner(15), stake 1000 VLT = 1000*1e8
+  ATOMIQUES — VLT=8dp, pas 6!)
+
+## Bugs CLI corrigés au passage (scripts/cli_backend.py)
+- `_REGISTRY_NAMES["vault_engine"]` = "VaultEngineV3" (pas "VaultEngine")
+- `_resolve_via_registry`: cherche registry sous registry/ContractRegistry/
+  contract_registry + met à jour les clés snake_case ET CamelCase (avant: jamais
+  résolu car clé "registry" absente du bundle → anciens hash statiques utilisés!)
+- vault_deposit salt: format(...,"x").zfill(64) (le pattern "0"*60+"08x" produisait
+  68 chars → INVALID_PARAMS au build dans ce runtime)
+- protocol._post: retry ×3 sur réponse non-JSON (Cloudflare/rate-limit node public)
+
+## ✅ E2E ÉCRITURES CLI — scripts/test_cli_ops.py 14/14 utiles PASS (2026-08-24)
+Suite qui pilote Backend (reads=public node, wallet local) exactement comme la TUI,
+avec confirm+revert_reason sur CHAQUE tx:
+PSM.mint ✓ | VE3 deposit→borrow ✓ | vault créé détecté via my_vaults (poll 150s,
+lag node public) | Mixer deposit ×3 (auto-mix au 3e) ✓ | faucet_distribute ✓
+(cooldown=attendu si déjà claimé) | heartbeat (toosoon=attendu <900 blk après
+register) | PSM.redeem ✓ | AMM swap ✓ | Savings deposit/withdraw ✓ | vault_repay
+full ✓ | vault_withdraw ✓.
+⚠️ my_vaults() lit via daemon configuré (public): prévoir lag propagation ~1-2 min.

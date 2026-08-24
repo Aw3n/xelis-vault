@@ -65,7 +65,7 @@ _FALLBACK = {
         "AssetVault": "d16f7671f3e5399e1da826f9c4743f6fd5161e54048c945da6bea25d1032ff64",
         "ComplianceModule": "1c0f143207c24d3b3e7fd04000cd1425e498505171de45ca980238e9f71c7f4a",
         "ContractRegistry": "19161543b9e5aef00c5a3e226058b946d847c78941f0c89e9b996c6332204970",
-        "FaucetContract": "0169707c19522269e8126edf36066e2c83c384e8c31f8072667f7cfad06631ec",
+        "FaucetContract": "ed6e2f58c9a98bd098534efce6f430a3b2abb77cf015e5e5b193c4f37d7e16a4",
         "FeeDistributor": "c7e23f4cbe34ecb411811e7edbdbd55e428f2884b36d067be94ca4ca425491f7",
         "FlashCallback": "a84fc6d305b4ed1a6e15c310461799172272ec1cabf209316e724c3ede420f40",
         "FlashLoan": "f8505eb95c5bb070e4f2a7f2d80826e13d140d2ee03b6bfdfaf1b7772c4be9f4",
@@ -83,7 +83,7 @@ _FALLBACK = {
         "PSM": "977ddf73305dd21c29ffbe69dc2bdb29a12a62f4ff8bbc3140cafd4b51d5c2e1",
         "Payroll": "44ce12fb3d143f360c84664fe4849f01fb31ce5b45aebda38b037c70b4079b30",
         "PeerLoan": "ec1ed4f280fef7cd7b13cb0231be12cfb53ddc57b38eaa822e00497221d82d36",
-        "PrivacyMixer": "d54cc19be3d16a86a3849be4389e44a9c123ebb0042a88e94f4e91893f940ab8",
+        "PrivacyMixer": "1ade068cf7a970c9315a687983b27ab5359af9cadc8f79b71825738f717fa7e3",
         "RevenueShare": "49c363dae4d32473d6d3c26ce0482cf735f7d656c665094002c1d21a6978c94b",
         "SavingsRate": "139caff55ca74911eb0c2631e5aab623a53ee56c7b24143328ecef3a610a9738",
         "SealedBidAuction": "ac0c5a4e22a8348d3e98ff6183fdab23117f06f4a154098c1d7c84b24c3097f5",
@@ -93,7 +93,7 @@ _FALLBACK = {
         "TreasuryVault": "01d3851249e13354465766306e65be15497a9a9df6f46e35fe417879c4a5ab84",
         "VLTToken": "020f228fbd61e3a6cd2d570083e14c02f7073f293c79ee4059359b896e217d84",
         "VaultChat": "5904a314ec3dfda55654647ea03c8b6d149102505f076006bc1cd36f7cc3e80b",
-        "VaultEngineV3": "844cab735a8156f55c3055c2ff56a6824ad6d55b32f7dfb866655bde2bfa2054",
+        "VaultEngineV3": "dcefbd7bd5de056247b3e4195d52df42b32fa510361cd1dc31ed115d65450e48",
         "VaultSwapV2": "5defc37154200f1cabb5b5fa43510565ab791e34b20f2cf4132ec7d9ac4e2041",
         "XelisVaultMiner": "6c70647e233dd634aa05cd6bdca06b521947c4c682d7decac0700d8a79d4b024",
         "xUSD": "4836190ca2f2278cfc3e8ad8c7e05bbd0070de253c64615f6eea2c19885063a1",
@@ -108,7 +108,7 @@ _REGISTRY_NAMES = {
     "miner": "XelisVaultMiner",
     "vlt_token": "VLTToken",
     "xusd": "xUSD",
-    "vault_engine": "VaultEngine",
+    "vault_engine": "VaultEngineV3",
     "vault_swap": "VaultSwap",
     "psm": "PSM",
     "savings_rate": "SavingsRate",
@@ -184,16 +184,21 @@ class Backend:
 
     def _resolve_via_registry(self):
         """ContractRegistry cur_<Name> overrides static tables (authoritative)."""
-        reg = self.contracts.get("registry")
+        reg = (self.contracts.get("registry")
+               or self.contracts.get("ContractRegistry")
+               or self.contracts.get("contract_registry"))
         if not reg:
             return
+        resolved = {}
         for key, name in _REGISTRY_NAMES.items():
             try:
                 h = self.daemon.read_key(reg, f"cur_{name}")
             except Exception:
                 continue
             if h and isinstance(h, str) and len(h) == 64:
-                self.contracts[key] = h
+                resolved[key] = h                # snake_case alias
+                resolved[name] = h               # canonical CamelCase key
+        self.contracts.update(resolved)
 
     # -- helpers ----------------------------------------------------------
 
@@ -490,7 +495,7 @@ class Backend:
     # --- VaultEngine V3 ------------------------------------------------------
 
     def vault_deposit(self, xel_amount_atomic: int) -> OpResult:
-        salt = ("0" * 60) + format(int(time.time()) & 0xFFFFFFFF, "08x")
+        salt = format(int(time.time()) & 0xFFFFFFFF, "x").zfill(64)
         return self._invoke("VaultEngineV3", "deposit",
                             [val_hash(self.xel_asset), val_u64(xel_amount_atomic),
                              val_hash(salt)],

@@ -57,6 +57,11 @@ class Config:
     def save(self):
         CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
         CONFIG_PATH.write_text(json.dumps(self.data, indent=2))
+        try:
+            import os
+            os.chmod(CONFIG_PATH, 0o600)   # contains the wallet file password
+        except Exception:
+            pass
 
     def get(self, key, default=""):
         return self.data.get(key, default)
@@ -548,11 +553,21 @@ def screen_miner_tools(b: Backend):
     lines.append(f"Network staked: {b.fmt(stats.get('total_staked'), 'VLT')}")
     info_box("Miner status", lines, color=C.CYAN)
 
-    choice = menu("Miner tools", [
+    import onboarding
+    miner_pid = onboarding.miner_running()
+    mopts = []
+    if miner_pid:
+        mopts.append((f"Stop built-in miner (pid {miner_pid})", "stop"))
+    else:
+        mopts.append(("Start built-in miner (auto-configured)", "start"))
+        threads = cfg_miner_threads()
+        mopts.append((f"Set thread count (currently {threads})", "threads"))
+    mopts += [
         ("Send heartbeat now", "hb"),
         ("Increase miner stake", "stake"),
         ("Back", None),
-    ])
+    ]
+    choice = menu("Miner tools", mopts)
     if choice == "hb":
         show_result(b.miner_heartbeat(), "Heartbeat")
     elif choice == "stake":
@@ -562,6 +577,37 @@ def screen_miner_tools(b: Backend):
             return
         if confirm(f"Stake {amt} VLT more?"):
             show_result(b.miner_increase_stake(atomic), "Stake increase")
+    elif choice == "start":
+        from pathlib import Path as _P
+        cfg_obj = _load_cfg()
+        ok, msg = onboarding.start_miner(cfg_obj)
+        info_box("Miner", [msg], color=C.GREEN if ok else C.RED)
+    elif choice == "stop":
+        ok, msg = onboarding.stop_miner()
+        info_box("Miner", [msg], color=C.GREEN if ok else C.RED)
+    elif choice == "threads":
+        from pathlib import Path as _P
+        cfg_obj = _load_cfg()
+        t = text_input("Number of mining threads:",
+                       default=str(cfg_obj.get("miner_threads") or 4))
+        if t.isdigit() and 1 <= int(t) <= 64:
+            cfg_obj.data["miner_threads"] = t
+            cfg_obj.save()
+            info_box("Saved", [f"{t} thread(s) — applies at next start."],
+                     color=C.GREEN)
+
+
+def _load_cfg():
+    """Fresh Config instance (screens receive only the Backend)."""
+    return Config()
+
+
+def cfg_miner_threads() -> str:
+    try:
+        return str(json.loads(CONFIG_PATH.read_text()).get(
+            "miner_threads") or (max(1, (__import__("os").cpu_count() or 2) - 1)))
+    except Exception:
+        return "?"
 
 
 # ---------------------------------------------------------------------------
@@ -618,11 +664,50 @@ def screen_settings(b: Backend, cfg: Config):
 # Main
 # ---------------------------------------------------------------------------
 
+def ensure_wallet_alive(cfg: Config) -> bool:
+    """Auto-relaunch the managed wallet RPC when it is configured but down.
+
+    This is what makes remote-node mode 'zero unavailable': the chain data
+    comes from the public node and the local wallet process is (re)started
+    transparently in the background.
+    """
+    import onboarding
+    binary = cfg.get("wallet_binary")
+    wpath = cfg.get("wallet_path")
+    password = cfg.get("wallet_password")
+    if not (binary and wpath and password and Path(binary).exists()):
+        return False
+    port = int(cfg.get("wallet_rpc_port") or 18082)
+    url = f"http://127.0.0.1:{port}"
+    try:
+        onboarding.rpc_call(url, "get_address",
+                            auth=(cfg.get("wallet_user", "wallet"),
+                                  cfg.get("wallet_pass", "testpass")), timeout=3)
+        return True  # already up
+    except Exception:
+        pass
+    try:
+        network = cfg.get("wallet_network", "testnet")
+        daemon = cfg.get("rpc_url") or onboarding.PUBLIC_NODE
+        onboarding.launch_wallet(binary, network, daemon, password,
+                                 Path(wpath), port)
+        addr = onboarding.wait_for_wallet(url, ("wallet",
+                                                cfg.get("wallet_pass", "testpass")),
+                                          timeout_s=180)
+        return bool(addr)
+    except Exception:
+        return False
+
+
 def main():
     cfg = Config()
     first_run = not CONFIG_PATH.exists()
 
     while True:
+        # transparently bring the managed wallet back before building Backend
+        if not first_run and cfg.get("wallet_binary"):
+            ensure_wallet_alive(cfg)
+
         b = Backend(cfg.data)
         online = b.topo() > 0
         wallet_ok = bool(b.wallet)

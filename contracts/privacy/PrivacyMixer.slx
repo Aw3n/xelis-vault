@@ -282,7 +282,8 @@ entry deposit(recipient: Address, asset: Hash, min_anonymity: u64) -> u64 {
         let _ = do_mix(s)
     }
 
-    return pool_count
+    s.store("lpc", pool_count)
+    return 0
 }
 
 // ============================================================================

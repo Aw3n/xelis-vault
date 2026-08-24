@@ -57,6 +57,7 @@ ASSET_MAP = {
 }
 
 DEFAULT_DAEMONS = ["http://127.0.0.1:18081"]
+PUBLIC_NODE = "https://testnet-node.xelis.io"
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +164,7 @@ def find_wallet_binary() -> Optional[str]:
     candidates = [
         BIN_DIR / exe,
         Path.home() / ".xelis" / exe,
+        Path.home() / "xelis" / exe,
         shutil.which("xelis_wallet"),
     ]
     for c in candidates:
@@ -363,7 +365,8 @@ def ensure_wallet(cfg) -> bool:
 
     network = menu("Select network:", [("Testnet (recommended to start)", "testnet"),
                                        ("Mainnet", "mainnet")]) or "testnet"
-    daemon_url = cfg.get("rpc_url", DEFAULT_DAEMONS[0])
+    # Default to the public node: a local daemon is NOT required.
+    daemon_url = cfg.get("rpc_url") or (PUBLIC_NODE if network == "testnet" else DEFAULT_DAEMONS[0])
 
     mode = menu("Create or import a wallet?", [
         ("Create a NEW wallet (seed generated & shown once)", "create"),
@@ -442,14 +445,28 @@ def ensure_wallet(cfg) -> bool:
 
 
 def ensure_daemon(cfg) -> bool:
-    for url in [cfg.get("rpc_url")] + DEFAULT_DAEMONS:
-        if not url:
-            continue
+    """Pick the chain data source: public node first, then local daemon.
+
+    The public node needs NO local daemon at all — every read used by the CLI
+    (get_info / get_contract_data / get_balance / get_nonce) works remotely,
+    so this is the default for new users.
+    """
+    candidates = []
+    if cfg.get("rpc_url"):
+        candidates.append(cfg.get("rpc_url"))
+    candidates += [PUBLIC_NODE] + DEFAULT_DAEMONS
+
+    for url in candidates:
         try:
             topo = rpc_call(url, "get_topoheight")
             cfg.data["rpc_url"] = url
+            cfg.data["mode"] = "local" if "127.0.0.1" in url else "remote"
             cfg.save()
-            info_box("Daemon connected ✓", [f"{url}", f"Topoheight: {topo}"])
+            info_box("Network connected ✓", [
+                f"{url}",
+                f"Topoheight: {topo}",
+                "(public node — no local daemon needed)" if "127.0.0.1" not in url else "",
+            ])
             return True
         except Exception:
             continue
@@ -477,6 +494,144 @@ def ensure_daemon(cfg) -> bool:
     return True
 
 
+# ---------------------------------------------------------------------------
+# Miner auto-configuration
+# ---------------------------------------------------------------------------
+
+def find_miner_binary() -> Optional[str]:
+    exe = "xelis_miner.exe" if platform.system() == "Windows" else "xelis_miner"
+    candidates = [
+        BIN_DIR / exe,
+        Path.home() / ".xelis" / exe,
+        Path.home() / "xelis" / exe,
+        shutil.which("xelis_miner"),
+    ]
+    for c in candidates:
+        if c and Path(c).exists():
+            return str(c)
+    return None
+
+
+def download_miner_binary() -> Optional[str]:
+    """Download official xelis_miner from the same release as the wallet."""
+    system, machine = platform.system(), platform.machine()
+    asset_suffix = ASSET_MAP.get((system, machine))
+    if not asset_suffix:
+        print(f"  {C.RED}No prebuilt binary for {system}/{machine}.{C.RESET}")
+        return None
+    print(f"\n  {C.DIM}Downloading the official xelis miner…{C.RESET}")
+    try:
+        rel = requests.get(GITHUB_API, timeout=30).json()
+        assets = {a["name"]: a["browser_download_url"] for a in rel.get("assets", [])}
+        name = next((n for n in assets if n.endswith(asset_suffix)), None)
+        if not name:
+            return None
+        dest = BIN_DIR / name
+        BIN_DIR.mkdir(parents=True, exist_ok=True)
+        with requests.get(assets[name], stream=True, timeout=300) as r:
+            r.raise_for_status()
+            with open(dest, "wb") as f:
+                for chunk in r.iter_content(1024 * 256):
+                    f.write(chunk)
+        if dest.suffix == ".zip":
+            with zipfile.ZipFile(dest) as z:
+                z.extractall(BIN_DIR)
+        else:
+            with tarfile.open(dest) as t:
+                t.extractall(BIN_DIR)
+        dest.unlink(missing_ok=True)
+        exe = BIN_DIR / ("xelis_miner.exe" if system == "Windows" else "xelis_miner")
+        if exe.exists():
+            exe.chmod(exe.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+            return str(exe)
+        found = next((p for p in BIN_DIR.rglob("*xelis_miner*") if p.is_file()), None)
+        if found:
+            found.chmod(found.stat().st_mode | stat.S_IEXEC)
+            return str(found)
+    except Exception as e:
+        print(f"  {C.RED}Download error: {e}{C.RESET}")
+    return None
+
+
+MINER_PID_FILE = VAULT_DIR / "miner.pid"
+
+
+def miner_running() -> Optional[int]:
+    try:
+        pid = int(MINER_PID_FILE.read_text().strip())
+    except Exception:
+        return None
+    try:
+        os.kill(pid, 0)
+        return pid
+    except OSError:
+        MINER_PID_FILE.unlink(missing_ok=True)
+        return None
+
+
+def start_miner(cfg) -> tuple[bool, str]:
+    """Launch xelis_miner against the configured daemon (local OR public node).
+
+    The official node serves mining work over WebSocket, so remote mining
+    works without any local daemon.
+    """
+    pid = miner_running()
+    if pid:
+        return True, f"miner already running (pid {pid})"
+
+    binary = cfg.get("miner_binary") or find_miner_binary()
+    if not binary and platform.system() != "Darwin":
+        binary = download_miner_binary()
+    if not binary:
+        return False, ("xelis_miner not found — install it in ~/.xelis-vault/bin/ "
+                       "or build from source")
+    cfg.data["miner_binary"] = binary
+
+    addr = cfg.get("miner_address")
+    if not addr:
+        return False, "no wallet address configured yet"
+
+    daemon = cfg.get("rpc_url") or PUBLIC_NODE
+    threads = str(cfg.get("miner_threads") or max(1, (os.cpu_count() or 2) - 1))
+    cfg.data["miner_threads"] = threads
+    cfg.save()
+
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_file = open(LOG_DIR / "miner.log", "ab")
+    cmd = [binary, "--miner-address", addr, "--daemon-address",
+           daemon.replace("http", "ws", 1) if daemon.startswith("http") else daemon,
+           "-n", threads, "--disable-ascii-art"]
+    kwargs = {} if platform.system() == "Windows" else {"start_new_session": True}
+    proc = subprocess.Popen(cmd, stdout=log_file, stderr=log_file, **kwargs)
+    MINER_PID_FILE.write_text(str(proc.pid))
+    return True, f"miner started (pid {proc.pid}, {threads} thread(s), node: {daemon})"
+
+
+def stop_miner() -> tuple[bool, str]:
+    pid = miner_running()
+    if not pid:
+        return False, "miner is not running"
+    try:
+        os.kill(pid, 15)
+        time.sleep(2)
+        MINER_PID_FILE.unlink(missing_ok=True)
+        return True, f"miner stopped (pid {pid})"
+    except OSError as e:
+        return False, f"could not stop pid {pid}: {e}"
+
+
+def ensure_miner_configured(cfg) -> None:
+    """Detect/download the miner once during onboarding; never blocks."""
+    if not cfg.get("miner_binary"):
+        b = find_miner_binary()
+        if b:
+            cfg.data["miner_binary"] = b
+            cfg.data.setdefault(
+                "miner_threads", max(1, (os.cpu_count() or 2) - 1))
+            cfg.save()
+
+
+
 def apply_bundled_contracts(cfg) -> bool:
     bundle = load_network_bundle()
     contracts = bundle.get("contracts", {})
@@ -499,6 +654,7 @@ def run_onboarding(cfg) -> bool:
     """Full first-run experience. Returns True when config is usable."""
     ok_wallet = ensure_wallet(cfg)
     ok_daemon = ensure_daemon(cfg)
+    ensure_miner_configured(cfg)
     ok_contracts = apply_bundled_contracts(cfg)
 
     if not ok_contracts:

@@ -229,7 +229,7 @@ entry distribute(addresses: Address[]) -> u64 {
     }
 
     emit_event(0u64, ["FaucetDistributed", addresses.len().to_string(10u32)])
-    return addresses.len() as u64
+    return 0
 }
 
 // Entry 3: Set claim amounts (admin only)

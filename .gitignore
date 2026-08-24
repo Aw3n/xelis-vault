@@ -101,3 +101,6 @@ core_deploy.py
 AGENTS.md
 AI_WEBSITE_PROMPT.md
 test_report.md
+precomputed_tables_*.bin
+*.bin
+!docs/*.bin

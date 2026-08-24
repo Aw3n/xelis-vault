@@ -276,12 +276,13 @@ entry deposit(collateral_asset: Hash, collateral_amount: u64, salt: Hash) -> u64
     }
     rs.store(VAULT_PREFIX + id.to_string(10u32), vault)
     rs.store(COUNTER_KEY, id + 1)
+    rs.store("lvid", id)
     if dep > collateral_amount {
         let ok: bool = transfer(caller, dep - collateral_amount, collateral_asset)
         require(ok, "rfail")
     }
     release_reentrancy()
-    return id
+    return 0
 }
 
 // Borrow xUSD against vault collateral, snapping the current stability-fee index.

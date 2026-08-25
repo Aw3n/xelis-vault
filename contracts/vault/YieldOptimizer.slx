@@ -200,7 +200,7 @@ entry opt_out() -> u64 {
     if tm >= total { s.store(TOTAL_MANAGED_KEY, tm - total) }
 
     // In production: transfer total back to caller
-    return total
+    return 0
 }
 
 // Entry 2: Change strategy (will rebalance on next keeper call)
@@ -274,7 +274,7 @@ entry execute_strategy(user: Address, savings_apr_bps: u64, lending_apr_bps: u64
     // In production: actually move funds between venues
     // Pay keeper reward
     // Emit event
-    return keeper_reward
+    return 0
 }
 
 // Entry 4: Reinvest accumulated rewards back into strategy (keeper)
@@ -305,7 +305,7 @@ entry reinvest_rewards(user: Address, rewards_amount: u64) -> u64 {
 
     // Keeper gets 0.1% of reinvested rewards
     let keeper_reward: u64 = (rewards_amount * KEEPER_REWARD_BPS) / 10000
-    return keeper_reward
+    return 0
 }
 
 // Entry 5: Claim accumulated rewards (user)
@@ -318,7 +318,7 @@ entry claim_rewards() -> u64 {
     require(pending > 0, "nothing")
     pos.rewards_claimed += pending
     s.store(POSITION_PREFIX + caller.to_string(), pos)
-    return pending
+    return 0
 }
 
 // Pub fn 6: Get user position

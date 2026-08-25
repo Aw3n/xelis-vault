@@ -338,7 +338,7 @@ entry execute_refund() -> u64 {
     s.store(POOL_MAX_THRESHOLD_KEY, s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD))
 
     emit_event(0u64, ["MixerRefund", refunded.to_string(10u32)])
-    return refunded
+    return 0
 }
 
 // ============================================================================

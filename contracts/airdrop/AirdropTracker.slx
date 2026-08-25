@@ -766,7 +766,7 @@ entry finalize_distribution(start_index: u64, count: u64) -> u64 {
     } else {
         emit_event(0u64, ["DistributionBatchProcessed", end.to_string(10u32) + "/" + user_count.to_string(10u32)])
     }
-    return end - start_index
+    return 0
 }
 
 // F-12 fix: pub fn returning leaderboard count (for pagination/iteration).
@@ -1170,7 +1170,7 @@ entry record_manual_attribution_batch(
 
     log_admin_action(6u8, Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), category, points, 0u64, reason + " (batch " + users.len().to_string(10u32) + " users)")
     emit_event(0u64, ["BatchAttribution", users.len().to_string(10u32) + "_" + points.to_string(10u32) + "_" + reason])
-    return users.len() as u64
+    return 0
 }
 
 // Entry 33: Deduct points from a user (admin, with reason)

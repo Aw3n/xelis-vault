@@ -255,7 +255,7 @@ entry claim_residual_collateral(vault_id: u64) -> u64 {
 
     // In production: transfer collateral to caller
     emit_event(0u64, ["ResidualClaimed", vault_id.to_string(10u32)])
-    return amount
+    return 0
 }
 
 // Entry 4: Stake to insurance pool (LPs provide capital, earn rewards)
@@ -322,7 +322,7 @@ entry claim_staker_rewards() -> u64 {
     staker.rewards_claimed += pending
     s.store(STAKER_PREFIX + caller.to_string(), staker)
     // In production: transfer reward tokens to caller
-    return pending
+    return 0
 }
 
 // Pub fn 7: Get insurance status for a vault

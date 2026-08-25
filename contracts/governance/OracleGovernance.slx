@@ -220,7 +220,7 @@ entry propose_add_feed(
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSAL_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Propose updating an existing price feed's bounds and decimals.
@@ -274,7 +274,7 @@ entry propose_update_feed(
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSAL_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Propose deactivating (removing) an existing price feed.
@@ -319,7 +319,7 @@ entry propose_remove_feed(feed_id: u64, description: string) -> u64 {
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSAL_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Propose changing a StakedOracle parameter (max_stale, hard_stale, max_dev, cb_thresh, submit_window).
@@ -369,7 +369,7 @@ entry propose_set_param(param_key: u8, param_value: u64, description: string) ->
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSAL_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Propose changing the XelisVaultMiner base reward oracle amount (FIX #15).
@@ -414,7 +414,7 @@ entry propose_set_reward(reward_amount: u64, description: string) -> u64 {
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSAL_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Propose triggering an emergency circuit-breaker on a price feed.
@@ -459,7 +459,7 @@ entry propose_emergency_cb(feed_id: u64, description: string) -> u64 {
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSAL_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Propose resetting the circuit-breaker state on a price feed.
@@ -504,7 +504,7 @@ entry propose_reset_feed(feed_id: u64, description: string) -> u64 {
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSAL_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Cast a yes/no vote on an active oracle governance proposal. One-vote-per-voter.

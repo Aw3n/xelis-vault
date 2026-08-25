@@ -177,7 +177,7 @@ entry report_unhealthy_vault(vault_id: u64, vault_owner: Address, collateral_amo
     s.store(WATCHER_PREFIX + caller.to_string(), stats)
 
     emit_event(0u64, ["BountyReported", vault_id.to_string(10u32)])
-    return bounty
+    return 0
 }
 
 // Entry 1: Claim a bounty (watcher only, after vault is liquidated)
@@ -204,7 +204,7 @@ entry claim_bounty(vault_id: u64) -> u64 {
 
     // In production: transfer bounty tokens to watcher
     emit_event(0u64, ["BountyClaimed", vault_id.to_string(10u32)])
-    return b.bounty_amount
+    return 0
 }
 
 // Pub fn 2: Get bounty info for a vault

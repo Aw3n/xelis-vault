@@ -219,7 +219,7 @@ entry record_liquidation(liq_addr: Address, blocks_to_act: u64, reward_amount: u
     liq.last_active_topo = get_current_topoheight()
     s.store(LIQUIDATOR_PREFIX + liq_addr.to_string(), liq)
 
-    return total_reward
+    return 0
 }
 
 // Entry 4: Report an inactive liquidator (anyone can call, bots monitor)
@@ -248,7 +248,7 @@ entry claim_rewards() -> u64 {
     require(pending > 0, "nothing")
     liq.rewards_claimed += pending
     s.store(LIQUIDATOR_PREFIX + caller.to_string(), liq)
-    return pending
+    return 0
 }
 
 // Pub fn 6: Get liquidator info

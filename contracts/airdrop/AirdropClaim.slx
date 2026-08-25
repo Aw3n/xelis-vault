@@ -204,7 +204,7 @@ entry claim(
 
     emit_event(0u64, ["AirdropClaimed", testnet_addr.to_string() + "_" + amount.to_string(10u32)])
     release_reentrancy()
-    return amount
+    return 0
 }
 
 // Entry 1: Emergency withdraw unclaimed funds (admin, after 6 months)
@@ -237,7 +237,7 @@ entry emergency_withdraw_unclaimed(to: Address) -> u64 {
     s.store(WITHDRAWN_KEY, already_withdrawn + remaining)
 
     emit_event(0u64, ["EmergencyWithdraw", to.to_string() + "_" + remaining.to_string(10u32)])
-    return remaining
+    return 0
 }
 
 // Pub fn 2: Get Merkle root

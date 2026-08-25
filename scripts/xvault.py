@@ -605,10 +605,24 @@ def screen_rwa(b: Backend):
             if confirm(f"Transfer {amt} RWA tokens to {short_addr(dest)}?"):
                 run_tx(b, lambda: b.rwa_transfer(dest, atomic), "RWA transfer")
         elif choice == "create":
-            coming_soon("Asset registration", [
-                "Creating new RWA assets from the CLI is being finalized.",
-                "",
-                "Assets already registered can be transferred above."])
+            name = text_input("Asset name (e.g. 'My Token'):")
+            if not name:
+                continue
+            sym = text_input("Symbol (e.g. 'MTK'):")
+            if not sym:
+                continue
+            dec = text_input("Decimals (default 8):").strip() or "8"
+            sup = text_input("Initial supply (human-readable, e.g. 1000):")
+            if not sup:
+                continue
+            try:
+                dec_i, sup_i = int(dec), int(float(sup) * 10 ** int(dec))
+            except ValueError:
+                info_box("Invalid input", ["Bad decimals or supply."], color=C.RED)
+                continue
+            if confirm(f"Register '{name}' ({sym}) supply={sup} dec={dec_i}?"):
+                run_tx(b, lambda: b.rwa_register(name, sym, dec_i, sup_i),
+                       "Register RWA asset")
 
 
 def screen_faucet(b: Backend):
@@ -643,7 +657,309 @@ def screen_faucet(b: Backend):
             info_box("Faucet details", lines, color=C.CYAN)
 
 
-def screen_miner_tools(b: Backend):
+# --- Governance screen ------------------------------------------------------
+
+def screen_governance(b: Backend):
+    while True:
+        total = b.gov_total_staked()
+        user  = b.gov_user_staked()
+        count = b.gov_stakes_count()
+        sub = (f"Total staked: {b.fmt(total, 'VLT') if total else '—'}  ·  "
+               f"Your stake: {b.fmt(user, 'VLT') if user else '—'}  ·  "
+               f"Positions: {count if count is not None else '—'}")
+        opts = [("Stake VLT (voting power)", "stake"),
+                ("Unstake a position", "unstake"),
+                ("Claim rewards", "claim"),
+                ("Info", "info"),
+                ("Back", None)]
+        choice = menu("Governance", opts, subtitle=sub)
+        if choice is None:
+            return
+        if choice == "stake":
+            amt = ask_amount(b, b.vlt_asset, "VLT amount to stake:", "100")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            days = text_input("Lock period in days (default 7):").strip() or "7"
+            if confirm(f"Stake {amt} VLT for {days} days?"):
+                run_tx(b, lambda a=atomic, d=int(days): b.gov_stake(a, d),
+                       "Governance stake")
+        elif choice == "unstake":
+            sid = text_input("Stake ID to unstake (number):").strip()
+            if not sid:
+                continue
+            if confirm(f"Unstake position #{sid}? (reverts if still locked)"):
+                run_tx(b, lambda i=int(sid): b.gov_unstake(i),
+                       "Governance unstake")
+        elif choice == "claim":
+            if confirm("Claim governance rewards?"):
+                run_tx(b, b.gov_claim_rewards, "Claim governance rewards")
+        elif choice == "info":
+            info_box("Governance", [
+                f"Total staked:  {b.fmt(total, 'VLT') if total else '—'}",
+                f"Your stake:    {b.fmt(user, 'VLT') if user else '—'}",
+                f"Stake count:   {count if count is not None else '—'}",
+                "",
+                "Min lock: 7 days. Voting power = stake × (1 + lock boost).",
+            ], color=C.CYAN)
+
+
+# --- Loans screen (FlashLoan / PeerLoan / Syndicate) -----------------------
+
+def screen_loans(b: Backend):
+    while True:
+        choice = menu("Loans", [
+            ("Flash Loan", "flash"),
+            ("Peer Loans", "peer"),
+            ("Syndicate Pools", "syn"),
+            ("Back", None),
+        ])
+        if choice is None:
+            return
+        if choice == "flash":
+            screen_flashloan(b)
+        elif choice == "peer":
+            screen_peerloan(b)
+        elif choice == "syn":
+            screen_syndicate(b)
+
+
+def screen_flashloan(b: Backend):
+    while True:
+        liq = b.flashloan_liquidity(b.xel_asset)
+        earned = b.flashloan_earned()
+        fee = b._read_int("FlashLoan", "get_fee_bps", [])
+        sub = (f"Liquidity: {b.fmt(liq, 'XEL') if liq else '—'}  ·  "
+               f"Earned: {b.fmt(earned, 'XEL') if earned else '—'}  ·  "
+               f"Fee: {fee or '—'} bps")
+        opts = [("Borrow (flash loan)", "borrow"),
+                ("Fund liquidity", "fund"),
+                ("Back", None)]
+        choice = menu("Flash Loan", opts, subtitle=sub)
+        if choice is None:
+            return
+        if choice == "borrow":
+            amt = ask_amount(b, b.xel_asset, "Amount to borrow (XEL):", "1")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            cb = text_input("Callback contract hash (64 hex):").strip()
+            if not cb or len(cb) != 64:
+                info_box("Invalid", ["Need a 64-char hex callback hash."], color=C.RED)
+                continue
+            if confirm(f"Borrow {amt} XEL via FlashLoan?"):
+                run_tx(b, lambda a=atomic, c=cb: b.flashloan_borrow(b.xel_asset, a, c),
+                       "Flash loan borrow")
+        elif choice == "fund":
+            amt = ask_amount(b, b.xel_asset, "XEL amount to fund:", "5")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            if confirm(f"Fund FlashLoan with {amt} XEL?"):
+                run_tx(b, lambda a=atomic: b.flashloan_fund(b.xel_asset, a),
+                       "Fund FlashLoan")
+
+
+def screen_peerloan(b: Backend):
+    while True:
+        count = b.pl_count()
+        sub = f"Offers: {count if count is not None else '—'}"
+        opts = [("Create offer (lend)", "create"),
+                ("Accept offer (borrow)", "accept"),
+                ("Repay a loan", "repay"),
+                ("Cancel offer", "cancel"),
+                ("Back", None)]
+        choice = menu("Peer Loans", opts, subtitle=sub)
+        if choice is None:
+            return
+        if choice == "create":
+            amt = ask_amount(b, b.xel_asset, "Amount to lend (XEL):", "1")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            ibps = text_input("Interest bps (max 5000, e.g. 500 = 5%):").strip() or "500"
+            dur = text_input("Duration in blocks (min 1440):").strip() or "1440"
+            coll_amt = ask_amount(b, b.vlt_asset, "Collateral required (VLT):", "100")
+            catom = parse_amount(coll_amt)
+            if catom is None:
+                continue
+            if confirm(f"Lend {amt} XEL @ {ibps}bps for {dur} blocks?"):
+                run_tx(b, lambda a=atomic, i=int(ibps), d=int(dur), ca=catom:
+                       b.pl_create_offer(b.xel_asset, a, i, d, b.vlt_asset, ca),
+                       "Create loan offer")
+        elif choice == "accept":
+            oid = text_input("Offer ID to accept:").strip()
+            if not oid:
+                continue
+            coll = ask_amount(b, b.vlt_asset, "Collateral VLT to attach:", "100")
+            catom = parse_amount(coll)
+            if catom is None:
+                continue
+            if confirm(f"Accept offer #{oid} with {coll} VLT collateral?"):
+                run_tx(b, lambda i=int(oid), c=catom:
+                       b.pl_accept_offer(i, b.vlt_asset, c),
+                       "Accept loan offer")
+        elif choice == "repay":
+            oid = text_input("Offer ID to repay:").strip()
+            if not oid:
+                continue
+            amt = ask_amount(b, b.xel_asset, "Repay amount (XEL, include interest):", "1.1")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            if confirm(f"Repay offer #{oid} with {amt} XEL?"):
+                run_tx(b, lambda i=int(oid), a=atomic: b.pl_repay(i, a),
+                       "Repay loan")
+        elif choice == "cancel":
+            oid = text_input("Offer ID to cancel:").strip()
+            if not oid:
+                continue
+            if confirm(f"Cancel offer #{oid}?"):
+                run_tx(b, lambda i=int(oid): b.pl_cancel_offer(i),
+                       "Cancel loan offer")
+
+
+def screen_syndicate(b: Backend):
+    while True:
+        count = b.sp_count()
+        sub = f"Pools: {count if count is not None else '—'}"
+        opts = [("Create pool", "create"),
+                ("Supply to pool", "supply"),
+                ("Activate pool (borrower)", "activate"),
+                ("Repay pool", "repay"),
+                ("Claim from pool", "claim"),
+                ("Back", None)]
+        choice = menu("Syndicate Pools", opts, subtitle=sub)
+        if choice is None:
+            return
+        if choice == "create":
+            amt = ask_amount(b, b.xel_asset, "Total pool size (XEL):", "1")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            ibps = text_input("Interest bps (max 5000):").strip() or "500"
+            dur = text_input("Duration in blocks (min 1440):").strip() or "1440"
+            coll = ask_amount(b, b.vlt_asset, "Collateral required (VLT):", "100")
+            catom = parse_amount(coll)
+            if catom is None:
+                continue
+            if confirm(f"Create syndicate pool: {amt} XEL @ {ibps}bps, {coll} VLT collateral?"):
+                run_tx(b, lambda a=atomic, i=int(ibps), d=int(dur), ca=catom:
+                       b.sp_create_pool(b.xel_asset, a, i, d, b.vlt_asset, ca),
+                       "Create syndicate pool")
+        elif choice == "supply":
+            pid = text_input("Pool ID to supply to:").strip()
+            if not pid:
+                continue
+            amt = ask_amount(b, b.xel_asset, "XEL to supply:", "0.5")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            if confirm(f"Supply {amt} XEL to pool #{pid}?"):
+                run_tx(b, lambda i=int(pid), a=atomic: b.sp_supply(i, a),
+                       "Supply to pool")
+        elif choice == "activate":
+            pid = text_input("Pool ID to activate:").strip()
+            if not pid:
+                continue
+            if confirm(f"Activate pool #{pid}? (requires full funding + collateral attached)"):
+                run_tx(b, lambda i=int(pid): b.sp_activate(i),
+                       "Activate pool")
+        elif choice == "repay":
+            pid = text_input("Pool ID to repay:").strip()
+            if not pid:
+                continue
+            amt = ask_amount(b, b.xel_asset, "XEL to repay:", "1")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            if confirm(f"Repay {amt} XEL to pool #{pid}?"):
+                run_tx(b, lambda i=int(pid), a=atomic: b.sp_repay(i, a),
+                       "Repay pool")
+        elif choice == "claim":
+            pid = text_input("Pool ID to claim from:").strip()
+            if not pid:
+                continue
+            if confirm(f"Claim from pool #{pid}?"):
+                run_tx(b, lambda i=int(pid): b.sp_claim(i),
+                       "Claim from pool")
+
+
+# --- Auctions screen --------------------------------------------------------
+
+def screen_auctions(b: Backend):
+    while True:
+        count = b.au_count()
+        sub = f"Auctions: {count if count is not None else '—'}"
+        opts = [("Create auction (seller)", "create"),
+                ("Commit bid (buyer)", "commit"),
+                ("Reveal bid (buyer)", "reveal"),
+                ("Settle / declare winner", "settle"),
+                ("Claim asset / proceeds", "claim"),
+                ("Back", None)]
+        choice = menu("Sealed-Bid Auctions", opts, subtitle=sub)
+        if choice is None:
+            return
+        if choice == "create":
+            amt = ask_amount(b, b.vlt_asset, "VLT amount to auction:", "10")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            minb = ask_amount(b, b.xel_asset, "Minimum bid (XEL):", "0.1")
+            minb_atomic = parse_amount(minb)
+            if minb_atomic is None:
+                continue
+            cdur = text_input("Commit duration blocks (min 1440):").strip() or "1440"
+            rdur = text_input("Reveal duration blocks (min 1440):").strip() or "1440"
+            if confirm(f"Auction {amt} VLT, min bid {minb} XEL?"):
+                run_tx(b, lambda a=atomic, m=minb_atomic, c=int(cdur), r=int(rdur):
+                       b.au_create(b.vlt_asset, a, b.xel_asset, m, c, r),
+                       "Create auction")
+        elif choice == "commit":
+            aid = text_input("Auction ID:").strip()
+            if not aid:
+                continue
+            bh = text_input("Bid hash (64 hex, blake3 of 'amount|nonce|addr'):").strip()
+            if not bh or len(bh) != 64:
+                info_box("Invalid", ["Need 64-char hex hash."], color=C.RED)
+                continue
+            if confirm(f"Commit bid on auction #{aid}?"):
+                run_tx(b, lambda i=int(aid), h=bh: b.au_commit(i, h),
+                       "Commit bid")
+        elif choice == "reveal":
+            aid = text_input("Auction ID:").strip()
+            if not aid:
+                continue
+            amt = ask_amount(b, b.xel_asset, "Bid amount (XEL):", "1")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            nonce = text_input("Nonce (integer used in hash):").strip() or "0"
+            if confirm(f"Reveal bid {amt} XEL on auction #{aid}?"):
+                run_tx(b, lambda i=int(aid), a=atomic, n=int(nonce):
+                       b.au_reveal(i, a, n),
+                       "Reveal bid")
+        elif choice == "settle":
+            aid = text_input("Auction ID:").strip()
+            if not aid:
+                continue
+            if confirm(f"Settle auction #{aid}?"):
+                run_tx(b, lambda i=int(aid): b.au_settle(i),
+                       "Settle auction")
+        elif choice == "claim":
+            aid = text_input("Auction ID:").strip()
+            if not aid:
+                continue
+            c = text_input("Claim what? (asset/proceeds):").strip().lower()
+            if c == "asset":
+                run_tx(b, lambda i=int(aid): b.au_claim_asset(i),
+                       "Claim auction asset")
+            elif c == "proceeds":
+                run_tx(b, lambda i=int(aid): b.au_claim_proceeds(i),
+                       "Claim auction proceeds")
+
+
+# --- Miner tools screen -----------------------------------------------------
     m = b.my_miner()
     stats = b.miner_stats()
     lines = []
@@ -848,19 +1164,14 @@ def main():
             ("Swap (xUSD / AMM)", lambda: screen_swap(b)),
             ("Savings", lambda: screen_savings(b)),
             ("Privacy Mixer", lambda: screen_privacy(b)),
+            ("Governance", lambda: screen_governance(b)),
+            ("Loans (Flash / Peer / Syndicate)", lambda: screen_loans(b)),
+            ("Sealed-Bid Auctions", lambda: screen_auctions(b)),
             ("Treasury (multisig)", lambda: screen_treasury(b)),
             ("RWA Assets", lambda: screen_rwa(b)),
             ("Miner tools", lambda: screen_miner_tools(b)),
             ("Faucet", lambda: screen_faucet(b)),
         ]
-        extras = [
-            ("Governance", "Community proposals & voting are coming soon."),
-            ("Sealed-bid auctions", "Auction house UI is coming soon."),
-            ("Lending market", "Peer-to-pool lending markets are coming soon."),
-            ("Encrypted chat", "End-to-end encrypted chat is coming soon."),
-        ]
-        for name, _ in extras:
-            opts.append((f"{C.DIM}{name} (soon){C.RESET}", ("soon", name)))
         opts.append(("Settings", ("settings",)))
         if first_run or not wallet_ok:
             opts.insert(0, ("Set up wallet / node", ("setup",)))
@@ -875,9 +1186,6 @@ def main():
             continue
         if choice == ("settings",):
             screen_settings(b, cfg)
-            continue
-        if isinstance(choice, tuple) and choice[0] == "soon":
-            coming_soon(choice[1], [dict(extras)[choice[1]]])
             continue
         # normal screens
         try:

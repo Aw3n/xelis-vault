@@ -299,7 +299,7 @@ entry create_pool(
     s.store(bi_key(count), INITIAL_INDEX)
     s.store(si_key(count), INITIAL_INDEX)
     s.store(POOLS_COUNT_KEY, count + 1)
-    return count
+    return 0
 }
 
 // ID 1: supply

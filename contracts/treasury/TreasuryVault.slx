@@ -166,7 +166,7 @@ entry propose(asset: Hash, to: Address, amount: u64, data: bytes) -> u64 {
     s.store(proposal_key(id), proposal)
     s.store(conf_key(id, caller), true)
     s.store(PROPOSALS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // ID 1: confirm

@@ -224,7 +224,7 @@ entry claim_premium() -> u64 {
     staker.earned += actual
     staker.last_accum = current_accum
     s.store(key, staker)
-    return actual
+    return 0
 }
 
 // ID 3: submit_claim
@@ -252,7 +252,7 @@ entry submit_claim(amount: u64, evidence_hash: Hash) -> u64 {
     }
     s.store(claim_key(id), claim)
     s.store(CLAIMS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // ID 4: approve_claim

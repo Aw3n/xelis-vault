@@ -311,7 +311,7 @@ entry claim_founder_revenue() -> u64 {
 
     // In production: transfer `pending` amount of XEL/VLT to founder
     emit_event(0u64, ["FounderRevenueClaimed", pending.to_string(10u32)])
-    return pending
+    return 0
 }
 
 // Entry 5: Contributor claims their accumulated revenue share
@@ -333,7 +333,7 @@ entry claim_contributor_revenue() -> u64 {
 
     // In production: transfer `amount` to caller
     emit_event(0u64, ["ContributorRevenueClaimed", caller.to_string() + "_" + amount.to_string(10u32)])
-    return amount
+    return 0
 }
 
 // Entry 6: Receive fee from FeeDistributor

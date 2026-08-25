@@ -162,7 +162,7 @@ entry create_policy(
     }
     s.store(policy_key(id), policy)
     s.store(POLICIES_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // ID 1: buy_policy

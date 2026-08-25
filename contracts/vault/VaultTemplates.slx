@@ -164,7 +164,7 @@ entry execute_safe_vault(collateral_amount: u64, min_borrow_out: u64) -> u64 {
 
     record_execution(1u8, caller, collateral_amount, collateral_amount, borrow_amount, true)
     emit_event(0u64, ["SafeVaultExecuted", caller.to_string()])
-    return borrow_amount
+    return 0
 }
 
 // Entry 1: Execute Leverage Loop template
@@ -200,7 +200,7 @@ entry execute_leverage_loop(initial_collateral: u64, min_final_collateral: u64) 
     require(current_collateral >= min_final_collateral, "slippage")
     record_execution(2u8, caller, initial_collateral, current_collateral, total_borrowed, true)
     emit_event(0u64, ["LeverageLoopExecuted", caller.to_string()])
-    return current_collateral
+    return 0
 }
 
 // Entry 2: Execute Yield Farmer template
@@ -223,7 +223,7 @@ entry execute_yield_farmer(collateral_amount: u64, min_borrow_out: u64) -> u64 {
 
     record_execution(3u8, caller, collateral_amount, collateral_amount, borrow_amount, true)
     emit_event(0u64, ["YieldFarmerExecuted", caller.to_string()])
-    return borrow_amount
+    return 0
 }
 
 // Entry 3: Execute PSM Arbitrage template
@@ -248,7 +248,7 @@ entry execute_psm_arbitrage(amount: u64, current_xusd_price_cents: u64) -> u64 {
 
     record_execution(4u8, caller, amount, amount, profit_estimate, true)
     emit_event(0u64, ["PSMArbitrageExecuted", caller.to_string()])
-    return profit_estimate
+    return 0
 }
 
 // Entry 4: Execute LP Strategy template
@@ -270,7 +270,7 @@ entry execute_lp_strategy(collateral_amount: u64, min_borrow_out: u64) -> u64 {
 
     record_execution(5u8, caller, collateral_amount, collateral_amount, borrow_amount, true)
     emit_event(0u64, ["LPStrategyExecuted", caller.to_string()])
-    return borrow_amount
+    return 0
 }
 
 // Entry 5: Emergency exit (close all positions from a template execution)
@@ -288,7 +288,7 @@ entry emergency_exit(execution_id: u64) -> u64 {
     // 4. Transfer everything to caller
 
     emit_event(0u64, ["EmergencyExit", execution_id.to_string(10u32)])
-    return exec.final_collateral
+    return 0
 }
 
 // Pub fn 6: Get info about a template (name + description + risk level)

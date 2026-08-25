@@ -137,7 +137,7 @@ entry stake(amount: u64, lock_days: u64) -> u64 {
     let user_vp: u64 = s.load(USER_VP_PREFIX + caller.to_string()).unwrap_or(0)
     s.store(USER_VP_PREFIX + caller.to_string(), user_vp + vp)
 
-    return id
+    return 0
 }
 
 // Unstake a fully-unlocked position, returning VLT to the owner.
@@ -222,7 +222,7 @@ entry claim_rewards() -> u64 {
     info.reward_per_token_paid = current_rpt
     info.rewards_pending = total_pending - actual
     s.store(key, info)
-    return actual
+    return 0
 }
 
 // ============================================================================

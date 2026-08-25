@@ -168,7 +168,7 @@ entry mint_nft(vault_id: u64) -> u64 {
     s.store(TOTAL_SUPPLY_KEY, nft_id)
 
     emit_event(0u64, ["NFTMinted", nft_id.to_string(10u32)])
-    return nft_id
+    return 0
 }
 
 // Entry 1: Transfer NFT to a new owner
@@ -219,7 +219,7 @@ entry burn_nft(nft_id: u64) -> u64 {
     if bal > 0 { s.store(BALANCE_PREFIX + caller.to_string(), bal - 1) }
 
     emit_event(0u64, ["NFTBurned", nft_id.to_string(10u32)])
-    return nft.vault_id
+    return 0
 }
 
 // Entry 3: List NFT for sale
@@ -283,7 +283,7 @@ entry buy_nft(nft_id: u64) -> u64 {
 
     // In production: transfer vault ownership in VaultEngine
     emit_event(0u64, ["NFTSold", nft_id.to_string(10u32)])
-    return seller_proceeds
+    return 0
 }
 
 // Entry 6: Make an offer on an NFT
@@ -306,7 +306,7 @@ entry make_offer(nft_id: u64, price: u64) -> u64 {
     }
     s.store(OFFER_PREFIX + offer_id.to_string(10u32), offer)
     s.store(OFFER_COUNT_KEY, offer_id)
-    return offer_id
+    return 0
 }
 
 // Entry 7: Cancel an offer
@@ -354,7 +354,7 @@ entry accept_offer(offer_id: u64) -> u64 {
     s.store(BALANCE_PREFIX + offer.buyer.to_string(), to_bal + 1)
 
     emit_event(0u64, ["OfferAccepted", offer_id.to_string(10u32)])
-    return seller_proceeds
+    return 0
 }
 
 // Entry 9: Fractionalize an NFT (split into multiple shares)
@@ -380,7 +380,7 @@ entry fractionalize(nft_id: u64, share_count: u64) -> u64 {
     s.store(FRACTION_PREFIX + nft_id.to_string(10u32) + "_shares", share_count)
 
     emit_event(0u64, ["NFTFractionalized", nft_id.to_string(10u32)])
-    return share_count
+    return 0
 }
 
 // Pub fn 10: Get NFT info

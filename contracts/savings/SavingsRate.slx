@@ -264,7 +264,7 @@ entry claim_interest() -> u64 {
     position.interest_earned = accumulated
     position.last_update = get_current_topoheight()
     s.store(key, position)
-    return actual_payout
+    return 0
 }
 
 // ID 3: set_apy_bps

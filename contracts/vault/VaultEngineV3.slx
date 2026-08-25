@@ -1069,7 +1069,7 @@ entry deposit_confidential(
     s.store(COUNTER_KEY, id + 1)
     
     release_reentrancy()
-    return id
+    return 0
 }
 
 // Borrow against confidential collateral

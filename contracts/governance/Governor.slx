@@ -47,7 +47,7 @@ const DEFAULT_PROPOSAL_THRESHOLD: u64 = 10000000000
 
 // Default delay (in blocks) submitted to the Timelock when a proposal is queued.
 // 34560 blocks ~= 2 days at 120 blocks/hour.
-const QUEUE_DELAY_BLOCKS: u64 = 34560
+const QUEUE_DELAY_BLOCKS: u64 = 150  // testnet: ~7 min (mainnet: 34560)
 
 struct Proposal {
     id: u64,
@@ -142,7 +142,7 @@ entry propose(
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSALS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Cast a vote (no/yes/abstain) on an active proposal. One-vote-per-voter.

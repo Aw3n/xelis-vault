@@ -1519,7 +1519,7 @@ entry emergency_slash_miner(miner_addr: Address, slash_bps: u64, reason: string)
     // (simplified: just burn for now, full split in production)
 
     emit_event(0u64, ["EmergencySlash", miner_addr.to_string() + "_" + actual_slash.to_string(10u32) + "_" + reason])
-    return actual_slash
+    return 0
 }
 
 // ID 41: emergency_ban_miner (guardian or admin only)

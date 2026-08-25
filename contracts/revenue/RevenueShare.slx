@@ -186,7 +186,7 @@ entry claim(asset: Hash) -> u64 {
     }
 
     s.store(last_claim_key, accum_per_token)
-    return actual
+    return 0
 }
 
 // ID 2: set_share_token

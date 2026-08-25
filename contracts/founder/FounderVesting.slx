@@ -181,7 +181,7 @@ entry claim_founder_tokens() -> u64 {
 
     emit_event(0u64, ["FounderTokensClaimed", claimable.to_string(10u32)])
     release_reentrancy_fv()
-    return claimable
+    return 0
 }
 
 // Pub fn 1: Get full vesting info

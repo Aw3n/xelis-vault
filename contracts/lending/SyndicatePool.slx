@@ -177,7 +177,7 @@ entry create_pool(
     }
     s.store(pool_key(id), pool)
     s.store(POOLS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // ID 1: supply
@@ -332,7 +332,7 @@ entry claim(pool_id: u64) -> u64 {
 
     let _ = transfer(caller, my_share, asset_to_receive)
     s.store(key, 0u64)
-    return my_share
+    return 0
 }
 
 // ID 6: get_pool_entry

@@ -348,7 +348,7 @@ entry execute_undelegate() -> u64 {
     s.delete(UNDELEGATE_REQUEST_PREFIX + caller.to_string())
 
     emit_event(0u64, ["UndelegateExecuted", caller.to_string() + "_" + request.amount.to_string(10u32)])
-    return request.amount
+    return 0
 }
 
 // Entry 5: Claim delegator rewards
@@ -397,7 +397,7 @@ entry claim_delegator_rewards() -> u64 {
     }
 
     emit_event(0u64, ["DelegatorRewardsClaimed", caller.to_string() + "_" + total_pending.to_string(10u32)])
-    return total_pending
+    return 0
 }
 
 // Entry 6: Claim miner rewards (own share + commission)
@@ -416,7 +416,7 @@ entry claim_miner_rewards() -> u64 {
     let _ = transfer(caller, pending, vlt_asset)
 
     emit_event(0u64, ["MinerRewardsClaimed", caller.to_string() + "_" + pending.to_string(10u32)])
-    return pending
+    return 0
 }
 
 // Entry 7: Distribute rewards (called by XelisVaultMiner ONLY)
@@ -436,7 +436,7 @@ entry distribute_rewards(miner_addr: Address, total_reward: u64) -> u64 {
         s.store(MINER_PENDING_PREFIX + miner_addr.to_string(), mp + total_reward)
         profile.total_rewards_earned += total_reward
         s.store(MINER_PROFILE_PREFIX + miner_addr.to_string(), profile)
-        return total_reward
+        return 0
     }
 
     // Calculate shares
@@ -463,7 +463,7 @@ entry distribute_rewards(miner_addr: Address, total_reward: u64) -> u64 {
     }
 
     s.store(MINER_PROFILE_PREFIX + miner_addr.to_string(), profile)
-    return total_reward
+    return 0
 }
 
 // Entry 8: Apply slashing (called by XelisVaultMiner ONLY)
@@ -498,7 +498,7 @@ entry apply_slashing(miner_addr: Address, slash_amount: u64) -> u64 {
     s.store(MINER_PROFILE_PREFIX + miner_addr.to_string(), profile)
 
     emit_event(0u64, ["SlashingApplied", miner_addr.to_string() + "_" + slash_amount.to_string(10u32)])
-    return slash_amount
+    return 0
 }
 
 // Entry 9: Set miner own stake (called by XelisVaultMiner on increase_stake/decrease_stake)

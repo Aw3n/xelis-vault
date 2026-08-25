@@ -232,7 +232,7 @@ entry claim_founder_share() -> u64 {
     // For tokens: token.call(transfer_to, [founder, pending])
     emit_event(0u64, ["FounderShareClaimed", pending.to_string(10u32)])
     release_reentrancy_fd()
-    return pending
+    return 0
 }
 
 // Entry 2: Treasury claims their accumulated share
@@ -260,7 +260,7 @@ entry claim_treasury_share() -> u64 {
     s.store(TREASURY_PENDING_KEY, 0u64)
     // In production: transfer to treasury contract
     emit_event(0u64, ["TreasuryShareClaimed", pending.to_string(10u32)])
-    return pending
+    return 0
 }
 
 // Entry 3: Burn the deflationary share (anyone can trigger, gas incentivized)
@@ -277,7 +277,7 @@ entry burn_deflationary_share() -> u64 {
     // For VLT: vlt.call(burn, [pending])
     // For xUSD: xusd.call(burn, [pending])
     emit_event(0u64, ["DeflationaryBurned", pending.to_string(10u32)])
-    return pending
+    return 0
 }
 
 // Pub fn 4: Get founder's pending balance

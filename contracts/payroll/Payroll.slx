@@ -220,7 +220,7 @@ entry claim() -> u64 {
     s.store(LAST_CLAIM_PREFIX + caller.to_string(), end)
     employee.total_paid += actual
     s.store(EMPLOYEE_PREFIX + caller.to_string(), employee)
-    return actual
+    return 0
 }
 
 // ID 4: set_treasury

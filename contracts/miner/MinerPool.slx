@@ -190,7 +190,7 @@ entry create_pool(name: string, description: string, creator_commission_bps: u64
     s.store(pool_members_count_key(id), 1u64)
     s.store(USER_POOL_KEY + caller.to_string(), id)
     s.store(POOLS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // ID 1: join_pool
@@ -360,7 +360,7 @@ entry claim_pool_rewards() -> u64 {
     } else {
         s.store(pool_rewards_key(pool_id), 0u64)
     }
-    return net_share
+    return 0
 }
 
 // ID 6: get_pool_entry

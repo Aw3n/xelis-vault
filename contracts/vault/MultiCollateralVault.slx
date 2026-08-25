@@ -151,7 +151,7 @@ entry create_multi_vault() -> u64 {
     }
     s.store(VAULT_PREFIX + id.to_string(10u32), vault)
     s.store(COUNTER_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Entry 1: Add collateral of a specific asset
@@ -264,7 +264,7 @@ entry liquidate_multi(vault_id: u64, current_total_collateral_value: u64) -> u64
     // In production: seize all collaterals, repay borrow, give penalty to liquidator
     let penalty: u64 = (vault.total_borrow * LIQUIDATION_PENALTY_BPS) / 10000
     emit_event(0u64, ["MultiVaultLiquidated", vault_id.to_string(10u32)])
-    return penalty
+    return 0
 }
 
 // Pub fn 6: Get multi-vault info

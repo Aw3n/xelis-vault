@@ -555,5 +555,72 @@ Le même bug VM que VE3/Mixer/Faucet frappait VaultChat dès qu'un compteur > 0:
   message membre, anchor, bond→whitelist→register→fee→claim, négatif notrelayer).
 - ⚠️ AUTRES CONTRATS À AUDITER pour le même pattern (mutants retournant ≠0):
   GovernanceVault.stake (ids démarrent à 0 → premier stake passe, les suivants
-  échouent!), AssetVault.mint, PeerLoan, SyndicatePool, Auction, etc. Sweep
-  complet recommandé avant tout usage réel de ces flux.
+   échouent!), AssetVault.mint, PeerLoan, SyndicatePool, Auction, etc. Sweep
+   complet recommandé avant tout usage réel de ces flux.
+
+# ✅ v12R-6 — CLI complet + E2E 35/35 (2026-08-25)
+
+## TOUTES les fonctionnalités disponibles dans le CLI
+
+**Backend (cli_backend.py)** : 17 contrats, toutes les entries d'écriture exposées.
+- CHUNKS dict : PSM, VaultEngineV3, VaultSwapV2, SavingsRate, PrivacyMixer,
+  TreasuryVault, AssetVault, StakedOracle, XelisVaultMiner, **GovernanceVault**,
+  **Governor**, **FlashLoan**, **FlashCallback**, **PeerLoan**, **SyndicatePool**,
+  **SealedBidAuction**, **Timelock**.
+- Funding helpers : `fund_contract()` (deposit entry), `fund_any()` (any entry+deposit).
+- Storage reader : `_storage_read()` via daemon read_key (count keys: pc/oc/ac).
+
+**TUI (xvault.py)** : 12 écrans actifs (plus aucun "coming soon").
+- **Governance** : stake/unstake/claim/info (lock 7d min, voting power boost).
+- **Loans** : Flash Loan (fund/borrow), Peer Loans (create/accept/repay/cancel),
+  Syndicate Pools (create/supply/activate/repay/claim).
+- **Sealed-Bid Auctions** : create/commit/reveal/settle/declare/claim.
+- **RWA Assets** : register (name/symbol/decimals/supply) + transfer.
+
+## Bugs corrigés dans cette session
+1. **`_storage_read`** : utilisation de `self.daemon.read_key()` au lieu de `self.p.daemon`
+   (Backend n'a pas d'attribut `.p` — c'est `self.extra` pour le test).
+2. **`val_bytes`** : doit recevoir un string hex, pas `bytes` → fix `data: str = ""`.
+3. **`flashcb_fund`** : `_invoke_raw` sans params ValueCell → crash JSON. Fix: utiliser
+   `_invoke` avec `val_hash()` pour les params, ou appeler `set_flash_loan(fl_hash)`.
+4. **`flashloan_fund`** : entry `get_fee_bps` (read-only) n'accepte PAS les deposits
+   (l'entry retourne une valeur sans écrire → pas de crédit balance). Fix: utiliser
+   `set_fee_bps` (admin setter, state-mutating → deposits persistés au niveau tx).
+5. **Governor `entry_id`** : type u16 dans le contrat, pas u64 → `val_u16()` au lieu
+   de `val_u64()`. Erreur : "invalid chunk parameter at index 1".
+6. **TreasuryVault deposit** : params requis `[val_hash(asset), val_u64(amount)]`
+   même si l'entry lit `get_deposit_for_asset` → sans params = revert silencieux.
+7. **AssetVault funding** : `set_registry` chunk 10 ajouté au CHUNKS dict.
+
+## Résultats E2E
+| Suite | Résultat | Notes |
+|---|---|---|
+| test_cli_ops.py | **16/16** | PSM/VE3/Mixer/Faucet/Heartbeat/AMM/Savings |
+| test_chat.py | **17/17** | Sessions/Groupe/Message/Relayer |
+| test_cli_ops2.py | **35/35** | Governor×2/FlashLoan/PeerLoan/Syndicate/Auction/RWA/Treasury/Savings/Timelock |
+
+### Couverture test_cli_ops2.py (35 assertions)
+- A. Governance: stake×2 (id=0, id=1) + unstake locked (neg) + claim
+- B. FlashLoan: verify_cb + fund FL + fund CB + borrow 0.5 + insliquidity (neg)
+- C. PeerLoan: create + count + selfaccept (neg)
+- D. SyndicatePool: create + count + selfsupply (neg) + notfull (neg)
+- E. Auction: create + count + commit + double-commit (neg)
+- F. RWA: fund AV + exists (neg)
+- G. Treasury: fund + propose + execute + already-executed (neg)
+- H. Savings: deposit + wait 20blk + claim + wait 65blk maturity + withdraw
+- I. Timelock: execute nonexistent (neg)
+- J. Governor: propose(u16!) + count + vote + double-vote (neg)
+
+### ⚠️ Flux non-testés en live (nécessitent 2e wallet ou long-running)
+- PeerLoan accept→repay (nécessite 2e address pour accepter)
+- SyndicatePool supply→activate→repay→claim (nécessite 2e address + collateral)
+- Auction reveal→settle→declare_winner (130 min wall time)
+- Governor queue→Timelock execute (13 h voting period)
+- Mixer refund (timeout 51840 blocs = 3 jours)
+
+## Files modifiés
+- `scripts/cli_backend.py` : 17 contrats CHUNKS + 40+ méthodes Backend + funding helpers
+- `scripts/xvault.py` : 3 nouveaux écrans (Governance/Loans/Auctions) + RWA register
+- `scripts/test_cli_ops2.py` : **nouveau** — 35 assertions E2E
+- `contracts/governance/Governor.slx` : QUEUE_DELAY_BLOCKS=150 (testnet)
+- AGENTS.md : section v12R-6

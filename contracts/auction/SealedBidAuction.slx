@@ -215,7 +215,7 @@ entry create_auction(
     }
     s.store(auction_key(id), auction)
     s.store(AUCTIONS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // ID 1: commit

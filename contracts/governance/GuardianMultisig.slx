@@ -135,7 +135,7 @@ entry propose_emergency_action(target: Hash, action: u8, params: bytes) -> u64 {
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSALS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Sign (confirm) a pending emergency proposal. Each guardian confirms at most once.
@@ -268,7 +268,7 @@ entry add_guardian_via_proposal(guardian: Address, params: bytes) -> u64 {
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSALS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Helper to propose removing an existing guardian (action=5) — requires quorum to execute.
@@ -301,7 +301,7 @@ entry remove_guardian_via_proposal(guardian: Address, params: bytes) -> u64 {
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSALS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Helper to propose changing the guardian quorum (action=6) — requires quorum to execute.
@@ -334,7 +334,7 @@ entry set_quorum_via_proposal(new_quorum: u64, params: bytes) -> u64 {
     }
     s.store(PROPOSAL_PREFIX + id.to_string(10u32), proposal)
     s.store(PROPOSALS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // Returns a proposal snapshot by ID (entry wrapper for cross-contract/off-chain reads).

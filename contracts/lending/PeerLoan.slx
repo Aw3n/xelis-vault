@@ -169,7 +169,7 @@ entry create_offer(
     }
     s.store(offer_key(id), offer)
     s.store(OFFERS_COUNT_KEY, id + 1)
-    return id
+    return 0
 }
 
 // ID 1: cancel_offer

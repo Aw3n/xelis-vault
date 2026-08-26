@@ -959,6 +959,107 @@ def screen_auctions(b: Backend):
                        "Claim auction proceeds")
 
 
+# --- VaultChat screen -------------------------------------------------------
+
+def screen_chat(b: Backend):
+    while True:
+        gc = b.chat_groups_count()
+        sub = f"Groups: {gc if gc is not None else '—'}"
+        opts = [("Register session", "register"),
+                ("Send DM", "dm"),
+                ("Create group", "cgrp"),
+                ("Add group member", "amem"),
+                ("Send group message", "gmsg"),
+                ("Anchor messages", "anchor"),
+                ("Relayer: bond + register", "relayer"),
+                ("Relayer: set fee", "fee"),
+                ("Relayer: claim fees", "claim"),
+                ("Back", None)]
+        choice = menu("Encrypted Chat (VaultChat)", opts, subtitle=sub)
+        if choice is None:
+            return
+        if choice == "register":
+            ek = text_input("Encrypted session key (64 hex):").strip()
+            if not ek or len(ek) != 64:
+                info_box("Invalid", ["Need 64-char hex key."], color=C.RED)
+                continue
+            if confirm("Register chat session?"):
+                run_tx(b, lambda k=ek: b.chat_register(k), "Register session")
+        elif choice == "dm":
+            dest = text_input("Recipient address (xet:...):").strip()
+            if not dest.startswith("xet:"):
+                continue
+            msg = text_input("Message (hex-encoded encrypted payload):").strip()
+            if not msg:
+                continue
+            if confirm(f"Send DM to {short_addr(dest)}?"):
+                run_tx(b, lambda d=dest, m=msg: b.chat_send_dm(d, m),
+                       "Send DM")
+        elif choice == "cgrp":
+            ek = text_input("Group encrypted key (64 hex):").strip()
+            if not ek or len(ek) != 64:
+                info_box("Invalid", ["Need 64-char hex key."], color=C.RED)
+                continue
+            if confirm("Create group chat?"):
+                run_tx(b, lambda k=ek: b.chat_create_group(k), "Create group")
+        elif choice == "amem":
+            gid = text_input("Group ID:").strip()
+            if not gid:
+                continue
+            addr = text_input("Member address (xet:...):").strip()
+            if not addr.startswith("xet:"):
+                continue
+            ek = text_input("Encrypted key for member (64 hex):").strip()
+            if not ek or len(ek) != 64:
+                info_box("Invalid", ["Need 64-char hex key."], color=C.RED)
+                continue
+            if confirm(f"Add {short_addr(addr)} to group #{gid}?"):
+                run_tx(b, lambda g=int(gid), a=addr, k=ek:
+                       b.chat_add_member(g, a, k),
+                       "Add group member")
+        elif choice == "gmsg":
+            gid = text_input("Group ID:").strip()
+            if not gid:
+                continue
+            msg = text_input("Message (hex-encoded):").strip()
+            if not msg:
+                continue
+            if confirm(f"Send message to group #{gid}?"):
+                run_tx(b, lambda g=int(gid), m=msg: b.chat_group_msg(g, m),
+                       "Send group message")
+        elif choice == "anchor":
+            root = text_input("Merkle root (64 hex):").strip()
+            if not root or len(root) != 64:
+                info_box("Invalid", ["Need 64-char hex root."], color=C.RED)
+                continue
+            count = text_input("Message count:").strip() or "1"
+            if confirm(f"Anchor {count} messages?"):
+                run_tx(b, lambda r=root, c=int(count): b.chat_anchor(r, c),
+                       "Anchor messages")
+        elif choice == "relayer":
+            amt = ask_amount(b, b.vlt_asset, "VLT bond (min 50):", "50")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            ep = text_input("Relayer endpoint (url):").strip() or "http://localhost"
+            if confirm(f"Bond {amt} VLT + register as relayer?"):
+                run_tx(b, lambda a=atomic: b.chat_stake_bond(a), "Stake bond")
+                time.sleep(4)
+                run_tx(b, lambda: b.chat_register_relayer(ep, 1000000, 100),
+                       "Register relayer")
+        elif choice == "fee":
+            tok = text_input("Token (0=XEL, 1=VLT):").strip() or "0"
+            fee = text_input("Fee in atomic units (e.g. 1000000 = 0.01):").strip()
+            if not fee:
+                continue
+            if confirm(f"Set relayer fee: {fee} for token {tok}?"):
+                run_tx(b, lambda t=int(tok), f=int(fee): b.chat_set_fee(t, f),
+                       "Set relayer fee")
+        elif choice == "claim":
+            if confirm("Claim relayer fees?"):
+                run_tx(b, b.chat_claim_fees, "Claim relayer fees")
+
+
 # --- Miner tools screen -----------------------------------------------------
     m = b.my_miner()
     stats = b.miner_stats()
@@ -1167,6 +1268,7 @@ def main():
             ("Governance", lambda: screen_governance(b)),
             ("Loans (Flash / Peer / Syndicate)", lambda: screen_loans(b)),
             ("Sealed-Bid Auctions", lambda: screen_auctions(b)),
+            ("Encrypted Chat", lambda: screen_chat(b)),
             ("Treasury (multisig)", lambda: screen_treasury(b)),
             ("RWA Assets", lambda: screen_rwa(b)),
             ("Miner tools", lambda: screen_miner_tools(b)),

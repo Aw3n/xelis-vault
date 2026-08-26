@@ -157,6 +157,14 @@ CHUNKS = {
                           "get_auction": 21, "get_auctions_count": 22},
     "Timelock":         {"execute_proposal": 6, "cancel_proposal": 7,
                           "set_min_delay": 9, "set_governor": 11},
+    "VaultChat":        {"register_session": 7, "create_group": 8,
+                          "add_group_member": 9, "anchor_messages": 11,
+                          "store_message": 38, "store_group_message": 48,
+                          "set_relayer_fee": 51, "claim_relayer_fees": 56,
+                          "stake_relayer_bond": 121, "register_as_relayer": 66,
+                          "send_direct_message": 113, "get_session": 13,
+                          "get_group": 14, "is_active": 16,
+                          "get_last_anchor": 17, "get_groups_count": 18},
 }
 
 DECIMALS = 8
@@ -930,6 +938,66 @@ class Backend:
     def tl_cancel(self, proposal_id: int) -> OpResult:
         return self._invoke("Timelock", "cancel_proposal",
                             [val_u64(proposal_id)], max_gas=15_000_000)
+
+    # --- VaultChat -----------------------------------------------------------
+
+    def chat_register(self, enc_key: str) -> OpResult:
+        return self._invoke("VaultChat", "register_session",
+                            [val_hash(enc_key)], max_gas=15_000_000)
+
+    def chat_send_dm(self, to: str, msg_hex: str, ttl: int = 0) -> OpResult:
+        return self._invoke("VaultChat", "send_direct_message",
+                            [val_addr(to), val_bytes(msg_hex), val_u64(ttl)],
+                            max_gas=20_000_000)
+
+    def chat_store_message(self, to: str, msg_hex: str, ttl: int = 0) -> OpResult:
+        return self._invoke("VaultChat", "store_message",
+                            [val_addr(to), val_bytes(msg_hex), val_u64(ttl)],
+                            max_gas=20_000_000)
+
+    def chat_create_group(self, enc_key: str) -> OpResult:
+        return self._invoke("VaultChat", "create_group",
+                            [val_hash(enc_key)], max_gas=15_000_000)
+
+    def chat_add_member(self, group_id: int, addr: str, enc_key: str) -> OpResult:
+        return self._invoke("VaultChat", "add_group_member",
+                            [val_u64(group_id), val_addr(addr), val_bytes(enc_key)],
+                            max_gas=15_000_000)
+
+    def chat_group_msg(self, group_id: int, msg_hex: str, ttl: int = 0) -> OpResult:
+        return self._invoke("VaultChat", "store_group_message",
+                            [val_u64(group_id), val_bytes(msg_hex), val_u64(ttl)],
+                            max_gas=20_000_000)
+
+    def chat_anchor(self, root: str, count: int, msg_type: int = 0) -> OpResult:
+        return self._invoke("VaultChat", "anchor_messages",
+                            [val_hash(root), val_u64(count), val_u8(msg_type)],
+                            max_gas=20_000_000)
+
+    def chat_stake_bond(self, vlt_atomic: int) -> OpResult:
+        return self._invoke("VaultChat", "stake_relayer_bond",
+                            [val_u64(vlt_atomic)],
+                            deposits={self.vlt_asset: {"amount": vlt_atomic}},
+                            max_gas=20_000_000)
+
+    def chat_register_relayer(self, endpoint: str, max_fee: int,
+                              max_msgs: int) -> OpResult:
+        return self._invoke("VaultChat", "register_as_relayer",
+                            [val_str(endpoint), val_u64(max_fee), val_u64(max_msgs)],
+                            max_gas=20_000_000)
+
+    def chat_set_fee(self, token: int, fee: int) -> OpResult:
+        return self._invoke("VaultChat", "set_relayer_fee",
+                            [val_u64(fee), val_u8(token)],
+                            max_gas=15_000_000)
+
+    def chat_claim_fees(self) -> OpResult:
+        return self._invoke("VaultChat", "claim_relayer_fees",
+                            [], max_gas=20_000_000)
+
+    def chat_groups_count(self) -> int | None:
+        v = self._storage_read("VaultChat", "gc")
+        return int(v) if v is not None else None
 
     # --- Funding helpers (deposit XEL to any contract) ----------------------
 

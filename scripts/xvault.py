@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import platform
 import re
+import secrets
 import sys
 import time
 from pathlib import Path
@@ -485,54 +486,86 @@ def screen_savings(b: Backend):
                 run_tx(b, lambda: b.savings_claim_interest(), "Interest claim")
 
 
+def _gen_secret() -> str:
+    return secrets.token_bytes(32).hex()
+
+
 def screen_privacy(b: Backend):
     while True:
         st = b.mixer_stats()
-        sub = (f"Pools pending: {st.get('pending', '-')}   mixes executed: "
-               f"{st.get('total_mixes', '-')}   total mixed: "
-               f"{b.fmt(st.get('total_mixed'))} XEL") if st else "Loading..."
-        choice = menu("Privacy Mixer — private payments", [
-            ("Send privately (mix to recipient)", "send"),
-            ("Trigger mix execution now", "exec"),
-            ("Request refund of my deposit", "refund"),
+        sub = (f"mixes executed: {st.get('total_mixes', '-')}   "
+               f"total pooled: {b.fmt(st.get('total_mixed'))} XEL") if st else "Loading..."
+        choice = menu("Privacy Mixer — private pool (no sender link)", [
+            ("Deposit + create note", "dep"),
+            ("Withdraw from pool", "wd"),
+            ("Check my note balance", "bal"),
             ("How it works", "help"),
             ("Back", None),
         ], subtitle=sub)
         if choice is None:
             return
-        if choice == "send":
-            dest = text_input("Recipient address (xet:...):").strip()
-            if not dest.startswith("xet:") or len(dest) < 20:
-                info_box("Invalid address", ["Please enter a full xet: address."],
-                         color=C.RED)
-                continue
-            amt = ask_amount(b, b.xel_asset, "XEL amount to send privately:", "0.1")
+        if choice == "dep":
+            asset = "XEL"
+            amt = ask_amount(b, b.xel_asset, "XEL amount to deposit privately:", "0.1")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
             if not _check_balance(b, b.xel_asset, atomic):
                 continue
-            if confirm(f"Privately send {amt} XEL?\nFunds are pooled and mixed "
-                       f"(min anonymity 3) before delivery."):
-                run_tx(b, lambda: b.mixer_send(dest, atomic), "Private send")
-        elif choice == "exec":
-            if confirm("Execute mixer pooling now?\n(Also runs automatically when a pool fills.)"):
-                run_tx(b, lambda: b.mixer_execute_mix(), "Mix execution")
-        elif choice == "refund":
-            if confirm("Request refund of your pending mixer deposit?\n"
-                       "(Only possible after the pool timeout.)"):
-                run_tx(b, lambda: b.mixer_refund(), "Mixer refund")
+            secret = _gen_secret()
+            if confirm(f"Deposit {amt} XEL and create a private note?\n"
+                       f"Keep {C.YELLOW}this secret{C.RESET} to withdraw later:\n{C.BRIGHT}{secret}{C.RESET}"):
+                run_tx(b, lambda a=atomic, s=secret: b.mixer_deposit(b.xel_asset, a, s),
+                       "Private note deposit")
+                info_box("Note secret (SAVE THIS)", [
+                    "To withdraw you must present this secret.",
+                    "It can be handed to any address off-chain,",
+                    "so other people can withdraw for you.",
+                    "",
+                    f"{C.YELLOW}{secret}{C.RESET}",
+                ], color=C.MAGENTA)
+        elif choice == "wd":
+            dest = text_input("Withdraw TO address (xet:...):").strip()
+            if not dest.startswith("xet:") or len(dest) < 20:
+                info_box("Invalid address", ["Please enter a full xet: address."],
+                         color=C.RED)
+                continue
+            amt = ask_amount(b, b.xel_asset, "XEL amount to withdraw:", "0.1")
+            atomic = parse_amount(amt)
+            if atomic is None:
+                continue
+            secret = text_input("Your note secret (64 hex):").strip().lower()
+            if len(secret) != 64:
+                info_box("Invalid secret", ["Need a 64-char hex secret."], color=C.RED)
+                continue
+            if confirm(f"Withdraw {amt} XEL to {short_addr(dest)}?\n"
+                       f"Funds come from the shared pool — no sender link."):
+                run_tx(b, lambda d=dest, a=atomic, s=secret:
+                       b.mixer_withdraw(d, b.xel_asset, a, s),
+                       "Private note withdraw")
+        elif choice == "bal":
+            secret = text_input("Your note secret (64 hex):").strip().lower()
+            if len(secret) != 64:
+                info_box("Invalid secret", ["Need a 64-char hex secret."], color=C.RED)
+                continue
+            nb = b.mixer_note_balance(b.xel_asset, secret)
+            info_box("Note balance",
+                     [f"{b.fmt(nb) if nb is not None else '—'} XEL available",
+                      "0 or 'not found' means the note is spent or unknown."],
+                     color=C.CYAN)
         elif choice == "help":
-            info_box("How the mixer works", [
-                "1. You deposit XEL with a recipient address.",
-                "2. Deposits wait in an anonymous pool",
-                "   (min 3 participants).",
-                "3. When the pool is ready, everyone's funds",
-                "   are shuffled and paid out together —",
-                "   breaking the on-chain link between sender",
-                "   and recipient.",
+            info_box("How the mixer works (v2)", [
+                "1. Deposit XEL with a random secret → the",
+                "   contract stores a note = blake3(secret).",
+                "2. NO sender or recipient is stored on-chain.",
+                "3. Withdraw by presenting the secret, to ANY",
+                "   recipient, pulling from the shared pool.",
                 "",
-                f"{C.YELLOW}Note: mixing takes time (hours to days).{C.RESET}",
+                "Anonymity = all depositors of the pool + XELIS",
+                "encrypted amounts + off-chain secret handoff.",
+                "",
+                f"{C.YELLOW}Keep your secret safe — it is the only way",
+                f"to recover the note.{C.RESET}",
             ], color=C.MAGENTA)
 
 

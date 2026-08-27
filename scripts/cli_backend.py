@@ -83,7 +83,7 @@ _FALLBACK = {
         "PSM": "977ddf73305dd21c29ffbe69dc2bdb29a12a62f4ff8bbc3140cafd4b51d5c2e1",
         "Payroll": "44ce12fb3d143f360c84664fe4849f01fb31ce5b45aebda38b037c70b4079b30",
         "PeerLoan": "ee27ecae9d8bb9b600026e883506eac39d81e5c908cca9dfeb6d96b529117568",
-        "PrivacyMixer": "d384649c8f8f52116a198d2125bd1b6c3dff9bfda55643979c85a28631a6261d",
+        "PrivacyMixer": "ffd504e24caad25b8f74e512318a66c45229dc2702dec0ecf66540065690d2d5",
         "RevenueShare": "49c363dae4d32473d6d3c26ce0482cf735f7d656c665094002c1d21a6978c94b",
         "SavingsRate": "69d719949fd8f25fc33c8d4e8d9da6d8cb30f63a0163e39e1c9de79129d86f27",
         "SealedBidAuction": "105bb6ccdb14f8cd34da78b85ed36790b29b2625d168297aa4294d3a557c46eb",
@@ -127,8 +127,7 @@ CHUNKS = {
     "VaultEngineV3":  {"deposit": 17, "borrow": 18, "repay": 19, "withdraw": 20},
     "VaultSwapV2":    {"create_pool": 16, "add_liquidity": 17, "swap": 18},
     "SavingsRate":    {"deposit": 8, "withdraw": 9, "claim_interest": 10},
-    "PrivacyMixer":   {"deposit": 5, "execute_mix": 6, "execute_refund": 7,
-                        "set_timeout_blocks": 15},
+    "PrivacyMixer":   {"deposit": 6, "withdraw": 7},
     "TreasuryVault":  {"propose": 9, "confirm": 10, "revoke": 11, "execute": 12, "deposit": 16},
     "AssetVault":     {"mint": 5, "transfer_asset": 6, "create_asset": 4,
                         "set_registry": 10},
@@ -413,10 +412,8 @@ class Backend:
         out = {}
         if not mx:
             return out
-        pc = self.daemon.read_key(mx, "pc")
         tmc = self.daemon.read_key(mx, "tmc")
         tm = self.daemon.read_key(mx, f"tm_{self.xel_asset}")
-        if isinstance(pc, int): out["pending"] = pc
         if isinstance(tmc, int): out["total_mixes"] = tmc
         if isinstance(tm, int): out["total_mixed"] = tm
         return out
@@ -602,21 +599,37 @@ class Backend:
     def savings_claim_interest(self) -> OpResult:
         return self._invoke("SavingsRate", "claim_interest", [], max_gas=15_000_000)
 
-    # --- Privacy Mixer (private send: deposit → auto-mix to recipient) -------
+    # --- Privacy Mixer (private note + shared pool; no sender/recipient link)
 
-    def mixer_send(self, recipient: str, xel_amount_atomic: int,
-                   min_anonymity: int = 3) -> OpResult:
+    def mixer_deposit(self, asset: str, amount_atomic: int, secret: str) -> OpResult:
+        """Deposit into the shared pool, creating a private note blake3(secret).
+        The contract stores NO sender identity. Keep `secret` (64 hex) to withdraw."""
         return self._invoke("PrivacyMixer", "deposit",
-                            [val_addr(recipient), val_hash(self.xel_asset),
-                             val_u64(min_anonymity)],
-                            deposits={self.xel_asset: {"amount": xel_amount_atomic}},
+                            [val_hash(asset), val_hash(secret)],
+                            deposits={asset: {"amount": amount_atomic}},
                             max_gas=20_000_000)
 
-    def mixer_execute_mix(self) -> OpResult:
-        return self._invoke("PrivacyMixer", "execute_mix", [], max_gas=30_000_000)
+    def mixer_withdraw(self, recipient: str, asset: str,
+                       amount_atomic: int, secret: str) -> OpResult:
+        """Present secret to destroy the note and pull `amount` from the shared
+        pool to `recipient` (any address). No on-chain sender link."""
+        return self._invoke("PrivacyMixer", "withdraw",
+                            [val_addr(recipient), val_hash(asset),
+                             val_u64(amount_atomic), val_hash(secret)],
+                            max_gas=20_000_000)
 
-    def mixer_refund(self) -> OpResult:
-        return self._invoke("PrivacyMixer", "execute_refund", [], max_gas=30_000_000)
+    def mixer_note_balance(self, asset: str, secret: str) -> int | None:
+        """Remaining amount drainable for a secret (blake3(secret)); 0 if absent."""
+        mx = self.C("mixer")
+        if not mx or not self.daemon:
+            return None
+        try:
+            import blake3 as _b3
+            commitment = _b3.blake3(bytes.fromhex(secret)).hexdigest()
+        except Exception:
+            return None
+        v = self.daemon.read_key(mx, f"n_{asset}_" + commitment)
+        return int(v) if isinstance(v, int) else None
 
     # --- Treasury Vault (multisig) --------------------------------------------
 

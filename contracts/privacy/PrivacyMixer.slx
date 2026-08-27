@@ -1,91 +1,59 @@
-// ============================================================================
-// PrivacyMixer.slx — XELIS Vault v11.5
-// ----------------------------------------------------------------------------
-// Batch Mixer qui exploite la privacy native de XELIS (montants chiffrés).
+// PrivacyMixer.slx — XELIS Vault v2 (note + nullifier model)
 //
-// PRINCIPE :
-//   XELIS chiffre les montants des transactions (homomorphic encryption).
-//   Si N personnes deposit des montants quelconques, puis le contrat envoie
-//   à N adresses dans le même batch, il est IMPOSSIBLE de matcher quel deposit
-//   va à quelle adresse car les montants sont chiffrés.
+// ⚠️ v2 REDESIGN (2026-08-27): the v1 mixer stored sender, recipient, amount and
+// deposited_at in a per-deposit struct (DepositEntry) exposed via a PUBLIC
+// get_deposit_info(). That directly linked the sender to the recipient in the
+// contract's own storage — a fatal privacy bug for anything calling itself a
+// "privacy mixer". This v2 removes all sender/recipient linkage:
 //
-// AMÉLIORATIONS v11.5 :
-//   ✅ Montant libre — l'user dépose le montant qu'il veut (pas de dénomination fixe)
-//      XELIS chiffre les montants → pas besoin de montants identiques pour l'anonymat
-//   ✅ Threshold personnalisable — chaque user choisit son niveau d'anonymat
-//      "Je veux au moins 20 personnes dans le batch avant que ça mix"
-//      Plus le threshold est élevé, plus l'anonymat est fort
-//   ✅ Auto-mix quand le threshold minimum du pool est atteint
-//   ✅ Refund automatique après timeout si pas assez de monde
+//   - deposit(asset, secret)  creates a NOTE commitment = blake3(secret) and
+//     adds the attached funds to the SHARED POOL of that asset. The contract
+//     stores NO sender, NO recipient, NO per-user topo, NO per-user amount keyed
+//     by identity.
+//   - withdraw(recipient, asset, amount, secret)  destroys the note (nullifier)
+//     and transfers `amount` from the SHARED POOL to any chosen recipient.
 //
-// FLOW :
-//   1. User appelle deposit(recipient_addr, asset, min_anonymity)
-//      → Spécifie l'adresse de réception + le nombre MIN de personnes dans le batch
-//      → Le montant est libre (attaché à la tx, chiffré par XELIS)
-//      → Funds bloqués dans le contrat
+//   Because the withdrawal target is arbitrary and the funds come from a
+//   fungible shared pool, there is NO on-chain field linking who deposited to
+//   who withdrew. The anonymity set = all depositors of that asset.
+//   The secret is transferable off-chain, so even the note's owner isn't forced
+//   to be the depositor.
 //
-//   2. Le contrat attend que le threshold minimum de tous les deposits soit atteint
-//      → Si un user a demandé min 20, le mix attend 20 deposits
-//      → Si tous les users ont demandé min 5, le mix se fait à 5
-//      → Le mix se fait au MAX des thresholds demandés (anonymat max)
+//  Limite honnête: sans preuve ZK (non dispo dans ce VM), un observateur qui
+//  surveille timing + adresses peut opérer une analyse de graphe; mais le
+//  CONTRAT lui-même ne stocke plus aucun lien expéditeur/destinataire
+//  exploitable — ce qui était justement l'accusation sur v1.
 //
-//   3. MIX : le contrat envoie tous les funds aux recipients
-//      → Toutes les transactions dans le même appel (même block)
-//      → Montants chiffrés par XELIS → intracçable
-//
-//   4. Si timeout (3 jours) → refund automatique à tous les senders
-//
-// Entry IDs:
-//   0  : deposit
-//   1  : execute_mix (trigger manuel si threshold atteint)
-//   2  : execute_refund (trigger manuel si timeout)
-//   3  : get_pool_info (pub fn)
-//   4  : get_deposit_info (pub fn)
-//   5  : get_pending_count (pub fn)
-//   6  : set_min_threshold
-//   7  : set_max_threshold
-//   8  : set_timeout_blocks
-//   9  : set_withdraw_fee_bps
-//   10 : set_treasury
-//   11 : set_registry
-//   12 : set_timelock
-//   13 : set_guardian
-//   14 : pause
-//   15 : unpause
-//   16 : transfer_admin
-//   17 : request_emergency_withdraw
-//   18 : execute_emergency_withdraw
-//   19 : get_version
-// ============================================================================
+// Layout:
+//   0   : constructor (admin, guardian, config)
+//   ...  admin setters + getters
+//   ...  deposit (note + pool)
+//   ...  withdraw (nullifier + pool -> recipient)
+//   ...  pause / emergency / transfer_admin / guardian / timelock
 
-const VERSION: string = "PrivacyMixer v11.5"
+const VERSION: string = "PrivacyMixer v2"
 
 const ADMIN_KEY: string = "a"
 const TIMELOCK_KEY: string = "tl"
 const GUARDIAN_KEY: string = "gd"
 const PAUSED_KEY: string = "pz"
 const REGISTRY_KEY: string = "reg"
-
-// Pool state
-const POOL_COUNT_KEY: string = "pc"
-const POOL_DEPOSIT_PREFIX: string = "pd_"
-const POOL_FIRST_TOPO_KEY: string = "pft"
-const POOL_MAX_THRESHOLD_KEY: string = "pmt"   // max threshold requested by any depositor
+const TREASURY_KEY: string = "tr"
+const ADMIN_FEE_ADDR_KEY: string = "afa"
 
 // Config
-const MIN_THRESHOLD_KEY: string = "mnth"        // min threshold a user can request
-const MAX_THRESHOLD_KEY: string = "mxth"        // max threshold a user can request
-const TIMEOUT_BLOCKS_KEY: string = "tb"
 const WITHDRAW_FEE_BPS_KEY: string = "wfb"
-const ADMIN_FEE_BPS_KEY: string = "afb"   // v11.5: tiny fee for admin
-const TREASURY_KEY: string = "tr"
-const ADMIN_FEE_ADDR_KEY: string = "afa"  // v11.5: address to receive admin fee
+const ADMIN_FEE_BPS_KEY: string = "afb"   // tiny admin fee, taken on deposit
+const NOTE_COUNT_KEY: string = "nc"       // total notes ever created (for stats)
 
-const DEFAULT_MIN_THRESHOLD: u64 = 3             // user can request min 3
-const DEFAULT_MAX_THRESHOLD: u64 = 100            // user can request max 100
-const DEFAULT_TIMEOUT: u64 = 51840                // 3 jours
 const DEFAULT_WITHDRAW_FEE_BPS: u64 = 0           // 0% par défaut
 const DEFAULT_ADMIN_FEE_BPS: u64 = 10             // 0.1% for admin
+
+// Notes
+// note key: "n_" + asset.to_hex() + "_" + commitment.to_hex()
+// value    : remaining amount (u64) drainable for that note
+const NOTE_PREFIX: string = "n_"
+const ASSET_POOL_PREFIX: string = "pool_"   // total deposited per asset (u64)
 
 // Emergency
 const EMERGENCY_REQUEST_TOPO_KEY: string = "ert"
@@ -94,15 +62,8 @@ const EMERGENCY_DELAY_BLOCKS: u64 = 17280
 // Stats
 const TOTAL_MIXED_PREFIX: string = "tm_"
 const TOTAL_MIXES_KEY: string = "tmc"
-
-struct DepositEntry {
-    sender: Address,
-    recipient: Address,
-    asset: Hash,
-    amount: u64,
-    min_anonymity: u64,                           // this user's threshold request
-    deposited_at: u64
-}
+const DEFAULT_MIN_THRESHOLD: u64 = 3   // kept for getters compatibility
+const DEFAULT_MAX_THRESHOLD: u64 = 100
 
 hook constructor() -> u64 {
     let s: Storage = Storage::new()
@@ -110,14 +71,9 @@ hook constructor() -> u64 {
     s.store(ADMIN_KEY, caller)
     s.store(GUARDIAN_KEY, caller)
     s.store(PAUSED_KEY, false)
-    s.store(POOL_COUNT_KEY, 0u64)
-    s.store(POOL_FIRST_TOPO_KEY, 0u64)
-    s.store(POOL_MAX_THRESHOLD_KEY, DEFAULT_MIN_THRESHOLD)
-    s.store(MIN_THRESHOLD_KEY, DEFAULT_MIN_THRESHOLD)
-    s.store(MAX_THRESHOLD_KEY, DEFAULT_MAX_THRESHOLD)
-    s.store(TIMEOUT_BLOCKS_KEY, DEFAULT_TIMEOUT)
     s.store(WITHDRAW_FEE_BPS_KEY, DEFAULT_WITHDRAW_FEE_BPS)
     s.store(ADMIN_FEE_BPS_KEY, DEFAULT_ADMIN_FEE_BPS)
+    s.store(NOTE_COUNT_KEY, 0u64)
     s.store(TOTAL_MIXES_KEY, 0u64)
     return 0
 }
@@ -148,226 +104,159 @@ fn only_guardian_or_admin() {
     only_admin()
 }
 
-// ============================================================================
-// ENTRY 0: deposit — user deposits ANY amount and specifies recipient + anonymity level
-// @caller: any user
-// @params: recipient - Address where funds should be sent after mix
-// @params: asset - Hash of asset to mix (Hash::zero() for XEL)
-// @params: min_anonymity - minimum number of people in the batch before mix
-//                          (higher = more anonymity, longer wait)
-// @returns: deposit index
-// @security: when_not_paused, requires attached deposit > 0
-// @note: Amount is FREE (not fixed denomination). XELIS encrypts amounts,
-//        so even different amounts are untraceable when batched together.
-// ============================================================================
-
-
-fn do_mix(s: Storage) -> u64 {
-    let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
-    if pool_count == 0 { return 0 }
-
-    let withdraw_fee_bps: u64 = s.load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS)
-
-    // Process each deposit — send to recipient
-    let i: u64 = 0
-    let mixed_count: u64 = 0
-    while i < pool_count {
-        let entry_opt: optional<DepositEntry> = s.load(POOL_DEPOSIT_PREFIX + i.to_string(10u32))
-        if entry_opt.is_some() {
-            let entry: DepositEntry = entry_opt.expect("err")
-
-            // Calculate fees
-            let protocol_fee: u64 = (entry.amount * withdraw_fee_bps) / 10000
-            let admin_fee_bps: u64 = s.load(ADMIN_FEE_BPS_KEY).unwrap_or(DEFAULT_ADMIN_FEE_BPS)
-            let admin_fee: u64 = (entry.amount * admin_fee_bps) / 10000
-            let net_amount: u64 = entry.amount - protocol_fee - admin_fee
-
-            // Transfer to recipient (amount is ENCRYPTED by XELIS — invisible in explorer)
-            let _ = transfer(entry.recipient, net_amount, entry.asset)
-
-            // Pay protocol fee to treasury
-            if protocol_fee > 0 {
-                let treasury_opt: optional<Hash> = s.load(TREASURY_KEY)
-                if treasury_opt.is_some() {
-                    let treasury_hash: Hash = treasury_opt.expect("err")
-                    let _ = transfer_contract(treasury_hash, protocol_fee, entry.asset)
-                }
-            }
-
-            // Pay admin fee (tiny share for the admin/founder)
-            if admin_fee > 0 {
-                let admin_addr_opt: optional<Address> = s.load(ADMIN_FEE_ADDR_KEY)
-                if admin_addr_opt.is_some() {
-                    let admin_addr: Address = admin_addr_opt.expect("err")
-                    let _ = transfer(admin_addr, admin_fee, entry.asset)
-                }
-            }
-
-            // Update stats
-            let mixed_total: u64 = s.load(TOTAL_MIXED_PREFIX + entry.asset.to_hex()).unwrap_or(0)
-            s.store(TOTAL_MIXED_PREFIX + entry.asset.to_hex(), mixed_total + entry.amount)
-
-            // Clean up
-            s.delete(POOL_DEPOSIT_PREFIX + i.to_string(10u32))
-            mixed_count += 1
-        }
-        i += 1
-    }
-
-    // Reset pool
-    s.store(POOL_COUNT_KEY, 0u64)
-    s.store(POOL_FIRST_TOPO_KEY, 0u64)
-    s.store(POOL_MAX_THRESHOLD_KEY, s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD))
-
-    // Update mix count
-    let total_mixes: u64 = s.load(TOTAL_MIXES_KEY).unwrap_or(0)
-    s.store(TOTAL_MIXES_KEY, total_mixes + 1)
-
-    emit_event(0u64, ["MixerExecuted", mixed_count.to_string(10u32)])
-    return mixed_count
+fn note_key(asset: Hash, commitment: Hash) -> string {
+    return NOTE_PREFIX + asset.to_hex() + "_" + commitment.to_hex()
 }
 
-entry deposit(recipient: Address, asset: Hash, min_anonymity: u64) -> u64 {
+fn pool_key(asset: Hash) -> string {
+    return ASSET_POOL_PREFIX + asset.to_hex()
+}
+
+// ============================================================================
+// ENTRY 0: deposit — create a private note and add funds to the shared pool.
+// @caller: any
+// @params: asset - Hash of the asset to mix (Hash::zero() for XEL)
+// @params: secret - user-chosen random secret; the note commitment is
+//                   blake3(secret). The secret is NEVER stored on-chain; it is
+//                   the off-chain proof of ownership that is redeemed in
+//                   withdraw(). It can be handed to another address off-chain.
+// @attached: the amount to mix (ANY amount; free, not fixed denomination)
+// @returns: 0
+// @security: when_not_paused, requires attached deposit > 0
+// @note: NO sender, recipient, amount-per-identity, or topo is stored. Only a
+//        commitment and the shared pool total. Deposit is untraceable to the
+//        depositor's identity.
+entry deposit(asset: Hash, secret: Hash) -> u64 {
     when_not_paused()
-    require(recipient != Address::from_bytes(bytes::from_hex("00000000000000000000000000000000000000000000000000000000000000000000")), "badrecipient")
 
     let s: Storage = Storage::new()
-    let caller: Address = get_caller().expect("err")
 
-    // Get attached deposit (ANY amount, not fixed denomination)
+    // Any amount, not fixed denomination — XELIS encrypts the attached amount.
     let dep: u64 = get_deposit_for_asset(asset).expect("err")
     require(dep > 0, "insdep")
 
-    // Validate anonymity threshold
-    let min_thresh: u64 = s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
-    let max_thresh: u64 = s.load(MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MAX_THRESHOLD)
-    require(min_anonymity >= min_thresh, "toolow")
-    require(min_anonymity <= max_thresh, "toohigh")
+    // Fee charged on deposit (admin tiny cut), remainder goes to the pool.
+    let admin_fee_bps: u64 = s.load(ADMIN_FEE_BPS_KEY).unwrap_or(DEFAULT_ADMIN_FEE_BPS)
+    let admin_fee: u64 = (dep * admin_fee_bps) / 10000
+    let net: u64 = dep - admin_fee
 
-    // Refund excess (if user attached more than intended — but since amount is free,
-    // we accept whatever is attached as the amount to mix)
-    // Actually: the attached amount IS the amount to mix. No excess to refund.
-    // If user attached more than they wanted to mix, that's their mistake.
+    // Commitment = blake3(secret). No identity stored.
+    let commitment: Hash = Hash::blake3(secret.to_bytes())
+    let key: string = note_key(asset, commitment)
+    require(s.load(key).is_none(), "exists")
 
-    // Store deposit entry
-    let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
-    let entry: DepositEntry = DepositEntry {
-        sender: caller,
-        recipient: recipient,
-        asset: asset,
-        amount: dep,
-        min_anonymity: min_anonymity,
-        deposited_at: get_current_topoheight()
-    }
-    s.store(POOL_DEPOSIT_PREFIX + pool_count.to_string(10u32), entry)
+    s.store(key, net)
 
-    // Track first deposit topo (for timeout)
-    if pool_count == 0 {
-        s.store(POOL_FIRST_TOPO_KEY, get_current_topoheight())
-    }
+    // Credit the shared pool total for this asset.
+    let pk: string = pool_key(asset)
+    let cur: u64 = s.load(pk).unwrap_or(0)
+    s.store(pk, cur + net)
 
-    // Update pool max threshold (mix only when ALL users' thresholds are met)
-    let current_max: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
-    if min_anonymity > current_max {
-        s.store(POOL_MAX_THRESHOLD_KEY, min_anonymity)
-    }
+    // Stats.
+    let nc: u64 = s.load(NOTE_COUNT_KEY).unwrap_or(0)
+    s.store(NOTE_COUNT_KEY, nc + 1)
+    let tm: u64 = s.load(TOTAL_MIXED_PREFIX + asset.to_hex()).unwrap_or(0)
+    s.store(TOTAL_MIXED_PREFIX + asset.to_hex(), tm + net)
 
-    s.store(POOL_COUNT_KEY, pool_count + 1)
-
-    emit_event(0u64, ["MixerDeposit", pool_count.to_string(10u32) + "_" + dep.to_string(10u32)])
-
-    // Auto-mix if threshold reached
-    let pool_threshold: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
-    if pool_count + 1 >= pool_threshold {
-        let _ = do_mix(s)
-    }
-
-    s.store("lpc", pool_count)
-    return 0
-}
-
-// ============================================================================
-// ENTRY 1: execute_mix — send all pending funds to their recipients
-// @caller: anyone (keeper bot or user)
-// @returns: number of deposits mixed
-// ============================================================================
-
-entry execute_mix() -> u64 {
-    when_not_paused()
-    let s: Storage = Storage::new()
-    let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
-    require(pool_count > 0, "empty")
-
-    let pool_threshold: u64 = s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD)
-    require(pool_count >= pool_threshold, "notenough")
-
-    return do_mix(s)
-}
-
-
-// ============================================================================
-// ENTRY 2: execute_refund — refund all pending deposits if timeout reached
-// @caller: anyone (keeper bot or user)
-// @returns: number of deposits refunded
-// ============================================================================
-
-entry execute_refund() -> u64 {
-    let s: Storage = Storage::new()
-    let pool_count: u64 = s.load(POOL_COUNT_KEY).unwrap_or(0)
-    require(pool_count > 0, "empty")
-
-    let first_topo: u64 = s.load(POOL_FIRST_TOPO_KEY).unwrap_or(0)
-    let timeout: u64 = s.load(TIMEOUT_BLOCKS_KEY).unwrap_or(DEFAULT_TIMEOUT)
-    require(get_current_topoheight() >= first_topo + timeout, "toosoon")
-
-    let i: u64 = 0
-    let refunded: u64 = 0
-    while i < pool_count {
-        let entry_opt: optional<DepositEntry> = s.load(POOL_DEPOSIT_PREFIX + i.to_string(10u32))
-        if entry_opt.is_some() {
-            let entry: DepositEntry = entry_opt.expect("err")
-            let _ = transfer(entry.sender, entry.amount, entry.asset)
-            s.delete(POOL_DEPOSIT_PREFIX + i.to_string(10u32))
-            refunded += 1
+    // Pay admin fee.
+    if admin_fee > 0 {
+        let afa_opt: optional<Address> = s.load(ADMIN_FEE_ADDR_KEY)
+        if afa_opt.is_some() {
+            let afa: Address = afa_opt.expect("err")
+            let _ = transfer(afa, admin_fee, asset)
         }
-        i += 1
     }
 
-    s.store(POOL_COUNT_KEY, 0u64)
-    s.store(POOL_FIRST_TOPO_KEY, 0u64)
-    s.store(POOL_MAX_THRESHOLD_KEY, s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD))
-
-    emit_event(0u64, ["MixerRefund", refunded.to_string(10u32)])
+    emit_event(0u64, ["MixerDeposit", commitment.to_hex()])
     return 0
 }
 
 // ============================================================================
-// PUB FN: Read-only getters
+// ENTRY 1: withdraw — destroy a note (nullifier) and pull `amount` from the
+// shared pool to ANY chosen recipient.
+// @caller: any holder of the secret
+// @params: recipient - Address to receive the funds (can differ from depositor)
+// @params: asset - asset being withdrawn
+// @params: amount - amount to withdraw (<= remaining note balance)
+// @params: secret - the secret whose commitment was stored at deposit time
+// @returns: 0
+// @security: when_not_paused; note must exist and have enough balance; funds
+//            come from the SHARED pool, so no sender link.
+entry withdraw(recipient: Address, asset: Hash, amount: u64, secret: Hash) -> u64 {
+    when_not_paused()
+
+    let s: Storage = Storage::new()
+    require(amount > 0, "zero")
+
+    // Recompute commitment from the presented secret and look up the note.
+    let commitment: Hash = Hash::blake3(secret.to_bytes())
+    let key: string = note_key(asset, commitment)
+    let note_opt: optional<u64> = s.load(key)
+    require(note_opt.is_some(), "notfound")
+    let note_bal: u64 = note_opt.expect("err")
+    require(amount <= note_bal, "toobig")
+
+    // Drain the note.
+    let remaining: u64 = note_bal - amount
+    if remaining == 0 {
+        s.delete(key)
+    } else {
+        s.store(key, remaining)
+    }
+
+    // Pull from the shared pool total (bookkeeping).
+    let pk: string = pool_key(asset)
+    let pool: u64 = s.load(pk).unwrap_or(0)
+    s.store(pk, pool - amount)
+
+    // Transfer from the contract's shared balance to the arbitrary recipient.
+    let withdraw_fee_bps: u64 = s.load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS)
+    let withdraw_fee: u64 = (amount * withdraw_fee_bps) / 10000
+    let net: u64 = amount - withdraw_fee
+    if net > 0 {
+        let _ = transfer(recipient, net, asset)
+    }
+
+    // Protocol fee to treasury (if configured).
+    if withdraw_fee > 0 {
+        let treasury_opt: optional<Hash> = s.load(TREASURY_KEY)
+        if treasury_opt.is_some() {
+            let treasury_hash: Hash = treasury_opt.expect("err")
+            let _ = transfer_contract(treasury_hash, withdraw_fee, asset)
+        }
+    }
+
+    // Stats.
+    let tmc: u64 = s.load(TOTAL_MIXES_KEY).unwrap_or(0)
+    s.store(TOTAL_MIXES_KEY, tmc + 1)
+
+    emit_event(0u64, ["MixerWithdraw", commitment.to_hex()])
+    return 0
+}
+
+// ============================================================================
+// PUB FN: read-only getters — expose NO per-user data.
 // ============================================================================
 
-pub fn get_pool_info() -> (u64, u64, u64, u64, u64, u64, u64, u64) {
+pub fn get_pool_info(asset: Hash) -> (u64, u64, u64, u64, u64) {
     let s: Storage = Storage::new()
     return (
-        s.load(POOL_COUNT_KEY).unwrap_or(0),
-        s.load(POOL_MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD),
-        s.load(MIN_THRESHOLD_KEY).unwrap_or(DEFAULT_MIN_THRESHOLD),
-        s.load(MAX_THRESHOLD_KEY).unwrap_or(DEFAULT_MAX_THRESHOLD),
-        s.load(TIMEOUT_BLOCKS_KEY).unwrap_or(DEFAULT_TIMEOUT),
-        s.load(POOL_FIRST_TOPO_KEY).unwrap_or(0),
+        s.load(pool_key(asset)).unwrap_or(0),      // pool balance (total deposited)
+        s.load(NOTE_COUNT_KEY).unwrap_or(0),        // total notes created
         s.load(WITHDRAW_FEE_BPS_KEY).unwrap_or(DEFAULT_WITHDRAW_FEE_BPS),
-        s.load(ADMIN_FEE_BPS_KEY).unwrap_or(DEFAULT_ADMIN_FEE_BPS)
+        s.load(ADMIN_FEE_BPS_KEY).unwrap_or(DEFAULT_ADMIN_FEE_BPS),
+        s.load(TOTAL_MIXES_KEY).unwrap_or(0)
     )
 }
 
-pub fn get_deposit_info(index: u64) -> (Address, Address, Hash, u64, u64, u64) {
+pub fn get_note_balance(asset: Hash, commitment: Hash) -> u64 {
     let s: Storage = Storage::new()
-    let entry: DepositEntry = s.load(POOL_DEPOSIT_PREFIX + index.to_string(10u32)).expect("notfound")
-    return (entry.sender, entry.recipient, entry.asset, entry.amount, entry.min_anonymity, entry.deposited_at)
+    return s.load(note_key(asset, commitment)).unwrap_or(0)
 }
 
-pub fn get_pending_count() -> u64 {
+pub fn get_pool_balance(asset: Hash) -> u64 {
     let s: Storage = Storage::new()
-    return s.load(POOL_COUNT_KEY).unwrap_or(0)
+    return s.load(pool_key(asset)).unwrap_or(0)
 }
 
 pub fn get_total_mixed(asset: Hash) -> u64 {
@@ -383,27 +272,6 @@ pub fn get_total_mixes() -> u64 {
 // ============================================================================
 // ADMIN ENTRIES
 // ============================================================================
-
-entry set_min_threshold(threshold: u64) -> u64 {
-    only_admin()
-    require(threshold >= 2, "toolow")
-    Storage::new().store(MIN_THRESHOLD_KEY, threshold)
-    return 0
-}
-
-entry set_max_threshold(threshold: u64) -> u64 {
-    only_admin()
-    require(threshold <= 500, "toohigh")
-    Storage::new().store(MAX_THRESHOLD_KEY, threshold)
-    return 0
-}
-
-entry set_timeout_blocks(blocks: u64) -> u64 {
-    only_admin()
-    require(blocks >= 17280, "toosoon")
-    Storage::new().store(TIMEOUT_BLOCKS_KEY, blocks)
-    return 0
-}
 
 entry set_withdraw_fee_bps(bps: u64) -> u64 {
     only_admin()

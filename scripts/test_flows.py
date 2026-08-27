@@ -39,7 +39,7 @@ from protocol import (Protocol, VLT_ASSET, XEL_ASSET, XUSD_ASSET, ADMIN,
                      swap_create_pool, swap_add_liquidity, swap_swap,
                      swap_psm_mint, swap_psm_redeem, swap_pools_count,
                      gov_stake, gov_unstake, gov_claim_rewards, gov_stakes_count,
-                     mixer_deposit,
+                     mixer_deposit, mixer_withdraw,
                      insurance_stake, insurance_unstake,
                      vesting_claim,
                      delegation_register_profile, delegation_delegate,
@@ -194,9 +194,12 @@ def main() -> None:
         report("gov_unstake", ok, d)
 
     # ------------------------------------------------------------- Mixer --
-    print("\n=== 5. PrivacyMixer ===")
-    ok, d = run(p, "mixer_deposit", mixer_deposit, p, admin, XEL_ASSET, 3)
+    print("\n=== 5. PrivacyMixer v2 ===")
+    secret = __import__("secrets").token_bytes(32).hex()
+    ok, d = run(p, "mixer_deposit", mixer_deposit, p, XEL_ASSET, 1_000_000, secret)
     report("mixer_deposit", ok, d)
+    ok, d = run(p, "mixer_withdraw", mixer_withdraw, p, admin, XEL_ASSET, 1_000_000, secret)
+    report("mixer_withdraw", ok, d)
 
     # ---------------------------------------------------------- Insurance --
     print("\n=== 6. InsurancePool ===")

@@ -19,7 +19,7 @@
     "PeerLoan": "ee27ecae9d8bb9b600026e883506eac39d81e5c908cca9dfeb6d96b529117568",
     "SyndicatePool": "e1622bb0c1dace2c0b008a8448f2ade7df7eeb898410aa7f3355bf57bb48a0ae",
     "SealedBidAuction": "105bb6ccdb14f8cd34da78b85ed36790b29b2625d168297aa4294d3a557c46eb",
-    "PrivacyMixer": "d384649c8f8f52116a198d2125bd1b6c3dff9bfda55643979c85a28631a6261d",
+    "PrivacyMixer": "ffd504e24caad25b8f74e512318a66c45229dc2702dec0ecf66540065690d2d5",
     "AssetVault": "e65d593b5818af605caffbc5c56dbf2ee966b8b7baad18e165a6012b7f7343df",
     "TreasuryVault": "c50042aa59703bb1c73ffa0ffcb01f23b8ae8419d1e23b2892b9dcf9dde0a886",
     "RevenueShare": "49c363dae4d32473d6d3c26ce0482cf735f7d656c665094002c1d21a6978c94b",
@@ -47,7 +47,8 @@
     "SavingsRate_r5": "69d719949fd8f25fc33c8d4e8d9da6d8cb30f63a0163e39e1c9de79129d86f27",
     "PrivacyMixer_r5": "d384649c8f8f52116a198d2125bd1b6c3dff9bfda55643979c85a28631a6261d",
     "Governor_r5": "8d22d5cf83f411fc34846d0f36e86ffd2a0e19aca4fc65c5209647f53bf3b862",
-    "Governor2_r5": "eb7a1aea5518ddeff6ab7379d9abe854969b690928124314ba378e5073c154b9"
+    "Governor2_r5": "eb7a1aea5518ddeff6ab7379d9abe854969b690928124314ba378e5073c154b9",
+    "PrivacyMixer_v2": "ffd504e24caad25b8f74e512318a66c45229dc2702dec0ecf66540065690d2d5"
   },
   "assets": {
     "REGISTRY": "19161543b9e5aef00c5a3e226058b946d847c78941f0c89e9b996c6332204970",
@@ -351,7 +352,13 @@
     "[20:44:26] OK GOV2.set_timelock (chunk 11) -> 9c7ab4d20d8a1f48ceeb\u2026",
     "[20:44:32] OK GOV2.set_voting_period (chunk 12) -> e1615035f18978eaadc1\u2026",
     "[20:44:37] OK upg Governor(150) (chunk 4) -> 349d3d09db8e0965bc42\u2026",
-    "[20:44:47] OK TL.set_governor->GOV2 (chunk 11) -> cc0f74422f03865fa1b7\u2026"
+    "[20:44:47] OK TL.set_governor->GOV2 (chunk 11) -> cc0f74422f03865fa1b7\u2026",
+    "[20:51:39] DEPLOY PrivacyMixer_v2 -> ffd504e24caad25b8f74e512318a66c45229dc2702dec0ecf66540065690d2d5",
+    "[20:51:50] OK upg PrivacyMixer v2 (chunk 4) -> 4985467544da8f7eec22\u2026",
+    "[20:51:55] OK mx.set_registry (chunk 17) -> 5ff2b0e68bea07fe57e3\u2026",
+    "[20:52:05] OK mx.set_treasury (chunk 16) -> 0e11f4b4be0d2893492a\u2026",
+    "[20:52:51] OK mx.set_admin_fee_bps (chunk 14) -> 729c744e2c6312b91f0e\u2026",
+    "[20:52:56] OK mx.set_withdraw_fee (chunk 13) -> 875016c0af7dc6a8e2ad\u2026"
   ],
   "steps": [
     "Compliance.set_registry@1c0f143207c2",
@@ -550,6 +557,11 @@
     "GOV2.set_timelock@eb7a1aea5518",
     "GOV2.set_voting_period@eb7a1aea5518",
     "upg Governor(150)@19161543b9e5",
-    "TL.set_governor->GOV2@b925d8e30ccd"
+    "TL.set_governor->GOV2@b925d8e30ccd",
+    "upg PrivacyMixer v2@19161543b9e5",
+    "mx.set_registry@ffd504e24caa",
+    "mx.set_treasury@ffd504e24caa",
+    "mx.set_admin_fee_bps@ffd504e24caa",
+    "mx.set_withdraw_fee@ffd504e24caa"
   ]
 }

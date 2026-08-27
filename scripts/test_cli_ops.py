@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import sys
 import time
+import secrets
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -108,12 +109,20 @@ def main():
                b.vault_borrow, vid, borrow)
         debt = borrow
 
-        # ------------------------------------------- mixer (auto-mix @3rd) --
-        print("\n=== B. PrivacyMixer deposits ===")
-        for i in range(3):
-            run_op(b, f"mixer deposit #{i+1}", b.mixer_send, b.address,
-                   int(0.02 * 1e8), 3)
-            time.sleep(4)
+        # ------------------------------------------- mixer (v2 note+withdraw) --
+        print("\n=== B. PrivacyMixer v2 (private note + shared pool) ===")
+        secret = secrets.token_bytes(32).hex()
+        ok = run_op(b, "mixer_deposit 0.02 XEL (note)",
+                    b.mixer_deposit, b.xel_asset, int(0.02 * 1e8), secret)
+        nb = b.mixer_note_balance(b.xel_asset, secret)
+        report("note balance stored", nb == int(0.02 * 1e8) - int(0.02 * 1e8) * 1 // 10000,
+               f"nb={nb}")
+        time.sleep(4)
+        ok = run_op(b, "mixer_withdraw to self (destroy note)",
+                    b.mixer_withdraw, b.address, b.xel_asset, nb, secret)
+        nb2 = b.mixer_note_balance(b.xel_asset, secret)
+        report("note spent after withdraw", nb2 in (None, 0),
+               f"nb2={nb2}")
 
         # ----------------------------------------------------- faucet/hb --
         print("\n=== C. Faucet + heartbeat ===")

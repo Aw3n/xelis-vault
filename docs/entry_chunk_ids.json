@@ -160,7 +160,7 @@
   "25": {
    "kind": "Entry",
    "name": "finalize_distribution",
-   "params": "Some(Some([Number(U64), Number(U64)]) } (1127 instr)"
+   "params": "Some(Some([Number(U64), Number(U64)]) } (1123 instr)"
   },
   "26": {
    "kind": "All",
@@ -305,7 +305,7 @@
   "54": {
    "kind": "Entry",
    "name": "record_manual_attribution_batch",
-   "params": "Some(Some([Array(Opaque(9)), Number(U8), Number(U64), String]) } (332 instr)"
+   "params": "Some(Some([Array(Opaque(9)), Number(U8), Number(U64), String]) } (327 instr)"
   },
   "55": {
    "kind": "Entry",
@@ -808,7 +808,7 @@
   "6": {
    "kind": "Entry",
    "name": "distribute",
-   "params": "Some(Some([Array(Opaque(9))]) } (738 instr)"
+   "params": "Some(Some([Array(Opaque(9))]) } (733 instr)"
   },
   "7": {
    "kind": "Entry",
@@ -1848,7 +1848,7 @@
   "9": {
    "kind": "Entry",
    "name": "execute_undelegate",
-   "params": "Some(Some([]) } (169 instr)"
+   "params": "Some(Some([]) } (167 instr)"
   }
  },
  "MinerPool": {
@@ -2509,8 +2509,8 @@
  "PrivacyMixer": {
   "10": {
    "kind": "All",
-   "name": "get_pending_count",
-   "params": "Some(Some([]) } (22 instr)"
+   "name": "get_pool_balance",
+   "params": "Some(Some([Opaque(8)]) } (29 instr)"
   },
   "11": {
    "kind": "All",
@@ -2524,113 +2524,93 @@
   },
   "13": {
    "kind": "Entry",
-   "name": "set_min_threshold",
+   "name": "set_withdraw_fee_bps",
    "params": "Some(Some([Number(U64)]) } (37 instr)"
   },
   "14": {
    "kind": "Entry",
-   "name": "set_max_threshold",
+   "name": "set_admin_fee_bps",
    "params": "Some(Some([Number(U64)]) } (37 instr)"
   },
   "15": {
    "kind": "Entry",
-   "name": "set_timeout_blocks",
-   "params": "Some(Some([Number(U64)]) } (37 instr)"
-  },
-  "16": {
-   "kind": "Entry",
-   "name": "set_withdraw_fee_bps",
-   "params": "Some(Some([Number(U64)]) } (37 instr)"
-  },
-  "17": {
-   "kind": "Entry",
-   "name": "set_admin_fee_bps",
-   "params": "Some(Some([Number(U64)]) } (37 instr)"
-  },
-  "18": {
-   "kind": "Entry",
    "name": "set_admin_fee_addr",
    "params": "Some(Some([Opaque(9)]) } (24 instr)"
   },
-  "19": {
+  "16": {
    "kind": "Entry",
    "name": "set_treasury",
    "params": "Some(Some([Opaque(8)]) } (24 instr)"
   },
-  "20": {
+  "17": {
    "kind": "Entry",
    "name": "set_registry",
    "params": "Some(Some([Opaque(8)]) } (24 instr)"
   },
-  "21": {
+  "18": {
    "kind": "Entry",
    "name": "set_timelock",
    "params": "Some(Some([Opaque(8)]) } (24 instr)"
   },
-  "22": {
+  "19": {
    "kind": "Entry",
    "name": "set_guardian",
    "params": "Some(Some([Opaque(9)]) } (24 instr)"
   },
-  "23": {
+  "20": {
    "kind": "Entry",
    "name": "pause",
    "params": "Some(Some([String]) } (38 instr)"
   },
-  "24": {
+  "21": {
    "kind": "Entry",
    "name": "unpause",
    "params": "Some(Some([]) } (21 instr)"
   },
-  "25": {
+  "22": {
    "kind": "Entry",
    "name": "transfer_admin",
    "params": "Some(Some([Opaque(9)]) } (24 instr)"
   },
-  "26": {
+  "23": {
    "kind": "Entry",
    "name": "request_emergency_withdraw",
    "params": "Some(Some([]) } (21 instr)"
   },
-  "27": {
+  "24": {
    "kind": "Entry",
    "name": "execute_emergency_withdraw",
    "params": "Some(Some([Opaque(8)]) } (159 instr)"
   },
-  "28": {
+  "25": {
    "kind": "Entry",
    "name": "get_version",
    "params": "Some(Some([]) } (4 instr)"
   },
-  "29": {
+  "26": {
    "kind": "All",
    "name": "set_timelock_tl",
    "params": "Some(Some([Opaque(8)]) } (24 instr)"
   },
-  "5": {
-   "kind": "Entry",
-   "name": "deposit",
-   "params": "Some(Some([Opaque(9), Opaque(8), Number(U64)]) } (385 instr)"
-  },
   "6": {
    "kind": "Entry",
-   "name": "execute_mix",
-   "params": "Some(Some([]) } (80 instr)"
+   "name": "deposit",
+   "params": "Some(Some([Opaque(8), Opaque(8)]) } (362 instr)"
   },
   "7": {
    "kind": "Entry",
-   "name": "execute_refund",
-   "params": "Some(Some([]) } (297 instr)"
+   "name": "withdraw",
+   "params": "Some(Some([Opaque(9), Opaque(8), Number(U64), Opaque(8)]) } (402 instr)"
   },
   "8": {
    "kind": "All",
    "name": "get_pool_info",
-   "params": "Some(Some([]) } (129 instr)"
+   "params": "Some(Some([Opaque(8)]) } (91 instr)"
   },
   "9": {
    "kind": "All",
-   "name": "get_deposit_info",
-   "params": "Some(Some([Number(U64)]) } (70 instr)"
+   "name": "get_note_balance",
+   "params": "Some(Some([Opaque(8), Opaque(8)]) } (35 instr)"
   }
  },
  "RevenueShare": {
@@ -3698,7 +3678,7 @@
   "10": {
    "kind": "Entry",
    "name": "remove_group_member",
-   "params": "Some(Some([Number(U64), Opaque(9)]) } (176 instr)"
+   "params": "Some(Some([Number(U64), Opaque(9)]) } (213 instr)"
   },
   "100": {
    "kind": "Entry",
@@ -4053,7 +4033,7 @@
   "47": {
    "kind": "Entry",
    "name": "admin_kick_member",
-   "params": "Some(Some([Number(U64), Opaque(9)]) } (270 instr)"
+   "params": "Some(Some([Number(U64), Opaque(9)]) } (307 instr)"
   },
   "48": {
    "kind": "Entry",
@@ -4098,7 +4078,7 @@
   "57": {
    "kind": "Entry",
    "name": "rotate_group_key",
-   "params": "Some(Some([Number(U64), Opaque(8)]) } (252 instr)"
+   "params": "Some(Some([Number(U64), Opaque(8)]) } (248 instr)"
   },
   "58": {
    "kind": "All",
@@ -4178,7 +4158,7 @@
   "72": {
    "kind": "Entry",
    "name": "report_free_usage",
-   "params": "Some(Some([Opaque(9)]) } (135 instr)"
+   "params": "Some(Some([Opaque(9)]) } (131 instr)"
   },
   "73": {
    "kind": "Entry",
@@ -4228,7 +4208,7 @@
   "81": {
    "kind": "Entry",
    "name": "consume_credit",
-   "params": "Some(Some([Opaque(9)]) } (135 instr)"
+   "params": "Some(Some([Opaque(9)]) } (131 instr)"
   },
   "82": {
    "kind": "Entry",
@@ -4238,7 +4218,7 @@
   "83": {
    "kind": "Entry",
    "name": "anchor_batch",
-   "params": "Some(Some([Opaque(8), Number(U64)]) } (296 instr)"
+   "params": "Some(Some([Opaque(8), Number(U64)]) } (292 instr)"
   },
   "84": {
    "kind": "All",
@@ -4258,7 +4238,7 @@
   "87": {
    "kind": "Entry",
    "name": "blacklist_relayer",
-   "params": "Some(Some([Opaque(9), String]) } (260 instr)"
+   "params": "Some(Some([Opaque(9), String]) } (256 instr)"
   },
   "88": {
    "kind": "All",
@@ -4273,7 +4253,7 @@
   "9": {
    "kind": "Entry",
    "name": "add_group_member",
-   "params": "Some(Some([Number(U64), Opaque(9), Bytes]) } (216 instr)"
+   "params": "Some(Some([Number(U64), Opaque(9), Bytes]) } (256 instr)"
   },
   "90": {
    "kind": "All",
@@ -4325,7 +4305,7 @@
   "17": {
    "kind": "Entry",
    "name": "deposit",
-   "params": "Some(Some([Opaque(8), Number(U64), Opaque(8)]) } (241 instr)"
+   "params": "Some(Some([Opaque(8), Number(U64), Opaque(8)]) } (254 instr)"
   },
   "18": {
    "kind": "Entry",

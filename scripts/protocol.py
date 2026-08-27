@@ -77,7 +77,7 @@ CONTRACT_HASHES = {
     "PSM": "977ddf73305dd21c29ffbe69dc2bdb29a12a62f4ff8bbc3140cafd4b51d5c2e1",
     "Payroll": "44ce12fb3d143f360c84664fe4849f01fb31ce5b45aebda38b037c70b4079b30",
     "PeerLoan": "ee27ecae9d8bb9b600026e883506eac39d81e5c908cca9dfeb6d96b529117568",
-    "PrivacyMixer": "d384649c8f8f52116a198d2125bd1b6c3dff9bfda55643979c85a28631a6261d",
+    "PrivacyMixer": "ffd504e24caad25b8f74e512318a66c45229dc2702dec0ecf66540065690d2d5",
     "RevenueShare": "49c363dae4d32473d6d3c26ce0482cf735f7d656c665094002c1d21a6978c94b",
     "SavingsRate": "69d719949fd8f25fc33c8d4e8d9da6d8cb30f63a0163e39e1c9de79129d86f27",
     "SealedBidAuction": "105bb6ccdb14f8cd34da78b85ed36790b29b2625d168297aa4294d3a557c46eb",
@@ -808,17 +808,20 @@ def gov_stakes_count(p: Protocol) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Op wrappers — PrivacyMixer
+# Op wrappers — PrivacyMixer v2 (note + shared pool; no sender/recipient link)
 # ---------------------------------------------------------------------------
-def mixer_deposit(p: Protocol, recipient: str, asset: str,
-                  min_anonymity: int = 0) -> str:
+def mixer_deposit(p: Protocol, asset: str, amount_atomic: int, secret: str) -> str:
     return p.invoke("PrivacyMixer", "deposit",
-                    [val_addr(recipient), val_hash(asset), val_u64(min_anonymity)],
-                    deposits={asset: {"amount": 1}}, max_gas=HEAVY_GAS)
+                    [val_hash(asset), val_hash(secret)],
+                    deposits={asset: {"amount": amount_atomic}}, max_gas=HEAVY_GAS)
 
 
-def mixer_execute_mix(p: Protocol) -> str:
-    return p.invoke("PrivacyMixer", "execute_mix", [], max_gas=HEAVY_GAS)
+def mixer_withdraw(p: Protocol, recipient: str, asset: str,
+                   amount_atomic: int, secret: str) -> str:
+    return p.invoke("PrivacyMixer", "withdraw",
+                    [val_addr(recipient), val_hash(asset), val_u64(amount_atomic),
+                     val_hash(secret)],
+                    max_gas=HEAVY_GAS)
 
 
 # ---------------------------------------------------------------------------

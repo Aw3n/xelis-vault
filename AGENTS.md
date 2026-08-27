@@ -624,3 +624,66 @@ Le même bug VM que VE3/Mixer/Faucet frappait VaultChat dès qu'un compteur > 0:
 - `scripts/test_cli_ops2.py` : **nouveau** — 35 assertions E2E
 - `contracts/governance/Governor.slx` : QUEUE_DELAY_BLOCKS=150 (testnet)
 - AGENTS.md : section v12R-6
+
+# 🚨 FIX CRITIQUE v12R-7 — PrivacyMixer v2 (lien sender/recipient supprimé) (2026-08-27)
+
+## Accusation externe CONFIRMÉE (bug critique de confidentialité v1)
+v1 stockait un `DepositEntry` en clair avec `sender`, `recipient`, `asset`,
+`amount`, `deposited_at`, exposé par une **pub fn `get_deposit_info(index)`**.
+⇒ n'importe qui pouvait itérer les indexes et **relier directement l'expéditeur
+au destinataire**, contredisant les commentaires "intraçable". Le chiffrement des
+montants XELIS protège balances/tx, PAS le storage interne des contrats.
+Le lien v1: `do_mix()` transférait `entry.recipient` depuis le même entry qui
+contenait `entry.sender` — trace exploitable.
+
+## Redesign v2 — note + nullifier + pool commun (Tornado-lite)
+- **`deposit(asset: Hash, secret: Hash)`** (chunk 6) : NE stocke PAS sender,
+  recipient, ni topo-per-user. Stocke uniquement `commitment = Hash::blake3(secret)`
+  (note `n_<asset>_<commitment>` = montant net) et crédite le **pool commun**
+  (`pool_<asset>`). L'identité expéditeur n'est jamais écrite.
+- **`withdraw(recipient: Address, asset, amount, secret)`** (chunk 7) : recalcule
+  `commitment = blake3(secret)`, vérifie la note, la soustrait (nullifier), puis
+  `transfer(recipient, amount, asset)` depuis le **pool commun** vers N'IMPORTE
+  quelle adresse. ⇒ **aucun lien on-chain expéditeur↔destinataire**.
+- Le secret est transférable off-chain : le propriétaire de la note n'est pas
+  forcément le déposant.
+- Anonymat = ensemble des déposants du pool + montants chiffrés XELIS +
+  transfert de secret off-chain.
+
+### Limite honnête (sans ZK)
+Ce VM Silex n'a pas de preuve ZK. Un observateur peut toujours tenter une analyse
+de graphe timing/adresses, mais **le contrat lui-même ne stocke plus aucun champ
+sender/recipient** — exactement ce qui était incriminé.
+
+## Nouveau PrivacyMixer
+- Hash: `ffd504e24caad25b8f74e512318a66c45229dc2702dec0ecf66540065690d2d5`
+- Registry UPGRADE entry 4 (cooldown 720 largement dépassé, vn_=4).
+- Reconfig: set_registry(17)→reg, set_treasury(16)→TreasuryVault, set_admin_fee_bps(14)=1 (0.01%), set_withdraw_fee_bps(13)=0.
+- Chunks v2: deposit=6, withdraw=7, get_pool_info=8, get_note_balance=9,
+  get_pool_balance=10, get_total_mixed=11, get_total_mixes=12, set_*=13..19,
+  pause=20, unpause=21, transfer_admin=22, emergency 23/24, get_version=25.
+- supprimés: execute_mix, execute_refund, get_deposit_info (getters à données
+  personnelles). `tmc` et `tm_<asset>` conservés.
+
+## CLI/TUI/tests mis à jour
+- cli_backend: CHUNKS `{"deposit":6,"withdraw":7}`, méthodes `mixer_deposit`
+  (asset,amount,secret) / `mixer_withdraw` (recipient,asset,amount,secret) /
+  `mixer_note_balance` (lit `n_<asset>_blake3(secret)`), hash _FALLBACK maj.
+- protocol.py: hash + ops `mixer_deposit`/`mixer_withdraw` (signature changée).
+- xvault.py: écran Privacy v2 (deposit+note, withdraw, check balance, help) +
+  `import secrets`.
+- test_cli_ops.py: section mixer v2 (deposit→note bal=dep-0.01%→withdraw nb→note
+  spent). ⚠️ le withdraw DOIT utiliser la balance de la note (nb), pas le dépôt
+  brut (admin_fee 0.01% retiré au dépôt → sinon `toobig`).
+
+## Résultat E2E
+test_cli_ops.py: 15 passed / 2 "failed" = heartbeat-toosoon + faucet-cooldown
+(comportements attendus, non liés au mixer). **Mixer v2 : 4/4** (deposit note,
+note balance exacte, withdraw, note détruite).
+
+## Notes
+- Fonds des anciens dépôts v1 restent dans l'ancien contrat `d384649c…` (orphelins,
+  non liés au nouveau code) — testnet, montants de test négligeables.
+- Legacy `contract_ops.py`/`admin_panel.py` référencent d'anciens chunks mixer
+  (ZK/merkle nonexistants) — obsolètes, non utilisés par la TUI/Backend actifs.
+- `test_flows.py` corrigé pour la nouvelle signature mixer_deposit/withdraw.

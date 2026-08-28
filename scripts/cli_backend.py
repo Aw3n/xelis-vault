@@ -159,8 +159,9 @@ CHUNKS = {
     "VaultChat":        {"register_session": 7, "create_group": 8,
                           "add_group_member": 9, "anchor_messages": 11,
                           "store_message": 38, "store_group_message": 48,
-                          "set_relayer_fee": 51, "claim_relayer_fees": 56,
-                          "stake_relayer_bond": 121, "register_as_relayer": 66,
+                          "set_relayer": 20, "set_relayer_fee": 51,
+                          "claim_relayer_fees": 56, "stake_relayer_bond": 121,
+                          "register_as_relayer": 66,
                           "send_direct_message": 113, "get_session": 13,
                           "get_group": 14, "is_active": 16,
                           "get_last_anchor": 17, "get_groups_count": 18},
@@ -992,6 +993,11 @@ class Backend:
                             [val_u64(vlt_atomic)],
                             deposits={self.vlt_asset: {"amount": vlt_atomic}},
                             max_gas=20_000_000)
+
+    def chat_set_relayer(self, addr: str, enabled: bool = True) -> OpResult:
+        return self._invoke("VaultChat", "set_relayer",
+                            [val_addr(addr), val_bool(enabled)],
+                            max_gas=15_000_000)
 
     def chat_register_relayer(self, endpoint: str, max_fee: int,
                               max_msgs: int) -> OpResult:

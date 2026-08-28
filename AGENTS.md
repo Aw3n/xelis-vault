@@ -687,3 +687,37 @@ note balance exacte, withdraw, note détruite).
 - Legacy `contract_ops.py`/`admin_panel.py` référencent d'anciens chunks mixer
   (ZK/merkle nonexistants) — obsolètes, non utilisés par la TUI/Backend actifs.
 - `test_flows.py` corrigé pour la nouvelle signature mixer_deposit/withdraw.
+
+# ✅ v12R-8 — Relayer VaultChat OFFICIEL = ADMIN, configuré on-chain (2026-08-28)
+
+## Config économique (choix owner: admin relayer officiel + free tiers généreux)
+| Step | Chunk | Valeur | Verif on-chain |
+|---|---|---|---|
+| stake_relayer_bond | 121 | **50 VLT** (5e9 atomic, MIN_RELAYER_BOND) | rbond_<admin>=5000000000 |
+| set_relayer(admin,true) | 20 | whitelist admin | relayer_<admin>=True |
+| register_as_relayer | 66 | `https://relay.xelisvault.io\|100\|1000` | rlreg_<admin> |
+| set_relayer_fee | 51 | fee=100000 (0.001 XEL) token=0 (XEL) | rfee_=100000, rtok_=0 |
+| claim_relayer_fees | 56 | test OK (retour 0, pas de revert) | — |
+
+- **Free tier** : free_daily_limit=**100** msgs/jour/user + free_wallet_slots=**1000**
+  (le contrat a déjà une constante FREE_DAILY_LIMIT=100 + cooldown ddate_/dcount_).
+- **Frais payant** au-delà du free tier : **0.001 XEL/msg** (token 0 = XEL),
+  très bas pour un relayer économique. Treasury (clé `tr`)=admin → fees à l'admin.
+- Endpoint relayer officiel : `https://relay.xelisvault.io`.
+
+## Backend CLI complété
+- cli_backend CHUNKS["VaultChat"] += `"set_relayer": 20` + méthode
+  `chat_set_relayer(addr, enabled)` (val_addr + val_bool).
+- Toutes les steps de config relayer sont maintenant exposées côté Backend aussi
+  (bond/whitelist/register/fee/claim déjà présents auparavant).
+
+## Notes opérationnelles (nonce/miner — IMPORTANT si relancer un wallet)
+- Le wallet admin 18082 se lance en online mode AVEC `--daemon-address
+  http://127.0.0.1:18081` (SANS `/json_rpc` — le wallet ajoute `/json_rpc` lui-même
+  sinon il tente `ws://host/json_rpc/json_rpc` → 404 → offline mode).
+- `set_relayer` exige `bond>=MIN_RELAYER_BOND` sinon `bonddneed` ; le bond se stake
+  via `stake_relayer_bond` avec dépôt VLT attaché au MÊME invoke.
+- **Sans miner actif, les txs restent en mempool et le nonce du wallet diverge**
+  (build → "Tx nonce N already used" alors que la chaîne attend N). Fix: relancer le
+  miner (`nohup ./xelis_miner --miner-address <admin> --daemon-address
+  ws://127.0.0.1:18081 -n 7`), laisser la mempool se vider, puis re-tenter.

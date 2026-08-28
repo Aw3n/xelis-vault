@@ -358,7 +358,12 @@
     "[20:51:55] OK mx.set_registry (chunk 17) -> 5ff2b0e68bea07fe57e3\u2026",
     "[20:52:05] OK mx.set_treasury (chunk 16) -> 0e11f4b4be0d2893492a\u2026",
     "[20:52:51] OK mx.set_admin_fee_bps (chunk 14) -> 729c744e2c6312b91f0e\u2026",
-    "[20:52:56] OK mx.set_withdraw_fee (chunk 13) -> 875016c0af7dc6a8e2ad\u2026"
+    "[20:52:56] OK mx.set_withdraw_fee (chunk 13) -> 875016c0af7dc6a8e2ad\u2026",
+    "[22:42:17] OK admin.stake_relayer_bond (chunk 121) -> fd012f3db7a50cc53be1\u2026",
+    "[22:52:29] OK admin2.stake_relayer_bond (chunk 121) -> 634bb034060fcc65902d\u2026",
+    "[22:52:34] OK admin2.set_relayer (chunk 20) -> ea1f4b5134b0bfe99b38\u2026",
+    "[22:52:44] OK admin2.register_as_relayer (chunk 66) -> 434aa14ccf7dd59878ad\u2026",
+    "[22:53:04] OK admin2.set_relayer_fee (chunk 51) -> 4daee1d59f002a1ffdfe\u2026"
   ],
   "steps": [
     "Compliance.set_registry@1c0f143207c2",
@@ -562,6 +567,10 @@
     "mx.set_registry@ffd504e24caa",
     "mx.set_treasury@ffd504e24caa",
     "mx.set_admin_fee_bps@ffd504e24caa",
-    "mx.set_withdraw_fee@ffd504e24caa"
+    "mx.set_withdraw_fee@ffd504e24caa",
+    "admin2.stake_relayer_bond@54fbd12e40b5",
+    "admin2.set_relayer@54fbd12e40b5",
+    "admin2.register_as_relayer@54fbd12e40b5",
+    "admin2.set_relayer_fee@54fbd12e40b5"
   ]
 }

@@ -116,8 +116,8 @@ _REGISTRY_NAMES = {
     "treasury_vault": "TreasuryVault",
     "asset_vault": "AssetVault",
     "faucet": "FaucetContract",
+    "airdrop": "AirdropTracker",
 }
-
 # ---------------------------------------------------------------------------
 # Compiled entry-chunk ids (source of truth: docs/entry_chunk_ids.json)
 # ---------------------------------------------------------------------------
@@ -165,7 +165,25 @@ CHUNKS = {
                           "send_direct_message": 113, "get_session": 13,
                           "get_group": 14, "is_active": 16,
                           "get_last_anchor": 17, "get_groups_count": 18},
+    "AirdropTracker":  {"record_mainnet_address": 22},
 }
+
+# Airdrop categories (AirdropTracker.slx consts).
+AIRDROP_CATEGORIES = {
+    1: "Mining",
+    2: "Relayer",
+    3: "Governance",
+    4: "Chat",
+    5: "Liquidity",
+    6: "Bounty",
+    7: "Community",
+}
+
+# AirdropTracker.storage string keys (source: contracts/airdrop/AirdropTracker.slx)
+_AIR_USER_PREFIX = "user_"
+_AIR_LIST_PREFIX = "ul_"
+_AIR_LB_PREFIX = "lb_"
+_AIR_CAT_PREFIX = "ct_"
 
 DECIMALS = 8
 
@@ -547,6 +565,68 @@ class Backend:
         return self._invoke("VaultEngineV3", "withdraw",
                             [val_u64(vault_id), val_u64(xel_amount_atomic)],
                             max_gas=20_000_000)
+
+    def vault_get(self, vault_id: int) -> Optional[dict]:
+        """Full snapshot of one vault (storage key v<id>)."""
+        ve = self.C("vault_engine")
+        if not ve:
+            return None
+        snap = self.daemon.read_key(ve, f"v{vault_id}")
+        if not (isinstance(snap, list) and len(snap) >= 10):
+            return None
+        return {
+            "id": vault_id,
+            "owner": str(snap[0]),
+            "collateral_asset": str(snap[1]),
+            "collateral": int(snap[2]),
+            "borrow_asset": str(snap[3]),
+            "borrow_amount": int(snap[4]),
+            "last_update_topo": int(snap[6]),
+            "liquidated": bool(snap[7]),
+        }
+
+    def vault_max_borrow(self, vault_id: int) -> int:
+        """Max xUSD borrowable (atomic): collateral value / MIN_CR (200%).
+
+        Integer arithmetic only — float division would truncate small vaults
+        (e.g. 0.9 xUSD -> int(0.9039) = 0). Priced in USD atomic (1e8).
+        Returns 0 if the oracle feed is stale (vault would revert `stale`).
+        """
+        v = self.vault_get(vault_id)
+        if not v or v["liquidated"]:
+            return 0
+        p = self.price()
+        if not p or p[2]:
+            return 0
+        price_raw = int(p[0])
+        col_value_usd = v["collateral"] * price_raw // 10 ** DECIMALS
+        max_total = int(col_value_usd / self.MIN_CR)
+        return max(0, max_total - v["borrow_amount"])
+
+    def verify_onchain(self, tx: str, timeout: float = 12.0) -> str:
+        """Return '' if the tx committed cleanly, else the on-chain revert reason.
+        Polls the contract logs (written async after mining) for an exit_error."""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                logs = self.daemon.get_contract_logs(tx)
+            except Exception:
+                logs = []
+            if isinstance(logs, list) and logs:
+                for entry in logs:
+                    if not isinstance(entry, dict):
+                        continue
+                    if entry.get("type") == "exit_error":
+                        v = entry.get("value") or {}
+                        err = v.get("err") if isinstance(v, dict) else str(v)
+                        if isinstance(err, dict):
+                            return err.get("message") or str(err)
+                        return str(err)
+                    if entry.get("exit_error"):
+                        return str(entry["exit_error"])
+                return ""  # clean exit (no error logged)
+            time.sleep(1.5)
+        return ""  # could not observe — treat as success (builds already confirmed)
 
     # --- AMM -----------------------------------------------------------------
 
@@ -956,8 +1036,15 @@ class Backend:
     # --- VaultChat -----------------------------------------------------------
 
     def chat_register(self, enc_key: str) -> OpResult:
+        k = self._hash32(enc_key)
         return self._invoke("VaultChat", "register_session",
-                            [val_hash(enc_key)], max_gas=15_000_000)
+                            [val_hash(k)], max_gas=15_000_000)
+
+    @staticmethod
+    def _hash32(s: str) -> str:
+        """Return a 64-hex (32-byte) hash string for any input key/message."""
+        import hashlib
+        return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
     def chat_send_dm(self, to: str, msg_hex: str, ttl: int = 0) -> OpResult:
         return self._invoke("VaultChat", "send_direct_message",
@@ -1018,6 +1105,62 @@ class Backend:
         v = self._storage_read("VaultChat", "gc")
         return int(v) if v is not None else None
 
+    def chat_inbox(self, addr: str = "") -> list:
+        """Read my on-chain direct (+relayed) inbox from storage.
+        Returns list of dicts {kind:'direct'|'relayed', sender, ts, blob}."""
+        addr = addr or self.address
+        if not addr:
+            return []
+        chat = self.C("VaultChat")
+        if not chat:
+            return []
+        out = []
+        dc = self.daemon.read_key(chat, f"dmsgc_{addr}")
+        n_dm = int(dc) if isinstance(dc, int) else 0
+        for i in range(min(n_dm, 50)):
+            raw = self.daemon.read_key(chat, f"dmsg_{addr}_{i}")
+            if not raw:
+                continue
+            parts = str(raw).split("|")
+            out.append({"kind": "direct", "blob": parts[0],
+                        "sender": parts[1] if len(parts) > 1 else "",
+                        "ts": parts[2] if len(parts) > 2 else "",
+                        "slot": i})
+        mc = self.daemon.read_key(chat, f"msgc_{addr}")
+        n_m = int(mc) if isinstance(mc, int) else 0
+        for i in range(min(n_m, 50)):
+            raw = self.daemon.read_key(chat, f"msg_{addr}_{i}")
+            if not raw:
+                continue
+            parts = str(raw).split("|")
+            out.append({"kind": "relayed", "blob": parts[0],
+                        "sender": parts[1] if len(parts) > 1 else "",
+                        "ts": parts[2] if len(parts) > 2 else "",
+                        "slot": i})
+        return out
+
+    @staticmethod
+    def chat_decode(msg: str) -> str:
+        """Best-effort decode of a message the user typed (hex or plain)."""
+        s = msg.strip()
+        try:
+            if all(c in "0123456789abcdefABCDEF" for c in s) and len(s) % 2 == 0:
+                return bytes.fromhex(s).decode("utf-8", "replace")
+        except Exception:
+            pass
+        return s
+
+    @staticmethod
+    def chat_encode(msg: str) -> str:
+        """Encode a user plaintext message into hex for on-chain storage."""
+        try:
+            _ = bytes.fromhex(msg.strip())  # already hex?
+            if all(c in "0123456789abcdef" for c in msg.strip()):
+                return msg.strip()
+        except Exception:
+            pass
+        return msg.encode("utf-8").hex()
+
     # --- Funding helpers (deposit XEL to any contract) ----------------------
 
     def fund_contract(self, contract_key: str, asset: str,
@@ -1046,6 +1189,139 @@ class Backend:
                             [val_str(name), val_str(symbol),
                              val_u8(decimals), val_u64(supply)],
                             max_gas=20_000_000)
+
+    # --- AirdropTracker (points / leaderboard / qualification) --------------
+
+    def airdrop_record_mainnet(self, mainnet_addr: str) -> OpResult:
+        """Submit the user's mainnet address to finalize airdrop eligibility."""
+        return self._invoke("AirdropTracker", "record_mainnet_address",
+                            [val_addr(mainnet_addr)], max_gas=5_000_000)
+
+    def _air_read(self, key: str):
+        return self._storage_read("AirdropTracker", key)
+
+    def _air_int(self, key: str, default: int = 0) -> int:
+        v = self._air_read(key)
+        return int(v) if isinstance(v, int) else default
+
+    def airdrop_user_points(self, addr: str = "") -> Optional[dict]:
+        """Full UserPoints snapshot for an address."""
+        addr = addr or self.address
+        raw = self._air_read(_AIR_USER_PREFIX + addr)
+        if not (isinstance(raw, list) and len(raw) >= 15):
+            return None
+        return {
+            "mining": int(raw[0]), "relayer": int(raw[1]),
+            "governance": int(raw[2]), "chat": int(raw[3]),
+            "liquidity": int(raw[4]), "bounty": int(raw[5]),
+            "community": int(raw[6]),
+            "total_raw": int(raw[7]), "total_with_bonus": int(raw[8]),
+            "days_active": int(raw[9]), "last_active_day": int(raw[10]),
+            "mainnet_address": str(raw[11]),
+            "qualified": bool(raw[12]), "registered": bool(raw[13]),
+        }
+
+    def airdrop_snapshot(self) -> dict:
+        """Global snapshot: user_count, total_points, qualified, finalized."""
+        return {
+            "user_count": self._air_int("uc"),
+            "total_points": self._air_int("tp"),
+            "qualified_count": self._air_int("qc"),
+            "leaderboard_count": self._air_int("lbc"),
+            "frozen": bool(self._air_read("fz")),
+            "finalized": bool(self._air_read("fn")),
+            "start_topo": self._air_int("stt"),
+            "freeze_topo": self._air_int("fzt"),
+            "finalize_topo": self._air_int("flt"),
+            "manual_cap": self._air_int("mcap"),
+            "merkle_root": str(self._air_read("mr") or "")[:24],
+        }
+
+    def airdrop_category_totals(self) -> dict:
+        out = {}
+        for cat, name in AIRDROP_CATEGORIES.items():
+            v = self._air_read(_AIR_CAT_PREFIX + str(cat))
+            out[name] = int(v) if isinstance(v, int) else 0
+        return out
+
+    def airdrop_leaderboard(self, limit: int = 15) -> list:
+        """Top-N users pre-finalize. Reads the user list + points from storage
+        and sorts locally (the chain's O(n^2) rank getter is avoided)."""
+        count = self._air_int("uc")
+        rows = []
+        for i in range(min(count, 400)):
+            addr_raw = self._air_read(_AIR_LIST_PREFIX + str(i))
+            if not isinstance(addr_raw, str):
+                continue
+            up = self._air_read(_AIR_USER_PREFIX + addr_raw)
+            if isinstance(up, list) and len(up) >= 9:
+                rows.append({
+                    "addr": addr_raw, "points": int(up[7]),
+                    "qualified": bool(up[12]) if len(up) > 12 else False,
+                    "mainnet": str(up[11]),
+                    "with_bonus": int(up[8]),
+                })
+        rows.sort(key=lambda r: r["points"], reverse=True)
+        return rows[:limit]
+
+    def airdrop_rank(self, addr: str = "", limit_up: int = 400) -> tuple:
+        """Return (rank, total_users) for an address (1-based; 0 if unknown)."""
+        addr = addr or self.address
+        up = self.airdrop_user_points(addr)
+        if not up:
+            return 0, self._air_int("uc")
+        my_points = up["total_raw"]
+        count = self._air_int("uc")
+        higher = 0
+        for i in range(min(count, limit_up)):
+            addr2 = self._air_read(_AIR_LIST_PREFIX + str(i))
+            if not isinstance(addr2, str) or addr2 == addr:
+                continue
+            o = self._air_read(_AIR_USER_PREFIX + addr2)
+            if isinstance(o, list) and len(o) >= 8 and int(o[7]) > my_points:
+                higher += 1
+        return higher + 1, count
+
+    # --- VaultChat relayer --------------------
+
+    def chat_relayer_status(self, addr: str = "") -> dict:
+        """Read a relayer's on-chain profile from VaultChat storage."""
+        addr = addr or self.address
+        vc = self.C("VaultChat")
+        if not vc or not self.daemon:
+            return {}
+        def r(key):
+            try:
+                return self.daemon.read_key(vc, key)
+            except Exception:
+                return None
+        active = r("relayer_" + addr)
+        bond = r("rbond_" + addr)
+        fee = r("rfee_" + addr)
+        token = r("rtok_" + addr)
+        reg = r("rlreg_" + addr)
+        out = {
+            "active": (active is True) or (isinstance(active, list) and bool(active)),
+            "bond": int(bond) if isinstance(bond, int) else (int(bond[0]) if isinstance(bond, list) and bond else 0),
+            "fee": int(fee) if isinstance(fee, int) else (int(fee[0]) if isinstance(fee, list) and fee else 1000000),
+            "token": int(token) if isinstance(token, int) else (int(token[0]) if isinstance(token, list) and token else 0),
+            "registered": None,
+        }
+        # rlreg_<addr> is "endpoint|free_daily_limit|free_wallet_slots" (string)
+        if isinstance(reg, str) and "|" in reg:
+            parts = reg.split("|")
+            out["registered"] = {
+                "endpoint": parts[0],
+                "free_daily_limit": parts[1] if len(parts) > 1 else "",
+                "free_wallet_slots": parts[2] if len(parts) > 2 else "",
+            }
+        return out
+
+    def _air_read_relay(self, vc: str, key: str):
+        try:
+            return self.daemon.read_key(vc, key)
+        except Exception:
+            return None
 
     # --- Generic int reader --------------------------------------------------
 

@@ -24,8 +24,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from tui import (
     C, clear, hide_cursor, show_cursor, read_key, read_key_timeout,
     menu, text_input, confirm, info_box, progress_bar, BANNER,
+    has_rich, render_panel, render_metrics, render_bar, render_badge,
+    render_ok, render_warn, render_error, render_status, render_hint,
 )
-from cli_backend import Backend, DECIMALS, OpResult
+from cli_backend import (
+    Backend, DECIMALS, OpResult, AIRDROP_CATEGORIES,
+)
 
 VAULT_DIR = Path.home() / ".xelis-vault"
 CONFIG_PATH = VAULT_DIR / "config" / "config.json"
@@ -152,7 +156,9 @@ def wait_confirm(b: Backend, tx: str, max_s: int = 90):
 
 
 def run_tx(b: Backend, fn, action: str):
-    """Pending indicator + confirmation feedback around a write op."""
+    """Pending indicator + confirmation feedback around a write op.
+    Builds + broadcasts, waits for the block, then VERIFIES on-chain that the
+    transaction actually committed (a revert means the storage was rolled back)."""
     print(f"\n{C.DIM}⏳ Transaction en cours — signature → broadcast → attente du "
           f"bloc (~5-15 s)…{C.RESET}", flush=True)
     t0 = time.time()
@@ -168,7 +174,22 @@ def run_tx(b: Backend, fn, action: str):
         return None
     ok, topo = wait_confirm(b, res.tx)
     secs = time.time() - t0
+    # On-chain verification — a built+broadcast tx can still REVERT on the chain
+    revert = ""
+    if ok:
+        revert = b.verify_onchain(res.tx) if hasattr(b, "verify_onchain") else ""
     sys.stdout.write("\r\x1b[K"); sys.stdout.flush()
+    if revert:
+        info_box("Transaction reverted by the chain", [
+            f"{C.RED}{action} was REJECTED on-chain — nothing was applied.{C.RESET}",
+            "",
+            f"Reason: {C.BOLD}{revert}{C.RESET}",
+            "",
+            f"{C.GRAY}Tx hash:{C.RESET} {res.tx[:40]}…",
+        ], color=C.RED)
+        res.ok = False
+        res.reason = revert
+        return res
     res.confirmed = ok
     res.topo = topo
     res.secs = secs
@@ -222,61 +243,76 @@ def coming_soon(name: str, desc: str):
 # ---------------------------------------------------------------------------
 
 def screen_dashboard(b: Backend):
-    """Live dashboard: auto-refreshes until a key is pressed."""
+    """Live professional dashboard — auto-refreshes until a key is pressed."""
+    from tui import _RICH  # whether rich rendering path is active
     hide_cursor()
     try:
         while True:
             clear()
-            print(BANNER)
             topo = b.topo()
             price_info = b.price()
             bal = b.balances()
             ms = b.miner_stats()
             psm = b.psm_reserves()
-
-            print(f"{C.GRAY}{'─' * 66}{C.RESET}")
-            status = f"{C.GREEN}● connected{C.RESET}" if topo else f"{C.RED}○ daemon offline{C.RESET}"
-            print(f"  Network: testnet   Topoheight: {C.BOLD}{topo:,}{C.RESET}   {status}")
-            print()
-
-            # Price feed
-            if price_info:
-                price_raw, feed_topo, stale = price_info
-                age = max(0, topo - feed_topo)
-                tag = f"{C.RED}STALE{C.RESET}" if stale else f"{C.GREEN}fresh{C.RESET}"
-                print(f"  XEL/USD:  {C.BOLD}${price_raw / 10**DECIMALS:,.4f}{C.RESET}"
-                      f"   feed age {age} blocks  [{tag}]")
-            else:
-                print(f"  XEL/USD:  {C.DIM}no oracle data{C.RESET}")
-
-            # Balances
             xel, vlt, xusd = bal.get("XEL"), bal.get("VLT"), bal.get("xUSD")
-            print()
-            print(f"  Your wallet ({short_addr(b.address)}):")
-            print(f"    XEL   {b.fmt(xel)}")
-            print(f"    VLT   {b.fmt(vlt)}")
-            print(f"    xUSD  {b.fmt(xusd)}")
 
-            # Protocol
+            # ── Header / connection strip ───────────────────────────────
+            net_ok = bool(topo)
+            col = C.GREEN if net_ok else C.RED
+            status = f"{col}● CONNECTED{C.RESET}" if net_ok else f"{C.RED}○ OFFLINE{C.RESET}"
+            hdr = []
+            hdr.append(f"{render_badge(' XELIS Vault ','cyan',filled=True)}  "
+                       f"{render_badge(' TESTNET ','magenta',filled=True)}  {status}")
+            hdr.append("")
+            hdr.append(f"{C.DIM}Topoheight{C.RESET}  {C.BOLD}{topo:,}{C.RESET}"
+                       f"    {C.DIM}Address{C.RESET}  {short_addr(b.address)}")
+            print("\n".join(hdr))
+
+            # ── Wallet balances panel ───────────────────────────────────
+            wal_rows = [
+                (f"  {C.BOLD}XEL{C.RESET}",  f"{C.BOLD}{b.fmt(xel)} XEL{C.RESET}"),
+                (f"  {C.BOLD}VLT{C.RESET}",  f"{C.BOLD}{b.fmt(vlt)} VLT{C.RESET}"),
+                (f"  {C.BOLD}xUSD{C.RESET}", f"{C.BOLD}{b.fmt(xusd)} xUSD{C.RESET}"),
+            ]
+            if price_info:
+                raw, ftopo, stale = price_info
+                age = max(0, topo - ftopo)
+                mark = f"{C.RED}STALE (age {age} blk){C.RESET}" if stale \
+                       else f"{C.GREEN}fresh (age {age} blk){C.RESET}"
+                wal_rows.append(("  XEL/USD", f"{C.BOLD}${raw / 10**DECIMALS:,.4f}{C.RESET}  {mark}"))
             print()
-            print(f"  {C.BOLD}Protocol{C.RESET}")
-            if psm:
-                print(f"    PSM reserves     {b.fmt(psm.get('xel'))} XEL  | "
-                      f"{b.fmt(psm.get('xusd'))} xUSD")
+            body_wal = [" ".join(f"{k:<16}{v}" for k, v in wal_rows[:2]),
+                        " ".join(f"{k:<16}{v}" for k, v in wal_rows[2:4])]
+            print(render_panel("  WALLET  &  PRICE FEED", body_wal,
+                               border_color=C.CYAN))
+
+            # ── Protocol panel ──────────────────────────────────────────
+            pro_rows = []
+            if psm and psm.get("xel") is not None:
+                pro_rows.append((f"PSM XEL reserve",
+                                 f"{b.fmt(psm.get('xel'))} XEL"))
+                pro_rows.append((f"PSM xUSD reserve",
+                                 f"{b.fmt(psm.get('xusd'))} xUSD"))
             if ms.get("total_staked") is not None:
-                print(f"    Miner staked     {b.fmt(ms['total_staked'])} VLT")
+                pro_rows.append((f"Miner staked",
+                                 f"{b.fmt(ms['total_staked'])} VLT"))
             if ms.get("budget") is not None and ms.get("distributed") is not None:
-                pct = ms["distributed"] * 100 // ms["budget"] if ms["budget"] else 0
-                bar = progress_bar(ms["distributed"], ms["budget"], 24)
-                print(f"    Rewards budget   {bar} {pct}%")
+                budget, dist = ms["budget"], ms["distributed"]
+                pct = dist * 100 // budget if budget else 0
+                bar = render_bar(dist / budget if budget else 0, 24)
+                pro_rows.append(("Rewards budget", f"{bar} {dist//10**DECIMALS:g}/{budget//10**DECIMALS:g} VLT ({pct}%)"))
+            if pro_rows:
+                print()
+                body_pro = [" ".join(f"{k:<18}{v}" for k, v in pro_rows[i:i+2])
+                            for i in range(0, len(pro_rows), 2)]
+                print(render_panel("  PROTOCOL  HEALTH", body_pro,
+                                   border_color=C.MAGENTA))
 
+            # ── Footer ──────────────────────────────────────────────────
             print()
-            print(f"  {C.DIM}Address: {b.address or 'not configured'}{C.RESET}")
-            print()
-            print(f"{C.GRAY}{'─' * 66}{C.RESET}")
-            print(f"{C.DIM}  Refreshing every 3 s — press any key to go back{C.RESET}")
-
-            for _ in range(30):  # 30 × 100 ms
+            print(f"{C.DIM}{'─' * 62}{C.RESET}")
+            print(f"{C.DIM}  Refreshing — press {render_badge('q','cyan')} or any key to go back{C.RESET}")
+            for _ in range(30):
                 if read_key_timeout(0.1) is not None:
                     return
                 time.sleep(0.0)
@@ -336,9 +372,28 @@ def screen_vault(b: Backend):
                 vid_i = int(vid)
             except ValueError:
                 continue
-            amt = ask_amount(b, b.xusd_asset, "xUSD amount to borrow:", "10")
+            maxb = b.vault_max_borrow(vid_i) if hasattr(b, "vault_max_borrow") else 0
+            vinfo = b.vault_get(vid_i) if hasattr(b, "vault_get") else None
+            default = "10"
+            if maxb and maxb > 0:
+                default = f"{maxb / 10**DECIMALS:.6f}".rstrip("0").rstrip(".")
+            amt = text_input(f"xUSD amount to borrow (max {b.fmt(maxb, 'xUSD')}):",
+                             default=default)
             atomic = parse_amount(amt)
             if atomic is None:
+                continue
+            if vinfo and vinfo.get("liquidated"):
+                info_box("Vault liquidated", ["This vault is liquidated and cannot borrow."],
+                         color=C.RED)
+                continue
+            if maxb and atomic > maxb:
+                info_box("Cannot borrow that much", [
+                    f"{C.RED}Max borrowable is {b.fmt(maxb, 'xUSD')}{C.RESET}",
+                    "",
+                    f"Collateral {b.fmt(vinfo['collateral'], 'XEL')} at "
+                    f"${b.price_usd():,.4f} → 200% min ratio allows "
+                    f"{b.fmt(maxb, 'xUSD')} of total debt.",
+                ], color=C.RED)
                 continue
             if confirm(f"Borrow {amt} xUSD against vault #{vid_i}?"):
                 run_tx(b, lambda: b.vault_borrow(vid_i, atomic), "Borrow")
@@ -348,9 +403,20 @@ def screen_vault(b: Backend):
                 vid_i = int(vid)
             except ValueError:
                 continue
-            amt = ask_amount(b, b.xusd_asset, "xUSD amount to repay:", "10")
+            debt = b.vault_get(vid_i).get("borrow_amount") if hasattr(b, "vault_get") else 0
+            if not debt:
+                debt = 0
+            default = f"{debt / 10**DECIMALS:.6f}".rstrip("0").rstrip(".") if debt else "10"
+            amt = text_input(f"xUSD amount to repay (current debt {b.fmt(debt, 'xUSD')}):",
+                             default=default)
             atomic = parse_amount(amt)
             if atomic is None:
+                continue
+            if debt and atomic > debt:
+                info_box("Over-repayment", [
+                    f"{C.RED}Your debt is only {b.fmt(debt, 'xUSD')}.{C.RESET}",
+                    "Repaying more than the debt is rejected by the chain.",
+                ], color=C.RED)
                 continue
             if confirm(f"Repay {amt} xUSD on vault #{vid_i}?"):
                 run_tx(b, lambda: b.vault_repay(vid_i, atomic), "Repay")
@@ -360,9 +426,19 @@ def screen_vault(b: Backend):
                 vid_i = int(vid)
             except ValueError:
                 continue
-            amt = ask_amount(b, b.xel_asset, "XEL amount to withdraw:", "1")
+            vinfo = b.vault_get(vid_i) if hasattr(b, "vault_get") else None
+            coll = (vinfo or {}).get("collateral") or 0
+            default = f"{coll / 10**DECIMALS:.6f}".rstrip("0").rstrip(".") if coll else "1"
+            amt = text_input(f"XEL amount to withdraw (collateral {b.fmt(coll, 'XEL')}):",
+                             default=default)
             atomic = parse_amount(amt)
             if atomic is None:
+                continue
+            if coll and atomic > coll:
+                info_box("Cannot withdraw that much", [
+                    f"{C.RED}You only have {b.fmt(coll, 'XEL')} collateral.{C.RESET}",
+                    "Also, withdrawing too much breaks the 200% collateral ratio.",
+                ], color=C.RED)
                 continue
             if confirm(f"Withdraw {amt} XEL from vault #{vid_i}?"):
                 run_tx(b, lambda: b.vault_withdraw(vid_i, atomic), "Withdraw")
@@ -997,9 +1073,14 @@ def screen_auctions(b: Backend):
 def screen_chat(b: Backend):
     while True:
         gc = b.chat_groups_count()
-        sub = f"Groups: {gc if gc is not None else '—'}"
-        opts = [("Register session", "register"),
-                ("Send DM", "dm"),
+        inbox = b.chat_inbox() if hasattr(b, "chat_inbox") else []
+        unread = len(inbox)
+        sub = (f"Groups: {gc if gc is not None else '—'}  ·  "
+               f"Inbox: {unread} message(s)")
+        opts = [("Inbox / read messages", "inbox"),
+                ("Register session", "register"),
+                ("Send direct message (on-chain, guaranteed)", "dm"),
+                ("Send via relayer (store_message)", "relay_msg"),
                 ("Create group", "cgrp"),
                 ("Add group member", "amem"),
                 ("Send group message", "gmsg"),
@@ -1011,23 +1092,49 @@ def screen_chat(b: Backend):
         choice = menu("Encrypted Chat (VaultChat)", opts, subtitle=sub)
         if choice is None:
             return
-        if choice == "register":
-            ek = text_input("Encrypted session key (64 hex):").strip()
-            if not ek or len(ek) != 64:
-                info_box("Invalid", ["Need 64-char hex key."], color=C.RED)
+        if choice == "inbox":
+            msgs = b.chat_inbox() if hasattr(b, "chat_inbox") else []
+            lines = []
+            if not msgs:
+                lines.append(f"{C.DIM}No messages yet.{C.RESET}")
+            for m in msgs:
+                tag = "DM" if m["kind"] == "direct" else "via relay"
+                sender = short_addr(m["sender"])
+                dec = b.chat_decode(m["blob"]) if hasattr(b, "chat_decode") else m["blob"]
+                lines.append(f"[{tag}] {C.BOLD}{sender}{C.RESET}: {dec}")
+            info_box("Chat inbox (on-chain)", lines, color=C.CYAN)
+        elif choice == "register":
+            ek = text_input("Encrypted session key (64 hex or any string):").strip()
+            if not ek:
                 continue
+            k = ek if len(ek) == 64 else ek.encode().hex()[:64]
             if confirm("Register chat session?"):
-                run_tx(b, lambda k=ek: b.chat_register(k), "Register session")
+                run_tx(b, lambda k=k: b.chat_register(k), "Register session")
         elif choice == "dm":
             dest = text_input("Recipient address (xet:...):").strip()
             if not dest.startswith("xet:"):
                 continue
-            msg = text_input("Message (hex-encoded encrypted payload):").strip()
+            prompt = "Message to send (encrypted before sending):"
+            msg = text_input(prompt)
             if not msg:
                 continue
-            if confirm(f"Send DM to {short_addr(dest)}?"):
-                run_tx(b, lambda d=dest, m=msg: b.chat_send_dm(d, m),
+            hexmsg = b.chat_encode(msg) if hasattr(b, "chat_encode") else msg
+            if confirm(f"Send direct message to {short_addr(dest)}? "
+                       f"(on-chain, guaranteed persistence)"):
+                run_tx(b, lambda d=dest, m=hexmsg: b.chat_send_dm(d, m),
                        "Send DM")
+        elif choice == "relay_msg":
+            dest = text_input("Recipient address (xet:...):").strip()
+            if not dest.startswith("xet:"):
+                continue
+            msg = text_input("Message to encrypt & relay:")
+            if not msg:
+                continue
+            hexmsg = b.chat_encode(msg) if hasattr(b, "chat_encode") else msg
+            if confirm(f"Send {short_addr(dest)} a message via relayer "
+                       "(store_message)?"):
+                run_tx(b, lambda d=dest, m=hexmsg: b.chat_store_message(d, m),
+                       "Store message")
         elif choice == "cgrp":
             ek = text_input("Group encrypted key (64 hex):").strip()
             if not ek or len(ek) != 64:
@@ -1042,10 +1149,12 @@ def screen_chat(b: Backend):
             addr = text_input("Member address (xet:...):").strip()
             if not addr.startswith("xet:"):
                 continue
-            ek = text_input("Encrypted key for member (64 hex):").strip()
-            if not ek or len(ek) != 64:
-                info_box("Invalid", ["Need 64-char hex key."], color=C.RED)
+            ek = text_input("Encrypted key for member (64 hex or any string):").strip()
+            if not ek:
+                info_box("Invalid", ["Need an encrypted key."], color=C.RED)
                 continue
+            if not ek or len(ek) != 64:
+                ek = ek.encode().hex()[:64]
             if confirm(f"Add {short_addr(addr)} to group #{gid}?"):
                 run_tx(b, lambda g=int(gid), a=addr, k=ek:
                        b.chat_add_member(g, a, k),
@@ -1054,11 +1163,12 @@ def screen_chat(b: Backend):
             gid = text_input("Group ID:").strip()
             if not gid:
                 continue
-            msg = text_input("Message (hex-encoded):").strip()
+            msg = text_input("Message to send to group:").strip()
             if not msg:
                 continue
+            hexmsg = b.chat_encode(msg) if hasattr(b, "chat_encode") else msg
             if confirm(f"Send message to group #{gid}?"):
-                run_tx(b, lambda g=int(gid), m=msg: b.chat_group_msg(g, m),
+                run_tx(b, lambda g=int(gid), m=hexmsg: b.chat_group_msg(g, m),
                        "Send group message")
         elif choice == "anchor":
             root = text_input("Merkle root (64 hex):").strip()
@@ -1094,35 +1204,227 @@ def screen_chat(b: Backend):
 
 
 # --- Miner tools screen -----------------------------------------------------
+
+def screen_relayer(b: Backend):
+    """Interactive Relayer manager: status panel + actions."""
+    r = b.chat_relayer_status()
+    topo = b.topo()
+    st = b.chat_relayer_status
+    if not r:
+        r = {}
+    token_name = {0: "XEL", 1: "VLT"}.get(r.get("token"), "XEL")
+    status = render_ok("Whitelisted") if r.get("active") else render_warn("Not whitelisted")
+    reg_txt = f"{C.DIM}not registered{C.RESET}"
+    if r.get("registered"):
+        d = r["registered"]
+        reg_txt = (f"{render_badge(d.get('endpoint', ''), C.CYAN)}"
+                   f" {C.DIM}free {d.get('free_daily_limit','0')} msg/day · {d.get('free_wallet_slots','0')} slots{C.RESET}")
+    lines = [
+        f"{status}",
+        f"{render_metrics([('Bond', b.fmt(r.get('bond', 0), 'VLT')),
+                           ('Fee', f"{r.get('fee', 1000000)/10**DECIMALS:g} {token_name}/msg")])}",
+        f"  {C.DIM}Registration:{C.RESET}  {reg_txt}",
+    ]
+    print()
+    print(render_panel("  RELAYER  (VaultChat)", lines, border_color=C.MAGENTA, width=64))
+    print(f"  {C.DIM}Fee flow: messages over the free tier pay the relayer fee (default 0.001 XEL).{C.RESET}")
+    print()
+
+    opts = [
+        ("Stake relayer bond (min 50 VLT)", "bond"),
+        ("Whitelist self (admin: set_relayer)", "whitelist"),
+        ("Register relayer (endpoint + free limits)", "register"),
+        ("Set relayer fee", "fee"),
+        ("Claim accumulated fees", "claim"),
+        ("Back", None),
+    ]
+    choice = menu("Relayer tools", opts)
+    if choice == "bond":
+        amt = ask_amount(b, b.vlt_asset, "VLT bond to stake (min 50):", "50")
+        atomic = parse_amount(amt)
+        if atomic is None:
+            return
+        if confirm(f"Stake {amt} VLT as relayer bond?"):
+            run_tx(b, lambda a=atomic: b.chat_stake_bond(a), "Stake relayer bond")
+    elif choice == "whitelist":
+        if confirm("Whitelist this address as a relayer (requires admin)?"):
+            run_tx(b, lambda: b.chat_set_relayer(b.address, True),
+                   "Whitelist relayer")
+    elif choice == "register":
+        ep = text_input("Relayer endpoint (url):").strip() or "https://relay.xelisvault.io"
+        lim = text_input("Free messages / day / user (<=1000):").strip() or "100"
+        slots = text_input("Free wallet slots (<=10000):").strip() or "1000"
+        try:
+            lim, slots = int(lim), int(slots)
+        except ValueError:
+            info_box("Input", [f"{C.RED}Limits must be integers.{C.RESET}"], color=C.RED)
+            return
+        if confirm(f"Register relayer at {ep} (free {lim} msg/day, {slots} slots)?"):
+            run_tx(b, lambda e=ep, l=lim, s=slots: b.chat_register_relayer(e, l, s),
+                   "Register relayer")
+    elif choice == "fee":
+        tok = text_input("Fee token (0=XEL, 1=VLT):").strip() or "0"
+        fee = text_input("Fee in atomic units (e.g. 100000 = 0.001):").strip()
+        if not fee:
+            return
+        try:
+            tok, fee = int(tok), int(fee)
+        except ValueError:
+            info_box("Input", [f"{C.RED}Invalid number.{C.RESET}"], color=C.RED)
+            return
+        if confirm(f"Set relayer fee = {fee/10**DECIMALS:g} "
+                   f"{'XEL' if tok == 0 else 'VLT'} per message?"):
+            run_tx(b, lambda t=tok, f=fee: b.chat_set_fee(t, f), "Set relayer fee")
+    elif choice == "claim":
+        if confirm("Claim accumulated relayer fees to this wallet?"):
+            run_tx(b, b.chat_claim_fees, "Claim relayer fees")
+
+
+# --- Airdrop screen ---------------------------------------------------------
+
+def screen_airdrop(b: Backend):
+    """Season / points / rank / leaderboard for the airdrop tracker."""
+    up = b.airdrop_user_points() if hasattr(b, "airdrop_user_points") else None
+    snap = b.airdrop_snapshot() if hasattr(b, "airdrop_snapshot") else None
+    rank, total = (b.airdrop_rank() if hasattr(b, "airdrop_rank") else (0, 0))
+    cats = (b.airdrop_category_totals() if hasattr(b, "airdrop_category_totals") else {})
+
+    # ── Status header ──────────────────────────────────────────────────
+    lines = []
+    if snap:
+        fz = "FROZEN" if snap.get("frozen") else "LIVE"
+        fn = ("FINALIZED" if snap.get("finalized") else "OPEN")
+        tag = f"{render_badge(fz, C.YELLOW)} {render_badge(fn, C.MAGENTA)}"
+        lines.append(f"  Season status:  {tag}")
+        lines.append(f"  {render_metrics([('Users', snap.get('user_count', 0)),
+                                          ('Total points', snap.get('total_points', 0)),
+                                          ('Qualified', snap.get('qualified_count', 0)),
+                                          ('Manual cap', snap.get('manual_cap', 0))])}")
+    else:
+        lines.append(f"  {render_warn('Airdrop tracker not reachable')}")
+    print()
+    print(render_panel("  AIRDROP  TRACKER", lines, border_color=C.MAGENTA, width=64))
+
+    # ── Your points ─────────────────────────────────────────────────────
+    if up:
+        cats_local = [
+            ("Mining", up.get("mining", 0)), ("Relayer", up.get("relayer", 0)),
+            ("Governance", up.get("governance", 0)), ("Chat", up.get("chat", 0)),
+            ("Liquidity", up.get("liquidity", 0)), ("Bounty", up.get("bounty", 0)),
+            ("Community", up.get("community", 0)),
+        ]
+        top = max([v for _, v in cats_local] + [1])
+        bars = []
+        for name, val in cats_local:
+            if val:
+                bars.append(f"  {name:<11} {val:>10}  {render_bar(val / top)}")
+        mine = f"{render_ok('QUALIFIED')}" if up.get("qualified") else f"{render_warn('not qualified')}"
+        rank_str = f"#{rank}/{total}" if total else "#-/-"
+        head = [f"  {render_metrics([('Total', up.get('total_raw', 0)),
+                                     ('With bonus', up.get('total_with_bonus', 0)),
+                                     ('Days active', up.get('days_active', 0)),
+                                     ('Rank', rank_str)])}  {mine}"]
+        body = head + (bars if bars else [f"  {C.DIM}No activity recorded on-chain yet.{C.RESET}"])
+        print()
+        print(render_panel("  YOUR  POINTS", body, border_color=C.GREEN, width=64))
+    else:
+        print()
+        body = [f"  {render_warn('No points recorded for this address on-chain')}",
+                f"  {C.DIM}Points are credited directly by the protocol contracts on-chain;{C.RESET}",
+                f"  {C.DIM}the live chain shows an empty season until activity is recorded.{C.RESET}"]
+        print(render_panel("  YOUR  POINTS", body, border_color=C.GREEN, width=64))
+
+    # ── Category totals ─────────────────────────────────────────────────
+    if cats:
+        cats_line = "  " + "   ".join(f"{k.replace(' Points','')}={v}" for k, v in cats.items())
+        print()
+        print(render_panel("  CATEGORY TOTALS", [cats_line],
+                           border_color=C.YELLOW, width=64))
+
+    # ── Actions ─────────────────────────────────────────────────────────
+    print()
+    opts = [("View top leaderboard", "lb"),
+            ("Register mainnet address", "mainnet"),
+            ("Refresh", "refresh"),
+            ("Back", None)]
+    choice = menu("Airdrop", opts)
+    if choice == "lb":
+        rows = b.airdrop_leaderboard(15) if hasattr(b, "airdrop_leaderboard") else []
+        out = []
+        if not rows:
+            out.append(f"{C.DIM}Leaderboard is empty (no users recorded).{C.RESET}")
+        for i, row in enumerate(rows, 1):
+            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(i, f"{i:>2}.")
+            q = "✓" if row.get("qualified") else "·"
+            out.append(f"  {medal} {short_addr(row['addr']):<18} "
+                       f"{row['points']:>9} pts  {q}  {row.get('mainnet') or ''}")
+        info_box(f"Leaderboard (top {len(rows)})", out, color=C.YELLOW)
+    elif choice == "mainnet":
+        ma = text_input("Mainnet address (xet:...):").strip()
+        if not ma.startswith("xet:"):
+            info_box("Input", [f"{C.RED}A mainnet address must start with xet:.{C.RESET}"],
+                     color=C.RED)
+            return
+        if confirm(f"Record mainnet address {short_addr(ma)} for this season?"):
+            run_tx(b, lambda m=ma: b.airdrop_record_mainnet(m), "Record mainnet address")
+
+
+# --- Miner tools screen -----------------------------------------------------
+
+def screen_miner_tools(b: Backend):
     m = b.my_miner()
     stats = b.miner_stats()
-    lines = []
+    topo = b.topo()
+
+    # ── Miner status panel ───────────────────────────────────────────
     if m and isinstance(m, list) and len(m) >= 15:
         stake = m[3]
+        mask = m[4]
         hb_topo = m[6]
         rewards = m[7]
         rep = m[9]
         active = bool(m[14])
-        age = max(0, b.topo() - hb_topo) if hb_topo else -1
-        lines.append(f"Registered: {'yes' if active else 'no'}   Reputation: {rep}")
-        lines.append(f"Stake: {b.fmt(stake, 'VLT')}   Rewards earned: {b.fmt(rewards, 'VLT')}")
-        if age >= 0:
-            lines.append(f"Last heartbeat: {age} blocks ago")
+        age = max(0, topo - hb_topo) if hb_topo else -1
+        srvc = []
+        if mask & 1:
+            srvc.append(render_badge("Oracle", C.CYAN))
+        if (mask >> 1) & 1:
+            srvc.append(render_badge("Chat relay", C.MAGENTA))
+        svc_txt = " ".join(srvc) if srvc else f"{C.DIM}none{C.RESET}"
+        status = render_ok("REGISTERED") if active else render_warn("INACTIVE")
+        hb_txt = (f"{render_ok(f'{age} blocks ago')}" if age >= 0 and age < 1000
+                  else (render_warn(f"{age} blocks ago") if age >= 0
+                        else f"{C.DIM}never{C.RESET}"))
+        lines = [
+            f"{status}   {render_badge(f'Reputation {rep}', C.YELLOW)}",
+            f"{render_metrics([('Stake', b.fmt(stake, 'VLT')),
+                               ('Rewards earned', b.fmt(rewards, 'VLT'))])}",
+            f"{render_metrics([('Services', svc_txt),
+                               ('Last heartbeat', hb_txt)])}",
+        ]
     else:
-        lines.append(f"{C.DIM}This address has no miner profile yet.{C.RESET}")
-        lines.append("")
-        lines.append("Run xvault-miner to register and start earning.")
-    lines.append("")
-    lines.append(f"Network staked: {b.fmt(stats.get('total_staked'), 'VLT')}")
-    info_box("Miner status", lines, color=C.CYAN)
+        lines = [
+            f"{render_warn('Not registered')}",
+            f"{C.DIM}This address has no miner profile on-chain.{C.RESET}",
+            f"{C.DIM}Use the options below to register & start earning.{C.RESET}",
+        ]
+    if stats.get("total_staked") is not None:
+        lines.append(f"  {C.DIM}Network total staked:{C.RESET} "
+                     f"{b.fmt(stats['total_staked'], 'VLT')}")
+    print()
+    print(render_panel("  MINER  STATUS", lines, border_color=C.CYAN, width=64))
 
+    # ── Actions ──────────────────────────────────────────────────────
     import onboarding
     miner_pid = onboarding.miner_running()
     mopts = []
     if miner_pid:
         mopts.append((f"Stop built-in miner (pid {miner_pid})", "stop"))
     else:
-        mopts.append(("Start built-in miner (auto-configured)", "start"))
+        if not (m and isinstance(m, list) and len(m) >= 15 and bool(m[14])):
+            mopts.append(("Register as miner (auto-configured)", "start"))
+        else:
+            mopts.append(("Start built-in miner (auto-configured)", "start"))
         threads = cfg_miner_threads()
         mopts.append((f"Set thread count (currently {threads})", "threads"))
     mopts += [
@@ -1141,7 +1443,6 @@ def screen_chat(b: Backend):
         if confirm(f"Stake {amt} VLT more?"):
             run_tx(b, lambda: b.miner_increase_stake(atomic), "Stake increase")
     elif choice == "start":
-        from pathlib import Path as _P
         cfg_obj = _load_cfg()
         ok, msg = onboarding.start_miner(cfg_obj)
         info_box("Miner", [msg], color=C.GREEN if ok else C.RED)
@@ -1149,7 +1450,6 @@ def screen_chat(b: Backend):
         ok, msg = onboarding.stop_miner()
         info_box("Miner", [msg], color=C.GREEN if ok else C.RED)
     elif choice == "threads":
-        from pathlib import Path as _P
         cfg_obj = _load_cfg()
         t = text_input("Number of mining threads:",
                        default=str(cfg_obj.get("miner_threads") or 4))
@@ -1302,6 +1602,8 @@ def main():
             ("Loans (Flash / Peer / Syndicate)", lambda: screen_loans(b)),
             ("Sealed-Bid Auctions", lambda: screen_auctions(b)),
             ("Encrypted Chat", lambda: screen_chat(b)),
+            ("Relayer (bond / fee / claim)", lambda: screen_relayer(b)),
+            ("Airdrop tracker", lambda: screen_airdrop(b)),
             ("Treasury (multisig)", lambda: screen_treasury(b)),
             ("RWA Assets", lambda: screen_rwa(b)),
             ("Miner tools", lambda: screen_miner_tools(b)),

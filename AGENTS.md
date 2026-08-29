@@ -721,3 +721,54 @@ note balance exacte, withdraw, note détruite).
   (build → "Tx nonce N already used" alors que la chaîne attend N). Fix: relancer le
   miner (`nohup ./xelis_miner --miner-address <admin> --daemon-address
   ws://127.0.0.1:18081 -n 7`), laisser la mempool se vider, puis re-tenter.
+
+# ✅ v12R-9 — Refonte UI du CLI (rich/ANSI) + écrans Relayer/Airdrop (2026-08-29)
+
+Refonte de l'interface du CLI xvault : dashboard riche + écrans interactifs dédiés.
+**L'AIRDROP EST VOLONTAIREMENT LAISSÉ EN L'ÉTAT** (décision owner) : PAS de modification
+des contrats, PAS d'indexer off-chain. L'écran Airdrop affiche l'état on-chain brut —
+la saison est actuellement VIDE (uc=0, tp=0, non-frozen) car les contrats ne font
+aucun appel `record_*` à AirdropTracker (Option A non implémentée) et l'indexer (Option B)
+ne tourne pas. Voir docs/AIRDROP_PLAN.md §7.
+
+## Rendu (scripts/tui.py)
+- `has_rich()` / globale `_RICH` ; `render_bar`, `render_badge`, `render_panel`
+  (rich panel arrondi si dispo, fallback ANSI via `_RichText.from_ansi`),
+  `render_metrics`, `render_ok/warn/error/status/hint`, `render_arrow`.
+- `menu()` / `info_box()` enrichis : navigation aux flèches UP/DOWN + marker `➤`,
+  boîte arrondie. Aucune dépendance externe côté runtime (rich = optionnel, tombe
+  en ANSI pur sinon). rich 15.0.0 installé dans le venv `~/.xelis-vault/venv`.
+
+## Écrans (scripts/xvault.py)
+- **Dashboard (live)** `screen_dashboard` : badges en-tête (XELIS Vault/TESTNET/CONNECTED),
+  topoheight+adresse, panneaux WALLET & PRICE FEED (soldes XEL/VLT/xUSD + prix XEL/USD
+  avec fraîcheur du feed) et PROTOCOL HEALTH (réserves PSM, VLT miné staké, barre budget
+  récompenses). Auto-refresh, sortie touche.
+- **Miner tools** : panneau statut (REGISTERED/INACTIVE, réputation, services oracle/chat,
+  heartbeat, stake) + menu register/start/stop/threads/heartbeat/increase-stake.
+- **NOUVEAU `screen_relayer`** (VaultChat) : statut (whitelist, bond, fee, endpoint+free
+  tiers) + bond/stake, whitelist self, register, set fee, claim. Câblé dans le menu principal.
+- **NOUVEAU `screen_airdrop`** : statut saison (LIVE/OPEN, users/total/qualified/cap),
+  vos points + breakdown barres par catégorie + rank + badge QUALIFIED, totaux catégorie,
+  leaderboard, enregistrer mainnet. Câblé dans le menu principal.
+
+## Fix Backend (scripts/cli_backend.py)
+- `chat_relayer_status()` : clés storage CORRIGÉES — `relayer_<addr>` (bool), `rbond_<addr>`
+  (bond), `rfee_<addr>` (fee), `rtok_<addr>` (token 0=XEL/1=VLT), `rlreg_<addr>` =
+  `endpoint|free_daily_limit|free_wallet_slots` (string parsée). AVANT: clé fantôme `rlbc_`
+  → lisait toujours 0.
+- Méthodes airdrop déjà présentes (`airdrop_snapshot/user_points/rank/leaderboard/
+  category_totals/record_mainnet`).
+
+## Vérifications live (2026-08-29, chaîne canonique, daemon 18081 + wallet admin 18082)
+- `chat_relayer_status(admin)` → active=True, bond=5000000000 (50 VLT), fee=100000 (0.001 XEL),
+  token=0, registered endpoint `https://relay.xelisvault.io` free 100 msg/day · 1000 slots ✓
+- `airdrop_snapshot()` → users=0, total=0, qualified=0, frozen=False, finalized=False,
+  start_topo=166556, manual_cap=50000 (saison vide, contrat déployé mais non alimenté) ✓
+- Tous les écrans rendus en rich via le venv (import + rendu simulé des panneaux OK).
+
+## Déploié / utilisé par le vrai CLI
+- Les scripts publiés dans `~/.xelis-vault/src/scripts/` (xvault/tui/cli_backend) — c'est
+  ce que lance `~/.local/bin/xvault` (venv python + src/scripts/xvault.py). Synchroniser
+  après chaque modif d'UI (le repo = source de vérité).
+- Config réelle : `~/.xelis-vault/config/config.json` (PAS `~/.xelis-vault/config.json`).

@@ -767,11 +767,81 @@ TUNNEL_LOG = LOG_DIR / "relayer-tunnel.log"
 
 
 def find_tunnel_binary() -> Optional[str]:
-    for cand in ("/opt/homebrew/opt/cloudflared/bin/cloudflared",
-                 shutil.which("cloudflared")):
-        if cand and os.path.exists(cand):
-            return cand
-    return None
+    # 1) our local copy
+    local = BIN_DIR / ("cloudflared.exe" if platform.system() == "Windows" else "cloudflared")
+    if local.exists():
+        return str(local)
+    # 2) Homebrew on macOS
+    if platform.system() == "Darwin" and os.path.exists("/opt/homebrew/opt/cloudflared/bin/cloudflared"):
+        return "/opt/homebrew/opt/cloudflared/bin/cloudflared"
+    # 3) PATH
+    return shutil.which("cloudflared") or shutil.which("cloudflared.exe")
+
+
+def ensure_tunnel_binary() -> tuple[Optional[str], str]:
+    """Return (binary_path, note). Tries an existing install, then installs
+    cloudflared automatically (package manager, then direct download of the
+    official prebuilt binary) so the tunnel works on macOS/Windows/Linux."""
+    binary = find_tunnel_binary()
+    if binary:
+        return binary, "cloudflared already installed"
+    BIN_DIR.mkdir(parents=True, exist_ok=True)
+    sys_ = platform.system()
+    # ── package manager quick path ─────────────────────────────────────
+    if sys_ == "Darwin" and shutil.which("brew"):
+        r = subprocess.run(["brew", "install", "cloudflared"],
+                           capture_output=True, text=True, timeout=300)
+        binary = find_tunnel_binary()
+        if binary:
+            return binary, "cloudflared installed via Homebrew"
+    if sys_ == "Windows":
+        if shutil.which("winget"):
+            subprocess.run(["winget", "install", "--id", "Cloudflare.cloudflared",
+                            "--silent", "--accept-package-agreements",
+                            "--accept-source-agreements"],
+                           capture_output=True, text=True, timeout=300)
+        elif shutil.which("choco"):
+            subprocess.run(["choco", "install", "cloudflared", "-y"],
+                           capture_output=True, text=True, timeout=300)
+        binary = find_tunnel_binary()
+        if binary:
+            return binary, "cloudflared installed via package manager"
+    # ── direct download of the official prebuilt binary ────────────────
+    arch = platform.machine().lower()
+    if sys_ == "Windows":
+        suffix = "windows-amd64.exe" if "amd64" in arch or "x86_64" in arch else "windows-386.exe"
+        dest = BIN_DIR / "cloudflared.exe"
+    elif sys_ == "Darwin":
+        suffix = "darwin-arm64.tgz" if "arm" in arch or "aarch64" in arch else "darwin-amd64.tgz"
+        dest = BIN_DIR / "cloudflared"
+    else:  # Linux
+        suffix = "linux-amd64" if "amd64" in arch or "x86_64" in arch else "linux-arm64"
+        dest = BIN_DIR / "cloudflared"
+    url = (f"https://github.com/cloudflare/cloudflared/releases/latest/"
+           f"download/cloudflared-{suffix}")
+    try:
+        r = requests.get(url, timeout=300, stream=True)
+        r.raise_for_status()
+        if suffix.endswith(".tgz"):
+            tmp = BIN_DIR / "cf.tgz"
+            with open(tmp, "wb") as f:
+                for chunk in r.iter_content(1 << 16):
+                    f.write(chunk)
+            import tarfile
+            with tarfile.open(tmp, "r:gz") as tf:
+                member = next(m for m in tf.getmembers() if m.isfile())
+                blob = tf.extractfile(member).read()
+            tmp.unlink(missing_ok=True)
+            dest.write_bytes(blob)
+        else:
+            with open(dest, "wb") as f:
+                for chunk in r.iter_content(1 << 16):
+                    f.write(chunk)
+        if sys_ != "Windows":
+            dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        return str(dest), f"cloudflared downloaded to {dest}"
+    except Exception as e:
+        return None, f"cloudflared install failed: {e}"
 
 
 def tunnel_running() -> Optional[int]:
@@ -806,10 +876,9 @@ def start_tunnel(cfg) -> tuple[bool, str]:
     if pid:
         url = tunnel_url()
         return True, f"tunnel already running (pid {pid}){(' — ' + url) if url else ''}"
-    binary = find_tunnel_binary()
+    binary, note = ensure_tunnel_binary()
     if not binary:
-        return False, ("cloudflared not found — install with: "
-                       "brew install cloudflared")
+        return False, note
     port = int(cfg.get("relayer_port") or RELAYER_DEFAULT_PORT)
     host = cfg.get("relayer_host") or "127.0.0.1"
     RELAYER_DIR.mkdir(parents=True, exist_ok=True)

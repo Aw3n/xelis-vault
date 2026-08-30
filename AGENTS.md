@@ -1117,3 +1117,29 @@ Le VaultChat garde un **registre énumérable** de relayers :
 - `scripts/xvault.py` : screen_relayer (status PUBLIC + options public/list + stop 2-en-1),
   helper `_list_all_relayers`.
 - Syncés vers `~/.xelis-vault/src/scripts/`, compile OK.
+
+## v12R-16b — Installation AUTO de cloudflared (cross-platform) + état CLI cohérent (2026-08-30)
+Sur demande : « il faut que ça marche parfaitement sur Windows aussi » :
+- **`ensure_tunnel_binary()`** (remplace `find_tunnel_binary`) : installe cloudflared
+  automatiquement s'il manque, dans l'ordre :
+  1. binaire local `~/.xelis-vault/bin/cloudflared` (ou `.exe` sur Windows) ;
+  2. Homebrew (macOS), winget/choco (Windows) ;
+  3. **fallback : téléchargement direct** du binaire officiel GitHub
+     (`cloudflare/cloudflared/releases/latest/download/cloudflared-<os>-<arch>`),
+     compatible darwin-arm64/amd64 (tgz décompressé), linux-amd64/arm64,
+     windows-amd64/386 (.exe), rendu exécutable (chmod) sur POSIX.
+  ⇒ plus aucun « brew install » manuel : `start_tunnel` installe tout seul.
+- `start_tunnel` appelle désormais `ensure_tunnel_binary()` (early-path déjà-installé
+  reste instantané). `_detached_kwargs()` + `os.kill`(SIGTERM) déjà Windows-safe
+  (DETACHED_PROCESS|CREATE_NEW_PROCESS_GROUP, os.kill→TerminateProcess).
+- **État CLI re-normalisé** : le tunnel+relayer précédents (lancés à la main) ont été
+  stoppés puis relancés UNIQUEMENT via les fonctions CLI → PID file + log
+  `logs/relayer-tunnel.log` cohérents (`relayer_tunnel_status` voit les vrais PIDs/URL).
+- **Nouvelle URL (à chaque restart du tunnel)** = `https://visiting-but-stage-oxide.trycloudflare.com` ;
+  `start_relayer_public` détecte relayer+tunnel déjà run, puis `update_relayer_endpoint`
+  (chunk 119) = **MATCH** endpoint on-chain == URL tunnel. Vérifié public `/health`+`/status`
+  (topo 272010, relayer=admin). Runtime re-synchronisé + compile OK.
+- ⚠️ Sur WINDOWS : le quick tunnel expose la machine locale du CLI. C'est pertinent si
+  l'utilisateur Windows veut relayer SA machine ; sinon, pour juste se CONNECTER à un
+  relayer public, le CLI Windows utilise déjà `chat_relayers_list()` pour lister les
+  relayers du contrat (voir v12R-16) — pas besoin de tunnel localement.

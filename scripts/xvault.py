@@ -24,7 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from tui import (
-    C, clear, hide_cursor, show_cursor, read_key, read_key_timeout,
+    C, clear, hide_cursor, show_cursor, read_key, read_key_timeout, kbhit,
     menu, text_input, confirm, info_box, progress_bar, BANNER,
     has_rich, render_panel, render_metrics, render_bar, render_badge,
     render_ok, render_warn, render_error, render_status, render_hint,
@@ -263,17 +263,42 @@ def coming_soon(name: str, desc: str):
 # ---------------------------------------------------------------------------
 
 def screen_dashboard(b: Backend):
-    """Live professional dashboard — auto-refreshes until a key is pressed."""
+    """Live professional dashboard — auto-refreshes until a key is pressed.
+
+    Works on Windows and Unix. Keys are polled BETWEEN every remote RPC call and
+    across the whole wait, so the connection latency (e.g. a remote public node)
+    never makes the screen unresponsive. Any key reliably returns to the menu.
+    """
     from tui import _RICH  # whether rich rendering path is active
     hide_cursor()
+
+    def _pressed():
+        # True non-blocking check (works on Windows via msvcrt and on Unix).
+        if kbhit():
+            read_key()  # drain the input so it doesn't leak into the next menu
+            return True
+        return False
+
     try:
         while True:
+            if _pressed():
+                return
             clear()
             topo = b.topo()
+            if _pressed():
+                return
             price_info = b.price()
+            if _pressed():
+                return
             bal = b.balances()
+            if _pressed():
+                return
             ms = b.miner_stats()
+            if _pressed():
+                return
             psm = b.psm_reserves()
+            if _pressed():
+                return
             xel, vlt, xusd = bal.get("XEL"), bal.get("VLT"), bal.get("xUSD")
 
             # ── Header / connection strip ───────────────────────────────
@@ -332,8 +357,9 @@ def screen_dashboard(b: Backend):
             print()
             print(f"{C.DIM}{'─' * 62}{C.RESET}")
             print(f"{C.DIM}  Refreshing — press {render_badge('q','cyan')} or any key to go back{C.RESET}")
+            # Poll keys across a ~3s refresh window; any key returns immediately.
             for _ in range(30):
-                if read_key_timeout(0.1) is not None:
+                if read_key_timeout(0.1) is not None or _pressed():
                     return
                 time.sleep(0.0)
     finally:

@@ -922,3 +922,30 @@ Comportement signalé sous Windows (terminal petit/lent, buffered stdout, ANSI).
 - `scripts/onboarding.py` : bloc create — flush seed, double affichage + pause
   Enter, confirmation word #13 en boucle, backup seed 600 sur disque.
 - Syncé vers `~/.xelis-vault/src/scripts/` (xvault-miner, onboarding). Compile OK.
+
+# ✅ v12R-13 — Dashboard (live) : q/any-key ne revenait pas au menu (Windows) (2026-08-30)
+
+## Bug commu (Windows PowerShell, nœud distant)
+Symptôme : le dashboard se rafraîchit/périodiquement, mais `q`/toute touche ne
+revient PAS au menu → forcé de faire Ctrl+C.
+
+## Cause racine
+`screen_dashboard` ne sondait le clavier que dans une **fenêtre étroite ~3 s**
+(sa `for range(30): read_key_timeout(0.1)`) APRÈS un refresh complet. Or le refresh
+fait **5 appels RPC séquentiels** (`topo/price/balances/miner_stats/psm_reserves`)
+vers un nœud distant → bien plus longs que 3 s. Toute touche pressée pendant la
+phase de fetch n'était **jamais sondée** et était perdue → le refresh reprenait,
+l'écran se redessinait par-dessus.
+
+## Fix (scripts/xvault.py, `screen_dashboard`)
+- Helper `_pressed()` utilisant **`kbhit()`** (non-bloquant, `msvcrt` sur Windows /
+  `select` sur Unix) + `read_key()` pour drainer l'entrée (évite qu'elle fuite vers
+  le menu suivant), testé **entre chaque appel RPC** et au top de la boucle, en plus
+  de la fenêtre d'attente.
+- ⚠️ Piège noté : `read_key_timeout(0)` sur Windows ne sonde JAMAIS le clavier
+  (`while time.time()-start < 0` = faux immédiat) → toujours utiliser `kbhit()`
+  pour un check non-bloquant fiable.
+- Vérifié par harness (input simulée pendant le fetch topo) : le dashboard sort
+  proprement, `topo()` appelé 1 seule fois ⇒ la touche pressée mid-fetch est bien
+  captée. `kbhit` ajouté à l'import tui dans xvault.py.
+- Syncé vers `~/.xelis-vault/src/scripts/`, compile OK sous le venv.

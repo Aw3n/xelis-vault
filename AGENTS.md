@@ -772,3 +772,80 @@ ne tourne pas. Voir docs/AIRDROP_PLAN.md §7.
   ce que lance `~/.local/bin/xvault` (venv python + src/scripts/xvault.py). Synchroniser
   après chaque modif d'UI (le repo = source de vérité).
 - Config réelle : `~/.xelis-vault/config/config.json` (PAS `~/.xelis-vault/config.json`).
+
+# ✅ v12R-10 — xvault-miner refondu + fixes mixer/governance + activity export + audit reads (2026-08-30)
+
+Deuxième volet de la refonte UI du CLI : **`xvault-miner` entièrement réécrit** (interface
+rich + setup guidé + handbook provider + plus d'actions), **fix du mixer (blake3 manquant)**,
+**governance reads corrigés**, **écran Airdrop cassé remplacé par un export d'activité**, et
+**audit live complet des read-backs (TOUS verts)**.
+
+## xvault-miner refondu (scripts/xvault-miner.py, 690+ lignes)
+Répond aux 4 plaintes : interface moche, pas de guide endpoint, pas de guide provider, pas
+toutes les fonctionnalités.
+- **Rendu rich** : `render_panel`/`render_metrics`/`render_badge`/`render_bar` (fallback ANSI)
+  — mis au même niveau que le dashboard de xvault (avant : fonction `box()` maison très basique).
+- **Setup guidé** (`s` / `interactive_setup`) : CHAQUE champ est expliqué avec exemples :
+  daemon URL, wallet URL, address `xet:`, et surtout **« Public endpoint URL »** avec 3 exemples
+  (`https://mine.xelisvault.io`, `http://127.0.0.1:18081`, `ws://host:18081`) + note qu'il
+  ne doit pas être vide (c'est l'adresse de service écrite on-chain).
+- **Price provider handbook** (`p` / `provider_guide`) : quoi est un provider, comment s'en
+  préparer, comment le keeper marche, règles de santé (hard_stale=500 / hb_interval=900 /
+  hb_timeout=4000), 5 astuces. + **launcher du keeper** `oracle_keeper3.py` (start/stop, pid
+  `~/.xelis-vault/keeper.pid`).
+- **Actions menu** (`m`) : register guidé (endpoint + mask + stake demandé, défaut = MIN_STAKE),
+  heartbeat, increase stake, enable service, provider handbook, start/stop miner PoW.
+- **Nouveau panneau RELAYER (VaultChat)** sur le dashboard (whitelist, bond, fee, endpoint,
+  free tiers). Touches : `q r a s m p h`.
+
+## Fix mixer — root cause blake3 manquant
+`PrivacyMixer.deposit/withdraw` calculent `commitment = blake3(secret)` côté Python VSVM.
+**Module `blake3` N'ÉTAIT PAS installé** dans le venv → toute la logique mixer échouait.
+`~/.xelis-vault/venv/bin/pip install blake3` → 1.0.9. Test live round-trip OK (deposit
+1_000_000 → note 999900 = dépôt −0.01% fee → withdraw OK). `mixer_stats`: total_mixes=3,
+total_mixed=10005999300.
+
+## Governance reads FIXÉS (scripts/cli_backend.py)
+- `_my_addr()` cassé (`self.wallet.get_address()` → n'existe pas) → corrigé `return self.address`.
+- `_read_int()` FONDAMENTALEMENT cassé (référençait `self.p.daemon.clientRpc`, inexistant) →
+  getters réécrits avec `_storage_read("GovernanceVault", "ts"/"us_<addr>"/"sc")` :
+  `gov_total_staked` (180000000000 = 1800 VLT), `gov_user_staked` (idem), `gov_stakes_count` (12).
+- **Gouvernance élargie** : `screen_governance` + `_gov_proposals` + `_gov_propose` +
+  `gov_proposal_list` (parse `struct Proposal` 14 champs) + `gov_voting_period` (17280).
+  Live : 2 proposals parsées (yes=152865000000/183438000000, entry_id 12).
+
+## FlashLoan reads FIXÉS
+- `flashloan_liquidity(asset)` → `daemon.get_contract_balance` ; `flashloan_earned` → clé `te`.
+  Live : liquidity XEL=2100000000, earned=180000. `_read_int` n'a plus d'appelants.
+
+## Écran Airdrop REMPLACÉ par Activity export (décision owner : le contrat airdrop reste inert)
+`screen_airdrop` home → **`screen_activity`** (menu « Activity / export my txs ») + modules :
+- **`scripts/tx_ledger.py`** (nouveau, stdlib pur) : ledger append-only
+  `~/.xelis-vault/tx_history.json` (MAX_ENTRIES=5000, dédoublonnage par tx_hash),
+  `record/all_entries/stats/to_csv/to_discord_block/to_discord_tsv`.
+- `run_tx` enregistre les txs confirmées via `_record_tx` ; `OpResult` + `contract`/`entry`.
+- `_save_export` (exports vers `~/.xelis-vault/<kind>_<timestamp>.<ext>`, chmod 600) +
+  `_clipboard_copy` (pbcopy/xclip).
+- ⚠️ Pas d'endpoint RPC (wallet ni daemon) pour lister l'historique par adresse
+  (`get_transactions`/`get_history`/`get_transaction_hashes`/`get_address_transactions` →
+  METHOD_NOT_FOUND). Le ledger ne capture que les txs CLI **à l'avenir**.
+
+## Backend miner : register + enable service exposés
+- `miner_register(endpoint_url, services_mask, stake_atomic)` → chunk 15 (pubkey aléatoire
+  os.urandom, dep VLT attaché, MAX_STAKE refundé par le contrat). `miner_stake_min()` → clé `ms`.
+- `miner_enable_service(service_id)` → chunk 16.
+
+## Audit live des read-backs — TOUS VERTS (2026-08-30, daemon 18081 + wallet 18082 en ligne)
+Sonde réelle sur tous les getters d'écran : topo(268397) / balances / price(0.1986) /
+miner_stats / my_miner (admin REGISTERED, endpoint `https://cli.admin.xelis`, mask=1, rep 3002) /
+psm_reserves / amm_pools / my_vaults (9 vaults) / savings_stats / mixer_stats / flashloan_* /
+gov_* / chat_groups_count / chat_inbox / chat_relayer_status / airdrop_* . **Aucune exception**
+— plus aucun bug type `_read_int`. Les écrans vault/chat/swap/gov/mixer affichent des données réelles.
+
+## Sync déployé + launchers
+- `~/.local/bin/xvault` et `~/.local/bin/xvault-miner` lancent
+  `~/.xelis-vault/venv/bin/python ~/.xelis-vault/src/scripts/{xvault,xvault-miner}.py`.
+- Synchro faite : xvault-miner / cli_backend / xvault / tx_ledger → `~/.xelis-vault/src/scripts/`,
+  compile OK sous le venv. tui déjà synchro.
+- ⚠️ Providers oracle + keeper pas relancés depuis le redémarrage — relancer
+  `oracle_keeper3.py` (ou `xvault-miner` → p) pour réactiver le feed prix / le keeper.

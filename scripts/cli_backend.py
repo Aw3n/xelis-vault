@@ -190,10 +190,13 @@ DECIMALS = 8
 
 class OpResult:
     """Outcome of a transaction op."""
-    def __init__(self, ok: bool, tx: str = "", reason: str = ""):
+    def __init__(self, ok: bool, tx: str = "", reason: str = "",
+                 contract: str = "", entry: str = ""):
         self.ok = ok
         self.tx = tx
         self.reason = reason
+        self.contract = contract
+        self.entry = entry
 
     def __bool__(self):
         return self.ok
@@ -519,7 +522,7 @@ class Backend:
             return OpResult(False, reason=msg[:200])
         except Exception as e:
             return OpResult(False, reason=str(e)[:200])
-        return OpResult(True, tx=tx)
+        return OpResult(True, tx=tx, contract=contract_key, entry=fn)
 
     # --- PSM ---------------------------------------------------------------
 
@@ -768,6 +771,35 @@ class Backend:
                             [val_u64(vlt_amount_atomic)],
                             deposits={self.vlt_asset: {"amount": vlt_amount_atomic}})
 
+    def miner_register(self, endpoint_url: str, services_mask: int,
+                       stake_atomic: int) -> OpResult:
+        """Register this wallet as a miner with the XelisVaultMiner contract.
+
+        `miner_pubkey` is a random 32-byte hash identifying this miner's service
+        key on-chain (contract requires it non-zero on register). `stake_atomic`
+        is attached as the VLT deposit — the contract requires `>= MIN_STAKE`
+        and refunds any excess above the minimum.
+        """
+        import os
+        pubkey = os.urandom(32).hex()
+        dep = {self.vlt_asset: {"amount": stake_atomic}} if stake_atomic > 0 else {}
+        return self._invoke(
+            "XelisVaultMiner", "register_miner",
+            [val_str(endpoint_url), val_hash(pubkey), val_u8(services_mask & 0xFF)],
+            deposits=dep, max_gas=25_000_000)
+
+    def miner_stake_min(self) -> int | None:
+        """The contract's MIN_STAKE (atomic) — used as the registration default."""
+        mn = self.C("miner")
+        if not mn:
+            return None
+        v = self.daemon.read_key(mn, "ms")
+        return int(v) if isinstance(v, int) else None
+
+    def miner_enable_service(self, service_id: int) -> OpResult:
+        return self._invoke("XelisVaultMiner", "enable_service",
+                            [val_u8(service_id)], max_gas=15_000_000)
+
     # --- Faucet -------------------------------------------------------------------
 
     def faucet_distribute(self, addresses: list) -> OpResult:
@@ -805,14 +837,16 @@ class Backend:
                             [], max_gas=20_000_000)
 
     def gov_total_staked(self) -> int | None:
-        return self._read_int("GovernanceVault", "get_total_staked", [])
+        v = self._storage_read("GovernanceVault", "ts")
+        return int(v) if v is not None else None
 
     def gov_user_staked(self) -> int | None:
-        return self._read_int("GovernanceVault", "get_user_staked",
-                              [val_addr(self._my_addr())])
+        v = self._storage_read("GovernanceVault", "us_" + self._my_addr())
+        return int(v) if v is not None else None
 
     def gov_stakes_count(self) -> int | None:
-        return self._read_int("GovernanceVault", "get_stakes_count", [])
+        v = self._storage_read("GovernanceVault", "sc")
+        return int(v) if v is not None else None
 
     # --- Governor (on-chain governance) --------------------------------------
 
@@ -836,6 +870,44 @@ class Backend:
         v = self._storage_read("Governor", "pc")
         return int(v) if v is not None else None
 
+    def gov_proposal_list(self, limit: int = 20) -> list:
+        """Return proposals as parsed dicts (Proposal struct read from storage)."""
+        gov = self.C("Governor")
+        if not gov or not self.daemon:
+            return []
+        count = self.gov_count() or 0
+        out = []
+        for i in range(min(count, limit)):
+            try:
+                p = self.daemon.read_key(gov, f"p_{i}")
+            except Exception:
+                continue
+            if not isinstance(p, list):
+                continue
+            def _g(idx, cast=int):
+                try:
+                    return cast(p[idx])
+                except (IndexError, ValueError):
+                    return None
+            out.append({
+                "id": _g(0),
+                "proposer": _g(1, str),
+                "target": (_g(2, str) or "")[:16],
+                "entry_id": _g(3),
+                "description": str(_g(5) or "")[:40],
+                "start_topo": _g(6),
+                "end_topo": _g(7),
+                "yes": _g(8), "no": _g(9), "abstain": _g(10),
+                "queued": bool(_g(11)), "cancelled": bool(_g(12)),
+                "executed": bool(_g(13)),
+            })
+        out.sort(key=lambda x: (x["id"] or 0))
+        return out
+
+    def gov_voting_period(self) -> int | None:
+        v = self._storage_read("Governor", "vp")
+        return int(v) if v is not None else None
+
     # --- FlashLoan -----------------------------------------------------------
 
     def flashloan_borrow(self, asset: str, amount_atomic: int,
@@ -857,11 +929,17 @@ class Backend:
                             [val_hash(cb_hash)], max_gas=10_000_000)
 
     def flashloan_liquidity(self, asset: str) -> int | None:
-        return self._read_int("FlashLoan", "get_available_liquidity",
-                              [val_hash(asset)])
+        fl = self.C("FlashLoan")
+        if not fl:
+            return None
+        try:
+            return int(self.daemon.get_contract_balance(fl, asset) or 0)
+        except Exception:
+            return None
 
     def flashloan_earned(self) -> int | None:
-        return self._read_int("FlashLoan", "get_total_earned", [])
+        v = self._storage_read("FlashLoan", "te")
+        return int(v) if v is not None else None
 
     # --- FlashCallback -------------------------------------------------------
 
@@ -1362,4 +1440,4 @@ class Backend:
         return None
 
     def _my_addr(self) -> str:
-        return self.wallet.get_address()
+        return self.address

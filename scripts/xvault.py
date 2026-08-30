@@ -13,9 +13,11 @@ Features not yet enabled are clearly marked "coming soon".
 from __future__ import annotations
 
 import json
+import os
 import platform
 import re
 import secrets
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -193,8 +195,26 @@ def run_tx(b: Backend, fn, action: str):
     res.confirmed = ok
     res.topo = topo
     res.secs = secs
+    _record_tx(b, res, action)
     show_result(res, action)
     return res
+
+
+def _record_tx(b: Backend, res, action: str):
+    """Persist a confirmed, non-reverted tx to the local activity ledger."""
+    try:
+        import tx_ledger
+        tx_ledger.record(
+            b.address, res.tx,
+            screen="(CLI)",
+            action=action[:120],
+            description=action[:200],
+            topo=res.topo if getattr(res, "topo", None) else None,
+            contract=getattr(res, "contract", "") or "",
+            entry=getattr(res, "entry", "") or "",
+        )
+    except Exception:
+        pass
 
 
 def _friendly_error(msg: str):
@@ -769,16 +789,21 @@ def screen_faucet(b: Backend):
 # --- Governance screen ------------------------------------------------------
 
 def screen_governance(b: Backend):
+    """Staking (GovernanceVault) + on-chain protocol governance (Governor)."""
     while True:
         total = b.gov_total_staked()
         user  = b.gov_user_staked()
         count = b.gov_stakes_count()
-        sub = (f"Total staked: {b.fmt(total, 'VLT') if total else '—'}  ·  "
-               f"Your stake: {b.fmt(user, 'VLT') if user else '—'}  ·  "
-               f"Positions: {count if count is not None else '—'}")
+        nprop = b.gov_count()
+        sub = (f"Staked: {b.fmt(total, 'VLT') if total else '—'}  ·  "
+               f"You: {b.fmt(user, 'VLT') if user else '—'}  ·  "
+               f"Positions: {count if count is not None else '—'}  ·  "
+               f"Proposals: {nprop if nprop is not None else '—'}")
         opts = [("Stake VLT (voting power)", "stake"),
                 ("Unstake a position", "unstake"),
-                ("Claim rewards", "claim"),
+                ("Claim staking rewards", "claim"),
+                ("Proposals (Governor) →", "gov_list"),
+                ("Propose an action (Governor)", "gov_propose"),
                 ("Info", "info"),
                 ("Back", None)]
         choice = menu("Governance", opts, subtitle=sub)
@@ -803,14 +828,101 @@ def screen_governance(b: Backend):
         elif choice == "claim":
             if confirm("Claim governance rewards?"):
                 run_tx(b, b.gov_claim_rewards, "Claim governance rewards")
+        elif choice == "gov_list":
+            _gov_proposals(b)
+        elif choice == "gov_propose":
+            _gov_propose(b)
         elif choice == "info":
             info_box("Governance", [
                 f"Total staked:  {b.fmt(total, 'VLT') if total else '—'}",
                 f"Your stake:    {b.fmt(user, 'VLT') if user else '—'}",
                 f"Stake count:   {count if count is not None else '—'}",
+                f"Proposals:     {nprop if nprop is not None else '—'}",
                 "",
-                "Min lock: 7 days. Voting power = stake × (1 + lock boost).",
+                "Vault: min lock 7 days; voting power = stake × (1 + lock boost).",
+                "Governor: any holder with ≥ proposal-threshold voting power",
+                "can propose; quorum + approval window shown per proposal.",
             ], color=C.CYAN)
+
+
+def _gov_proposals(b: Backend):
+    """Browse on-chain proposals and act (vote / queue)."""
+    while True:
+        props = b.gov_proposal_list()
+        topo = b.topo()
+        lines = []
+        if not props:
+            lines.append(f"{C.DIM}No proposals on-chain yet.{C.RESET}")
+        for p in props:
+            status = f"{C.GREEN}ACTIVE{C.RESET}" if p.get("end_topo") and topo < p["end_topo"] \
+                     else (f"{C.YELLOW}QUEUED{C.RESET}" if p.get("queued") else
+                           f"{C.RED}ENDED{C.RESET}")
+            if p.get("executed"):
+                status = f"{C.DIM}EXECUTED{C.RESET}"
+            if p.get("cancelled"):
+                status = f"{C.RED}CANCELLED{C.RESET}"
+            left = max(0, (p["end_topo"] - topo)) if p.get("end_topo") else 0
+            lines.append(
+                f"  #{p['id']}  {status}  "
+                f"target {p.get('target','')}·{p.get('entry_id','')}"
+                f"{'  ' + p['description'] if p.get('description') else ''}"
+                f"\n      yes {b.fmt(p.get('yes',0),'VLT')}  ·  "
+                f"no {b.fmt(p.get('no',0),'VLT')}  ·  "
+                f"abstain {b.fmt(p.get('abstain',0),'VLT')}"
+                f"  ({left} bks left)")
+        body = lines or [f"{C.DIM}Loading...{C.RESET}"]
+        print()
+        print(render_panel("  PROTOCOL  PROPOSALS", body,
+                           border_color=C.CYAN, width=66))
+        print()
+        sel = menu("Proposals", [
+            ("Vote on a proposal", "vote"),
+            ("Queue an ended proposal", "queue"),
+            ("Refresh", "refresh"),
+            ("Back", None),
+        ])
+        if sel is None or sel == "refresh":
+            if sel is None:
+                return
+            continue
+        if sel == "vote":
+            sid = text_input("Proposal ID:").strip()
+            if not sid:
+                continue
+            sup = text_input("Support (1=yes, 0=no, 2=abstain):").strip() or "1"
+            try:
+                sid, sup = int(sid), int(sup)
+            except ValueError:
+                info_box("Input", [f"{C.RED}Invalid numbers.{C.RESET}"], color=C.RED)
+                continue
+            if confirm(f"Vote {'yes' if sup==1 else 'no' if sup==0 else 'abstain'} "
+                       f"on proposal #{sid}?"):
+                run_tx(b, lambda s=sid, v=sup: b.gov_vote(s, v), "Governor vote")
+        elif sel == "queue":
+            sid = text_input("Proposal ID to queue:").strip()
+            if not sid or not confirm(f"Queue proposal #{sid}?"):
+                continue
+            run_tx(b, lambda i=int(sid): b.gov_queue(i), "Governor queue")
+
+
+def _gov_propose(b: Backend):
+    """Create a new on-chain proposal targeting a contract entry."""
+    target = text_input("Target contract hash (hex):").strip().lower()
+    if len(target) != 64:
+        info_box("Input", [
+            f"{C.RED}Need a 64-char contract hash hex.{C.RESET}",
+            "Tip: see the dashboard / registry for contract hashes.",
+        ], color=C.RED)
+        return
+    eid = text_input("Entry (chunk) ID to call:").strip()
+    if not eid.isdigit():
+        info_box("Input", [f"{C.RED}Entry ID must be a number.{C.RESET}"], color=C.RED)
+        return
+    params = text_input("Call params hex (bytes, optional):").strip() or ""
+    desc = text_input("Short description:").strip()
+    if confirm(f"Propose calling entry {eid} on {target[:16]}… {desc!r}?"):
+        run_tx(b, lambda t=target, e=int(eid), p=params, d=desc:
+               b.gov_propose(t, e, p, d), "Governor propose")
 
 
 # --- Loans screen (FlashLoan / PeerLoan / Syndicate) -----------------------
@@ -1280,93 +1392,140 @@ def screen_relayer(b: Backend):
             run_tx(b, b.chat_claim_fees, "Claim relayer fees")
 
 
-# --- Airdrop screen ---------------------------------------------------------
+# --- Activity screen (transaction export for manual analysis) ----------------
 
-def screen_airdrop(b: Backend):
-    """Season / points / rank / leaderboard for the airdrop tracker."""
-    up = b.airdrop_user_points() if hasattr(b, "airdrop_user_points") else None
-    snap = b.airdrop_snapshot() if hasattr(b, "airdrop_snapshot") else None
-    rank, total = (b.airdrop_rank() if hasattr(b, "airdrop_rank") else (0, 0))
-    cats = (b.airdrop_category_totals() if hasattr(b, "airdrop_category_totals") else {})
+def screen_activity(b: Backend):
+    """View the local, structured transaction history and export it for
+    manual analysis (Discord/sheet). The on-chain airdrop tracker is unused,
+    so the CLI keeps its own ledger of every tx you perform."""
+    import tx_ledger
+    st = tx_ledger.stats()
+    topo = b.topo()
 
-    # ── Status header ──────────────────────────────────────────────────
-    lines = []
-    if snap:
-        fz = "FROZEN" if snap.get("frozen") else "LIVE"
-        fn = ("FINALIZED" if snap.get("finalized") else "OPEN")
-        tag = f"{render_badge(fz, C.YELLOW)} {render_badge(fn, C.MAGENTA)}"
-        lines.append(f"  Season status:  {tag}")
-        lines.append(f"  {render_metrics([('Users', snap.get('user_count', 0)),
-                                          ('Total points', snap.get('total_points', 0)),
-                                          ('Qualified', snap.get('qualified_count', 0)),
-                                          ('Manual cap', snap.get('manual_cap', 0))])}")
-    else:
-        lines.append(f"  {render_warn('Airdrop tracker not reachable')}")
+    # ── Header / status ────────────────────────────────────────────────
+    count = st.get("count", 0)
+    lines = [
+        f"  Wallet:  {short_addr(b.address) if b.address else st.get('wallet','—')}",
+        f"  {render_metrics([('Recorded txs', count),
+                            ('First', st.get('first_ts') or '—'),
+                            ('Last', st.get('last_ts') or '—')])}",
+        "  " + (f"{C.DIM}Every transaction you execute from this CLI is logged here "
+                f"automatically.{C.RESET}"),
+    ]
     print()
-    print(render_panel("  AIRDROP  TRACKER", lines, border_color=C.MAGENTA, width=64))
+    print(render_panel("  YOUR  ACTIVITY  (local ledger)", lines,
+                       border_color=C.CYAN, width=66))
 
-    # ── Your points ─────────────────────────────────────────────────────
-    if up:
-        cats_local = [
-            ("Mining", up.get("mining", 0)), ("Relayer", up.get("relayer", 0)),
-            ("Governance", up.get("governance", 0)), ("Chat", up.get("chat", 0)),
-            ("Liquidity", up.get("liquidity", 0)), ("Bounty", up.get("bounty", 0)),
-            ("Community", up.get("community", 0)),
-        ]
-        top = max([v for _, v in cats_local] + [1])
-        bars = []
-        for name, val in cats_local:
-            if val:
-                bars.append(f"  {name:<11} {val:>10}  {render_bar(val / top)}")
-        mine = f"{render_ok('QUALIFIED')}" if up.get("qualified") else f"{render_warn('not qualified')}"
-        rank_str = f"#{rank}/{total}" if total else "#-/-"
-        head = [f"  {render_metrics([('Total', up.get('total_raw', 0)),
-                                     ('With bonus', up.get('total_with_bonus', 0)),
-                                     ('Days active', up.get('days_active', 0)),
-                                     ('Rank', rank_str)])}  {mine}"]
-        body = head + (bars if bars else [f"  {C.DIM}No activity recorded on-chain yet.{C.RESET}"])
+    # ── Latest entries ─────────────────────────────────────────────────
+    ents = tx_ledger.all_entries(limit=8)
+    if ents:
         print()
-        print(render_panel("  YOUR  POINTS", body, border_color=C.GREEN, width=64))
+        body = []
+        for e in reversed(ents):
+            ce = (f"{e.get('contract','')}.{e.get('entry','')}").strip(".")
+            body.append(
+                f"  #{e.get('seq')}  {C.DIM}{e.get('ts_utc','')}{C.RESET}  "
+                f"{e.get('tx_hash','')[:12]}…  "
+                f"{render_badge(ce or e.get('action',''), C.MAGENTA)}")
+        print(render_panel(f"  LATEST  ({min(count,8)} shown of {count})", body,
+                           border_color=C.CYAN, width=66))
     else:
         print()
-        body = [f"  {render_warn('No points recorded for this address on-chain')}",
-                f"  {C.DIM}Points are credited directly by the protocol contracts on-chain;{C.RESET}",
-                f"  {C.DIM}the live chain shows an empty season until activity is recorded.{C.RESET}"]
-        print(render_panel("  YOUR  POINTS", body, border_color=C.GREEN, width=64))
+        body = [f"  {render_warn('No transactions recorded yet.')}",
+                f"  {C.DIM}They appear here automatically as you use the other "
+                f"screens (swap, vault, chat…).{C.RESET}"]
+        print(render_panel("  LATEST", body, border_color=C.CYAN, width=66))
 
-    # ── Category totals ─────────────────────────────────────────────────
-    if cats:
-        cats_line = "  " + "   ".join(f"{k.replace(' Points','')}={v}" for k, v in cats.items())
-        print()
-        print(render_panel("  CATEGORY TOTALS", [cats_line],
-                           border_color=C.YELLOW, width=64))
-
-    # ── Actions ─────────────────────────────────────────────────────────
+    # ── Export actions ─────────────────────────────────────────────────
     print()
-    opts = [("View top leaderboard", "lb"),
-            ("Register mainnet address", "mainnet"),
-            ("Refresh", "refresh"),
-            ("Back", None)]
-    choice = menu("Airdrop", opts)
-    if choice == "lb":
-        rows = b.airdrop_leaderboard(15) if hasattr(b, "airdrop_leaderboard") else []
-        out = []
-        if not rows:
-            out.append(f"{C.DIM}Leaderboard is empty (no users recorded).{C.RESET}")
-        for i, row in enumerate(rows, 1):
-            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(i, f"{i:>2}.")
-            q = "✓" if row.get("qualified") else "·"
-            out.append(f"  {medal} {short_addr(row['addr']):<18} "
-                       f"{row['points']:>9} pts  {q}  {row.get('mainnet') or ''}")
-        info_box(f"Leaderboard (top {len(rows)})", out, color=C.YELLOW)
-    elif choice == "mainnet":
-        ma = text_input("Mainnet address (xet:...):").strip()
-        if not ma.startswith("xet:"):
-            info_box("Input", [f"{C.RED}A mainnet address must start with xet:.{C.RESET}"],
-                     color=C.RED)
-            return
-        if confirm(f"Record mainnet address {short_addr(ma)} for this season?"):
-            run_tx(b, lambda m=ma: b.airdrop_record_mainnet(m), "Record mainnet address")
+    opts = [
+        ("Copy export block for Discord (all tx hashes)", "discord"),
+        ("Save full JSON to file", "json"),
+        ("Save CSV to file", "csv"),
+        ("Copy raw list of tx hashes (one per line)", "raw"),
+        ("Where do you send this?", "help"),
+        ("Back", None),
+    ]
+    choice = menu("Export activity", opts)
+    if choice is None:
+        return
+    if choice == "discord":
+        block = tx_ledger.to_discord_block(b.address)
+        if _clipboard_copy(block):
+            info_box("Copied to clipboard", [
+                "Paste it directly in the Discord channel. It contains one",
+                "row per transaction: seq, timestamp, full tx hash, contract.entry",
+                "action and block height.",
+                "",
+                f"{C.DIM}{block[:400]}{C.RESET}",
+            ], color=C.GREEN)
+        else:
+            info_box("Discord export block", block.splitlines(),
+                     color=C.GREEN)
+    elif choice == "json":
+        path = _save_export("activity", "json", tx_ledger.dump_json(b.address))
+        info_box("Saved", [f"{C.GREEN}Ledger JSON written to:{C.RESET}", str(path)],
+                 color=C.GREEN)
+    elif choice == "csv":
+        path = _save_export("activity", "csv", tx_ledger.to_csv(b.address))
+        info_box("Saved", [f"{C.GREEN}CSV written to:{C.RESET}", str(path)],
+                 color=C.GREEN)
+    elif choice == "raw":
+        raw = "\n".join(e.get("tx_hash", "") for e in tx_ledger.all_entries(b.address))
+        if _clipboard_copy(raw):
+            info_box("Copied to clipboard", [
+                f"Copied {len(raw.splitlines())} transaction hash(es).",
+                "Paste them in Discord — the team will look each one up on-chain.",
+            ], color=C.GREEN)
+        else:
+            info_box("Tx hash list", [raw or "(none yet)"], color=C.GREEN)
+    elif choice == "help":
+        info_box("How this works", [
+            "The on-chain airdrop tracker is not populated (the contracts do",
+            "not credit it), so this CLI keeps its OWN history of every",
+            "transaction you perform here.",
+            "",
+            "• Run your activity (swap, vault, mixer, chat, governance…).",
+            "• Come back here and export 'for Discord' or copy the raw hashes.",
+            "• Send it in the Discord channel; we'll analyse each tx on-chain",
+            "  (block explorer hash lookup) and tally your participation.",
+            "",
+            f"{C.YELLOW}Tip: use this wallet consistently so your whole testnet",
+            f"journey is attributable to one address.{C.RESET}",
+        ], color=C.CYAN)
+
+
+def _save_export(kind: str, ext: str, content: str):
+    """Write an export file next to the ledger and return its path."""
+    import tx_ledger
+    import time as _t
+    fname = f"{kind}_{_t.strftime('%Y%m%d_%H%M%S')}.{ext}"
+    path = tx_ledger.LEDGER_DIR / fname
+    tx_ledger.LEDGER_DIR.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+    try:
+        os.chmod(path, 0o600)
+    except Exception:
+        pass
+    return path
+
+
+def _clipboard_copy(text: str) -> bool:
+    """Copy text to the system clipboard. Returns False if unavailable."""
+    try:
+        import shutil
+        if shutil.which("pbcopy"):          # macOS
+            p = subprocess.run(["pbcopy"], input=text.encode(),
+                               capture_output=True, timeout=5)
+            return p.returncode == 0
+        if shutil.which("xclip"):           # Linux
+            p = subprocess.run(["xclip", "-selection", "clipboard"],
+                               input=text.encode(), capture_output=True,
+                               timeout=5)
+            return p.returncode == 0
+    except Exception:
+        pass
+    return False
 
 
 # --- Miner tools screen -----------------------------------------------------
@@ -1603,7 +1762,7 @@ def main():
             ("Sealed-Bid Auctions", lambda: screen_auctions(b)),
             ("Encrypted Chat", lambda: screen_chat(b)),
             ("Relayer (bond / fee / claim)", lambda: screen_relayer(b)),
-            ("Airdrop tracker", lambda: screen_airdrop(b)),
+            ("Activity / export my txs", lambda: screen_activity(b)),
             ("Treasury (multisig)", lambda: screen_treasury(b)),
             ("RWA Assets", lambda: screen_rwa(b)),
             ("Miner tools", lambda: screen_miner_tools(b)),

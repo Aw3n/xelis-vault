@@ -849,3 +849,44 @@ gov_* / chat_groups_count / chat_inbox / chat_relayer_status / airdrop_* . **Auc
   compile OK sous le venv. tui déjà synchro.
 - ⚠️ Providers oracle + keeper pas relancés depuis le redémarrage — relancer
   `oracle_keeper3.py` (ou `xvault-miner` → p) pour réactiver le feed prix / le keeper.
+
+# ✅ v12R-11 — Runtime DÉSYNCHRONISÉ (cause de la plupart des bugs CLI) + fixes verrouillés (2026-08-30)
+
+## 🚨 Résultat clé : le runtime déployé tournait sur du code STALE
+`~/.local/bin/xvault` lance `~/.xelis-vault/src/scripts/xvault.py` — mais ces copies
+déployées de `xvault.py` et `cli_backend.py` étaient **en retard sur le repo** (les
+fixes flashloan/vault n'avaient pas été re-synchronisées). C'est la cause la plus
+probable des « plein de bugs… pas que le mixer » remontés par l'utilisateur.
+Diff confirmé : le runtime contenait encore `_read_int` (cassé), `vinfo['collateral']`
+(crash None), et `debt = b.vault_get(vid_i).get(...)` faillible.
+**=> re-synchronisé** `xvault.py` + `cli_backend.py` repo → `~/.xelis-vault/src/scripts/`
+, compile OK sous le venv, smoke live OK.
+
+## Bugs réels trouvés + verrouillés cette session
+1. **blake3 manquant** dans le venv runtime → mixer cassé (root cause du mixer).
+   `pip install blake3` → 1.0.9. Live OK.
+2. **`_read_int` fondamentalement cassé** dans cli_backend (référence `self.p.daemon`,
+   inexistant) → `screen_flashloan` fee toujours « — ». Remplacé par
+   `flashloan_fee_bps()` (clé `fb`, live=9). `_read_int` supprimé (0 appelants).
+3. **`screen_vault` None-contamination** : `vinfo['collateral']` → `(vinfo or {})` ;
+   `debt` protégé par garde None (crash si `vault_get` → None).
+
+## Verification live (chaîne canonique, daemon 18081 + wallet admin 18082)
+- **Sweep render 18/18 écrans** sans crash (headers/statuts sur données réelles ;
+  l'unique « crash » = `clear()` sur non-TTY du harness, pas un bug). => écrans OK.
+- **Round-trips écritures non destructeurs, TOUS PASS** : mixer deposit→note→withdraw,
+  savings deposit→withdraw, flashloan fund→borrow (cb_hash=FlashCallback),
+  AMS swap, VaultChat register+message, PSM mint (0.1 XEL) + redeem, et
+  **vault full cycle** deposit(0.2)→borrow(0.0159 xUSD, vault #10)→repay→withdraw.
+  Confirm+revert_reason sur chaque tx.
+- ⚠️ Limites connues (non-bugs code) : peerloan/syndicate/auction nécessitent un 2e
+  wallet (non testables live ici) ; maturité xUSD ~70 topos > timeout shell (faire
+  les waits en timeouts longs) ; ledger ne capture que les txs CLI à l'avenir
+  (pas de RPC d'énumération par adresse).
+
+## À FAIRE si de nouveaux bogues remontent
+1. Vérifier d'abord que `~/.xelis-vault/src/scripts/{xvault,cli_backend}.py` == repo
+  (`diff`). C'était la cause n°1.
+2. Vérifier `blake3`/`requests`/`cryptography` présents dans le venv (rich est
+  optionnel, fallback ANSI).
+3. Puis chercher des bugs *logiques* dans les screens (type None-contamination).

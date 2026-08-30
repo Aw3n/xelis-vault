@@ -941,6 +941,11 @@ class Backend:
         v = self._storage_read("FlashLoan", "te")
         return int(v) if v is not None else None
 
+    def flashloan_fee_bps(self) -> int | None:
+        """FlashLoan fee in basis points (storage key `fb`)."""
+        v = self._storage_read("FlashLoan", "fb")
+        return int(v) if v is not None else None
+
     # --- FlashCallback -------------------------------------------------------
 
     def flashcb_fund(self, asset: str, amount_atomic: int) -> OpResult:
@@ -1412,32 +1417,6 @@ class Backend:
             return self.daemon.read_key(contract, key_str)
         except Exception:
             return None
-
-    def _read_int(self, contract_key: str, fn: str, params) -> int | None:
-        contract = self.C(contract_key)
-        chunk = CHUNKS.get(contract_key, {}).get(fn)
-        if not contract or chunk is None:
-            return None
-        try:
-            topo = self.p.daemon.get_topo()
-            r = self.p.daemon.clientRpc.json_rpc(
-                "get_contract_data",
-                {"contract": contract,
-                 "topoheight": topo,
-                 "key": {"type": "map", "value": {
-                     "key": val_u64(chunk),
-                     "value": {"type": "map", "value": {
-                         "key": {"type": "bytes", "value": ""},
-                         "value": {"type": "primitive",
-                                   "value": {"type": "u64", "value": "0"}}
-                     }}
-                 }}
-                })
-            if "result" in r:
-                return None
-        except Exception:
-            return None
-        return None
 
     def _my_addr(self) -> str:
         return self.address

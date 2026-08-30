@@ -410,7 +410,7 @@ def screen_vault(b: Backend):
                 info_box("Cannot borrow that much", [
                     f"{C.RED}Max borrowable is {b.fmt(maxb, 'xUSD')}{C.RESET}",
                     "",
-                    f"Collateral {b.fmt(vinfo['collateral'], 'XEL')} at "
+                    f"Collateral {b.fmt((vinfo or {}).get('collateral'), 'XEL')} at "
                     f"${b.price_usd():,.4f} → 200% min ratio allows "
                     f"{b.fmt(maxb, 'xUSD')} of total debt.",
                 ], color=C.RED)
@@ -423,7 +423,8 @@ def screen_vault(b: Backend):
                 vid_i = int(vid)
             except ValueError:
                 continue
-            debt = b.vault_get(vid_i).get("borrow_amount") if hasattr(b, "vault_get") else 0
+            debt = b.vault_get(vid_i).get("borrow_amount") if (
+                hasattr(b, "vault_get") and b.vault_get(vid_i)) else 0
             if not debt:
                 debt = 0
             default = f"{debt / 10**DECIMALS:.6f}".rstrip("0").rstrip(".") if debt else "10"
@@ -949,7 +950,7 @@ def screen_flashloan(b: Backend):
     while True:
         liq = b.flashloan_liquidity(b.xel_asset)
         earned = b.flashloan_earned()
-        fee = b._read_int("FlashLoan", "get_fee_bps", [])
+        fee = b.flashloan_fee_bps()
         sub = (f"Liquidity: {b.fmt(liq, 'XEL') if liq else '—'}  ·  "
                f"Earned: {b.fmt(earned, 'XEL') if earned else '—'}  ·  "
                f"Fee: {fee or '—'} bps")

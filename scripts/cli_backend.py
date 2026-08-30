@@ -162,6 +162,7 @@ CHUNKS = {
                           "set_relayer": 20, "set_relayer_fee": 51,
                           "claim_relayer_fees": 56, "stake_relayer_bond": 121,
                           "register_as_relayer": 66,
+                          "update_relayer_endpoint": 119,
                           "send_direct_message": 113, "get_session": 13,
                           "get_group": 14, "is_active": 16,
                           "get_last_anchor": 17, "get_groups_count": 18},
@@ -1175,6 +1176,11 @@ class Backend:
                             [val_str(endpoint), val_u64(max_fee), val_u64(max_msgs)],
                             max_gas=20_000_000)
 
+    def chat_update_endpoint(self, endpoint: str) -> OpResult:
+        """Change the relayer's registered public endpoint (chunk 119)."""
+        return self._invoke("VaultChat", "update_relayer_endpoint",
+                            [val_str(endpoint)], max_gas=15_000_000)
+
     def chat_set_fee(self, token: int, fee: int) -> OpResult:
         return self._invoke("VaultChat", "set_relayer_fee",
                             [val_u64(fee), val_u8(token)],
@@ -1398,6 +1404,47 @@ class Backend:
                 "free_daily_limit": parts[1] if len(parts) > 1 else "",
                 "free_wallet_slots": parts[2] if len(parts) > 2 else "",
             }
+        return out
+
+    def chat_relayers_list(self) -> list:
+        """Enumerate all registered relayers on-chain.
+
+        The contract keeps a registry: rlregc = count, rlreg_idx_<i> = the
+        relayer's address, rlreg_<addr> = "endpoint|free_daily_limit|free_wallet_slots".
+        Returns a list of dicts, newest first.
+        """
+        vc = self.C("VaultChat")
+        if not vc or not self.daemon:
+            return []
+        def r(key):
+            try:
+                return self.daemon.read_key(vc, key)
+            except Exception:
+                return None
+        count = int(r("rlregc")) if isinstance(r("rlregc"), int) else 0
+        out = []
+        for i in range(count):
+            addr = r(f"rlreg_idx_{i}")
+            if not addr or not isinstance(addr, str):
+                continue
+            reg = r("rlreg_" + addr)
+            details = {"addr": addr, "endpoint": "", "free_daily_limit": 0,
+                       "free_wallet_slots": 0,
+                       "bond": 0, "fee": 0, "token": 0}
+            if isinstance(reg, str) and "|" in reg:
+                p = reg.split("|")
+                details["endpoint"] = p[0]
+                details["free_daily_limit"] = int(p[1]) if p[1].isdigit() else p[1]
+                details["free_wallet_slots"] = int(p[2]) if len(p) > 2 and p[2].isdigit() else (p[2] if len(p) > 2 else 0)
+            bnd = r("rbond_" + addr)
+            fee = r("rfee_" + addr)
+            tok = r("rtok_" + addr)
+            details["bond"] = int(bnd) if isinstance(bnd, int) else (int(bnd[0]) if isinstance(bnd, list) and bnd else 0)
+            details["fee"] = int(fee) if isinstance(fee, int) else (int(fee[0]) if isinstance(fee, list) and fee else 0)
+            details["token"] = int(tok) if isinstance(tok, int) else (int(tok[0]) if isinstance(tok, list) and tok else 0)
+            out.append(details)
+        # newest first (registry is append-only, last index = newest)
+        out.reverse()
         return out
 
     def _air_read_relay(self, vc: str, key: str):

@@ -1049,3 +1049,71 @@ PID, health-check HTTP 12s), `stop_relayer()`, `relayer_health()`. Config
 - Syncé vers `~/.xelis-vault/src/scripts/`, compile OK.
 - ⚠️ Infra : miner relancé (fichier log fixé), wallet admin relancé avec
   `--network testnet`.
+
+# ✅ v12R-16 — Relayer PUBLIC GRATUIT (tunnel Cloudflare) + liste des relayers on-chain (2026-08-30)
+
+## Le relayer est maintenant accessible PUBLIQUEMENT, gratuitement
+Le « vrai serveur relayer » (relayer_server.py, v12R-15) qui tournait sur
+127.0.0.1:18444 est désormais exposé sur Internet **sans frais** via un
+**Cloudflare quick tunnel** (aucun compte, aucun domaine, URL `*.trycloudflare.com`).
+- **cloudflared installé** : `brew install cloudflared` → `/opt/homebrew/opt/cloudflared/bin/cloudflared` (2026.8.2, arm64).
+- Tunnel lancé : `cloudflared tunnel --no-autoupdate --url http://127.0.0.1:18444`.
+- URL publique actuelle : **`https://field-nitrogen-signing-valley.trycloudflare.com`**
+  → `/health` répond `{"ok":true,...}` et `/status` remonte topo+relayer_account.
+  Vérifié **de l'extérieur** (curl) — joignable où que tu sois dans le monde, gratuit.
+- ⚠️ Compromis quick tunnel : l'URL change à chaque redémarrage du tunnel. Pour une URL
+  stable, il faudrait Cloudflare Tunnel + domaine (pas choisi — « toutes les solutions gratuites »).
+
+## Endpoint on-chain de l'admin relayer mis à jour (vraie URL)
+- Le registre on-chain pointait sur le FAUX `https://relay.xelisvault.io`.
+- Ajout de `update_relayer_endpoint` = **chunk 119** (069/CHUNKS VaultChat) + méthode
+  Backend `chat_update_endpoint(endpoint)` qui l'invoque.
+- Exécuté : admin relayer endpoint on-chain = **`https://field-nitrogen-signing-valley.trycloudflare.com`**
+  (confirmé via `chat_relayer_status().registered.endpoint`). free 100 msg/day · 1000 slots.
+  ⚠️ Ne PAS utiliser `register_as_relayer` (chunk 66) pour re-changer : revert `alreadyreg`.
+  Toujours `update_relayer_endpoint` (chunk 119).
+
+## Liste des relayers on-chain (registry énumérable) — le contrat gère un index
+Le VaultChat garde un **registre énumérable** de relayers :
+- `rlregc` = compteur de relayers enregistrés (`RELAY_REG_COUNT_KEY`).
+- `rlreg_idx_<i>` (`RELAY_REG_PREFIX+"idx_"+i`) = adresse du i-ème relayer.
+- `rlreg_<addr>` = `endpoint|free_daily_limit|free_wallet_slots` + `rbond_/rfee_/rtok_`.
+- Nouvelle méthode Backend **`chat_relayers_list()`** : parcourt `rlregc` indexes, lit
+  adresse + détails + bond/fee/token, retourne la liste (plus récent en premier).
+- Live : **2 relayers** énumérés — admin (`czr9q8k5xl…`, endpoint trycloudflare,
+  free 100/1000, fee 1 XEL=100000000 tok 0) et `wt7jj6xfr4cq…` (`relayer2.vaultchat.test`,
+  free 10/5, fee 0.001 XEL). L'énumération complète on-chain est donc POSSIBLE
+  (pas besoin de ledger off-chain).
+
+## Intégration CLI (xvault.py screen_relayer)
+- **Status panel** : + lignes « PUBLIC (tunnel up) » + URL publique cyan + topo/anchors/
+  outbox (via `onboarding.relayer_tunnel_status`).
+- **Nouvelles options** :
+  - **« Expose publicly (free tunnel + register URL on-chain) »** → `onboarding.start_relayer_public`
+    = start_relayer + start_tunnel + attend l'URL + `chat_update_endpoint(url)` auto.
+  - **« List all relayers (on-chain registry sync) »** → `_list_all_relayers(b)` affiche
+    panneau de tous les relayers (endpoint/free/bond/fee), plus récent d'abord.
+  - « Stop » stoppe maintenant relayer **et** tunnel.
+- `_list_all_relayers()` helper : court_addr + endpoint + free msg/slots + bond VLT + fee.
+
+## Gestion tunnel (onboarding.py)
+- `find_tunnel_binary()` (Homebrew puis PATH), `tunnel_running()`, `tunnel_url()`
+  (regex `trycloudflare.com` depuis `logs/relayer-tunnel.log`), `start_tunnel(cfg)`
+  (Popen détaché, PID `relayer/tunnel.pid`, poll URL 25s), `stop_tunnel()`,
+  `relayer_tunnel_status(cfg)` (pid relayer + pid tunnel + url + local_endpoint),
+  `start_relayer_public(cfg)` (one-shot : relayer + tunnel + update endpoint on-chain).
+- Constantes `TUNNEL_PID_FILE`, `TUNNEL_LOG`.
+
+## Validation live (chaîne canonique, daemon 18081 + wallet admin 18082)
+- `chat_relayers_list()` → 2 relayers ✓ | endpoint admin on-chain = URL trycloudflare ✓
+- `/health` public OK ✓ | `/status` public topo 271915, relayer=admin ✓
+- Runtime re-synchronisé (`cli_backend.py`, `onboarding.py`, `xvault.py` →
+  `~/.xelis-vault/src/scripts/`), compile + imports OK sous le venv.
+
+## Fichiers modifiés
+- `scripts/cli_backend.py` : CHUNKS VaultChat +`update_relayer_endpoint:119`,
+  méthodes `chat_update_endpoint`, `chat_relayers_list`.
+- `scripts/onboarding.py` : helpers tunnel + `start_relayer_public`.
+- `scripts/xvault.py` : screen_relayer (status PUBLIC + options public/list + stop 2-en-1),
+  helper `_list_all_relayers`.
+- Syncés vers `~/.xelis-vault/src/scripts/`, compile OK.

@@ -1359,29 +1359,34 @@ def screen_chat(b: Backend):
 # --- Miner tools screen -----------------------------------------------------
 
 def _relayer_server_status(cfg) -> list:
-    """Returns render lines for the local relayer daemon running state."""
+    """Returns render lines for the local relayer daemon + tunnel running state."""
     import onboarding
-    pid = onboarding.relayer_running()
-    if pid:
-        health = onboarding.relayer_health(cfg)
-        host = cfg.get("relayer_host") or "127.0.0.1"
-        port = int(cfg.get("relayer_port") or onboarding.RELAYER_DEFAULT_PORT)
+    st = onboarding.relayer_tunnel_status(cfg.data)
+    lines = []
+    if st["relayer_pid"]:
+        health = onboarding.relayer_health(cfg.data)
         badge = render_ok("RUNNING") if health else render_warn("STARTING")
-        lines = [f"  {badge}  (pid {pid})",
-                 f"  {render_metrics([('HTTP', f'{host}:{port}'),
-                                      ('anchoring', 'enabled' if cfg.get('relayer_anchor', True) else 'off')])}"]
-        if health:
-            try:
-                import json as _json
-                import urllib.request
-                with urllib.request.urlopen(f"http://{host}:{port}/status", timeout=4) as resp:
-                    s = _json.loads(resp.read())
-                lines.append(f"  {C.DIM}topo {s.get('topo')} · anchors {s.get('anchors_submitted')} "
-                             f"· outbox {len(s.get('outbox_new', []) or [])}{C.RESET}")
-            except Exception:
-                pass
+        lines.append(f"  {badge}  relayer (pid {st['relayer_pid']}) · "
+                     f"{st['local_endpoint']}")
     else:
-        lines = [f"  {render_warn('NOT RUNNING')}  {C.DIM}(use 'Install & launch relayer' below){C.RESET}"]
+        lines.append(f"  {render_warn('NOT RUNNING')}  {C.DIM}(use 'Install & launch relayer' below){C.RESET}")
+    if st["tunnel_pid"]:
+        badge = render_ok("PUBLIC") if st["url"] else render_warn("STARTING")
+        lines.append(f"  {badge}  tunnel (pid {st['tunnel_pid']})")
+        if st["url"]:
+            lines.append(f"  {C.CYAN}https://{st['url'].split('//')[1]}{C.RESET}  {C.DIM}(public — reachable worldwide){C.RESET}")
+    else:
+        lines.append(f"  {render_hint('local only')}  {C.DIM}tunnel off — use 'Expose publicly'{C.RESET}")
+    if st["relayer_pid"] and health:
+        try:
+            import json as _json
+            import urllib.request
+            with urllib.request.urlopen(f"http://{st['local_endpoint']}/status", timeout=4) as resp:
+                s = _json.loads(resp.read())
+            lines.append(f"  {C.DIM}topo {s.get('topo')} · anchors {s.get('anchors_submitted')} "
+                         f"· outbox {len(s.get('outbox_new', []) or [])}{C.RESET}")
+        except Exception:
+            pass
     return lines
 
 
@@ -1416,6 +1421,34 @@ def _relayer_guide():
     ], color=C.CYAN)
 
 
+def _list_all_relayers(b: Backend):
+    """Enumerate every registered relayer on-chain and print them (registry sync)."""
+    rls = b.chat_relayers_list()
+    if not rls:
+        info_box("Relayers (on-chain)", ["No registered relayers found on-chain."],
+                 color=C.YELLOW)
+        return
+    lines = [f"{C.BOLD}{len(rls)} relayer(s) registered on-chain, newest first :{C.RESET}", ""]
+    for i, r in enumerate(rls, 1):
+        ep = r.get("endpoint") or "—"
+        lines.append(f"{C.CYAN}{i}.{C.RESET} {short_addr(r.get('addr', ''))}")
+        lines.append(f"   endpoint  {C.DIM}{ep}{C.RESET}")
+        lines.append(f"   free      {r.get('free_daily_limit')} msg/day · "
+                     f"{r.get('free_wallet_slots')} slots")
+        tokname = "XEL" if int(r.get("token") or 0) == 0 else "VLT"
+        fee = int(r.get("fee") or 0)
+        fee_txt = f"{fee/10**DECIMALS:g} {tokname}/msg" if fee else "0 (no fee)"
+        lines.append(f"   bond {b.fmt(r.get('bond', 0), 'VLT')} · fee {fee_txt}")
+        lines.append("")
+    print()
+    print(render_panel("  RELAYERS  ON-CHAIN  (registry)", lines,
+                       border_color=C.MAGENTA, width=64))
+    host = short_addr(b.address)
+    print(f"  {C.DIM}Your address {host} — use 'Expose publicly' to keep the registry "
+          f"endpoint pointing at a live server.{C.RESET}")
+    print()
+
+
 def screen_relayer(b: Backend):
     """Interactive Relayer manager: on-chain ops + local daemon + help."""
     import onboarding
@@ -1446,6 +1479,8 @@ def screen_relayer(b: Backend):
 
     opts = [
         ("Install & launch relayer (run relayer_server.py)", "launch"),
+        ("Expose publicly (free tunnel + register URL on-chain)", "public"),
+        ("List all relayers (on-chain registry sync)", "list"),
         ("Stop relayer server", "stop"),
         ("Stake relayer bond (min 50 VLT)", "bond"),
         ("Whitelist self (admin: set_relayer)", "whitelist"),
@@ -1459,9 +1494,21 @@ def screen_relayer(b: Backend):
     if choice == "launch":
         ok, msg = onboarding.start_relayer(cfg.data)
         info_box("Relayer server", [("✅ " if ok else "⚠️ ") + msg], color=(C.GREEN if ok else C.YELLOW))
+    elif choice == "public":
+        if confirm("Start the free Cloudflare tunnel to this Mac and register the "
+                   "public URL on-chain (quick * .trycloudflare.com — changes on each restart)?"):
+            ok, msg = onboarding.start_relayer_public(cfg.data)
+            info_box("Public relayer", [("✅ " if ok else "⚠️ ") + msg],
+                     color=(C.GREEN if ok else C.YELLOW))
+    elif choice == "list":
+        _list_all_relayers(b)
     elif choice == "stop":
         ok, msg = onboarding.stop_relayer()
-        info_box("Relayer server", [msg], color=(C.GREEN if ok else C.YELLOW))
+        if ok or "not running" in msg:
+            ok2, msg2 = onboarding.stop_tunnel()
+            info_box("Relayer server", [msg, msg2], color=(C.GREEN if ok or "not running" in msg else C.YELLOW))
+        else:
+            info_box("Relayer server", [msg], color=(C.YELLOW))
     elif choice == "help":
         _relayer_guide()
     elif choice == "bond":

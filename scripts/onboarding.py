@@ -759,6 +759,147 @@ def stop_relayer() -> tuple[bool, str]:
         return False, f"could not stop pid {pid}: {e}"
 
 
+# ---------------------------------------------------------------------------
+# Free public exposure — Cloudflare quick tunnel (no account, *.trycloudflare.com)
+# ---------------------------------------------------------------------------
+TUNNEL_PID_FILE = RELAYER_DIR / "tunnel.pid"
+TUNNEL_LOG = LOG_DIR / "relayer-tunnel.log"
+
+
+def find_tunnel_binary() -> Optional[str]:
+    for cand in ("/opt/homebrew/opt/cloudflared/bin/cloudflared",
+                 shutil.which("cloudflared")):
+        if cand and os.path.exists(cand):
+            return cand
+    return None
+
+
+def tunnel_running() -> Optional[int]:
+    try:
+        pid = int(TUNNEL_PID_FILE.read_text().strip())
+    except Exception:
+        return None
+    try:
+        os.kill(pid, 0)
+        return pid
+    except OSError:
+        TUNNEL_PID_FILE.unlink(missing_ok=True)
+        return None
+
+
+def tunnel_url() -> str:
+    """Return the last public URL from the tunnel log (trycloudflare.com)."""
+    try:
+        txt = TUNNEL_LOG.read_text(errors="replace")
+        import re
+        m = re.search(r"https://[a-z0-9-]+\.trycloudflare\.com", txt)
+        if m:
+            return m.group(0)
+    except Exception:
+        pass
+    return ""
+
+
+def start_tunnel(cfg) -> tuple[bool, str]:
+    """Launch a free Cloudflare quick tunnel to the local relayer endpoint."""
+    pid = tunnel_running()
+    if pid:
+        url = tunnel_url()
+        return True, f"tunnel already running (pid {pid}){(' — ' + url) if url else ''}"
+    binary = find_tunnel_binary()
+    if not binary:
+        return False, ("cloudflared not found — install with: "
+                       "brew install cloudflared")
+    port = int(cfg.get("relayer_port") or RELAYER_DEFAULT_PORT)
+    host = cfg.get("relayer_host") or "127.0.0.1"
+    RELAYER_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_file = open(TUNNEL_LOG, "ab")
+    proc = subprocess.Popen(
+        [binary, "tunnel", "--no-autoupdate", "--url",
+         f"http://{host}:{port}"],
+        stdout=log_file, stderr=log_file, **_detached_kwargs())
+    TUNNEL_PID_FILE.write_text(str(proc.pid))
+    # poll for the public URL (up to ~25s)
+    for _ in range(25):
+        time.sleep(1)
+        url = tunnel_url()
+        if url:
+            cfg_relayer_port(cfg, port)
+            return True, (f"tunnel started (pid {proc.pid}) -> {url}")
+    return True, (f"tunnel started (pid {proc.pid}) — URL not ready yet; "
+                  f"see ~/.xelis-vault/logs/relayer-tunnel.log")
+
+
+def cfg_relayer_port(cfg, port: int) -> None:
+    try:
+        cfg.data["relayer_port"] = port
+        cfg.save()
+    except Exception:
+        pass
+
+
+def stop_tunnel() -> tuple[bool, str]:
+    pid = tunnel_running()
+    if not pid:
+        return False, "tunnel is not running"
+    try:
+        os.kill(pid, 15)
+        time.sleep(2)
+        TUNNEL_PID_FILE.unlink(missing_ok=True)
+        return True, f"tunnel stopped (pid {pid})"
+    except OSError as e:
+        return False, f"could not stop pid {pid}: {e}"
+
+
+def relayer_tunnel_status(cfg) -> dict:
+    """Combined status for the CLI panel: relayer pid, tunnel pid, public URL."""
+    rpid = relayer_running()
+    tpid = tunnel_running()
+    return {
+        "relayer_pid": rpid,
+        "tunnel_pid": tpid,
+        "url": tunnel_url() if tpid else "",
+        "local_endpoint": f"{cfg.get('relayer_host') or '127.0.0.1'}:"
+                          f"{int(cfg.get('relayer_port') or RELAYER_DEFAULT_PORT)}",
+    }
+
+
+def start_relayer_public(cfg) -> tuple[bool, str]:
+    """One-shot: ensure relayer daemon + tunnel run, then sync the public URL
+    on-chain via update_relayer_endpoint."""
+    ok, msg = start_relayer(cfg)
+    if not ok:
+        return False, msg
+    ok2, msg2 = start_tunnel(cfg)
+    url = tunnel_url()
+    if ok2:
+        if not url:
+            # wait a little more
+            for _ in range(15):
+                time.sleep(1)
+                url = tunnel_url()
+                if url:
+                    break
+        if url:
+            try:
+                sys.path.insert(0, str(Path(__file__).parent))
+                from cli_backend import Backend
+                b = Backend({
+                    "rpc_url": cfg.get("rpc_url") or PUBLIC_NODE,
+                    "wallet_url": cfg.get("wallet_url"),
+                    "wallet_user": cfg.get("wallet_user") or "wallet",
+                    "wallet_pass": cfg.get("wallet_pass") or "testpass",
+                })
+                res = b.chat_update_endpoint(url)
+                return True, (f"relayer public: {url} "
+                              f"(endpoint on-chain {'updated ✓' if res.ok else 'update failed: ' + res.reason})")
+            except Exception as e:
+                return True, f"relayer public: {url} (endpoint update skipped: {e})"
+        return True, f"relayer running, tunnel URL not ready yet: {msg2}"
+    return True, f"relayer running, tunnel failed: {msg2}"
+
+
 
 def apply_bundled_contracts(cfg) -> bool:
     bundle = load_network_bundle()

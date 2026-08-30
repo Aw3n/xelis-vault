@@ -60,6 +60,21 @@ DEFAULT_DAEMONS = ["http://127.0.0.1:18081"]
 PUBLIC_NODE = "https://testnet-node.xelis.io"
 
 
+def _detached_kwargs() -> dict:
+    """subprocess kwargs that keep a child wallet/miner alive after the parent
+    (xvault) exits — essential on Windows.
+
+    On POSIX we use start_new_session (new process group/session) so the child
+    is not killed when the controlling terminal closes. On Windows we detach the
+    child from the parent console and put it in its own process group so it does
+    not receive CTRL_CLOSE_EVENT / CTRL_C_EVENT when the xvault console closes.
+    """
+    if platform.system() == "Windows":
+        import subprocess as _sp
+        return {"creationflags": _sp.DETACHED_PROCESS | _sp.CREATE_NEW_PROCESS_GROUP}
+    return {"start_new_session": True}
+
+
 # ---------------------------------------------------------------------------
 # Xelis mnemonic scheme (identical to xelis_wallet/src/mnemonics)
 # ---------------------------------------------------------------------------
@@ -267,10 +282,8 @@ def launch_wallet(binary: str, network: str, daemon_url: str, password: str,
     ]
     if seed:
         cmd += ["--seed", seed]
-    kwargs = {}
-    if platform.system() != "Windows":
-        kwargs["start_new_session"] = True
-    proc = subprocess.Popen(cmd, stdout=log_file, stderr=log_file, **kwargs)
+    proc = subprocess.Popen(cmd, stdout=log_file, stderr=log_file,
+                            **_detached_kwargs())
     return proc
 
 
@@ -627,8 +640,8 @@ def start_miner(cfg) -> tuple[bool, str]:
     cmd = [binary, "--miner-address", addr, "--daemon-address",
            daemon.replace("http", "ws", 1) if daemon.startswith("http") else daemon,
            "-n", threads, "--disable-ascii-art"]
-    kwargs = {} if platform.system() == "Windows" else {"start_new_session": True}
-    proc = subprocess.Popen(cmd, stdout=log_file, stderr=log_file, **kwargs)
+    proc = subprocess.Popen(cmd, stdout=log_file, stderr=log_file,
+                            **_detached_kwargs())
     MINER_PID_FILE.write_text(str(proc.pid))
     return True, f"miner started (pid {proc.pid}, {threads} thread(s), node: {daemon})"
 

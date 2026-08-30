@@ -798,6 +798,20 @@ def screen_faucet(b: Backend):
             if not b.address:
                 info_box("No address", ["Configure your wallet first."], color=C.RED)
                 continue
+            # Catch-22: a wallet with no XEL can't pay the network tx fee, so the
+            # faucet (which credits XEL) can't be claimed the very first time.
+            try:
+                xel_bal = b.wallet.balance(b.xel_asset)
+                fee_need = 10_000_000  # 0.1 XEL INVOKE_FEE
+                if xel_bal < fee_need:
+                    if not confirm(
+                        "Your wallet has almost no XEL, but claiming the faucet "
+                        "pays a small network fee from your own balance.\n"
+                        "You need a tiny amount of XEL to pay the first fee.\n\n"
+                        "Proceed anyway and let the chain report the fee error?"):
+                        continue
+            except Exception:
+                pass
             if confirm(f"Distribute faucet funds to {short_addr(b.address)}?"):
                 run_tx(b, lambda: b.faucet_distribute([b.address]), "Faucet distribution")
         elif choice == "info":
@@ -1738,13 +1752,24 @@ def ensure_wallet_alive(cfg: Config) -> bool:
     try:
         network = cfg.get("wallet_network", "testnet")
         daemon = cfg.get("rpc_url") or onboarding.PUBLIC_NODE
+        user = cfg.get("wallet_user", "wallet")
+        pwd = cfg.get("wallet_pass", "testpass")
         onboarding.launch_wallet(binary, network, daemon, password,
-                                 Path(wpath), port)
-        addr = onboarding.wait_for_wallet(url, ("wallet",
-                                                cfg.get("wallet_pass", "testpass")),
-                                          timeout_s=180)
-        return bool(addr)
-    except Exception:
+                                 Path(wpath), port, rpc_user=user, rpc_pass=pwd)
+        addr = onboarding.wait_for_wallet(url, (user, pwd), timeout_s=240)
+        if addr:
+            return True
+        try:
+            print(f"  {C.YELLOW}Auto-relaunched wallet did not answer on {url} "
+                  f"after 240s. See ~/.xelis-vault/logs/wallet.log{C.RESET}")
+        except Exception:
+            pass
+        return False
+    except Exception as e:
+        try:
+            print(f"  {C.RED}Auto-relaunch of wallet failed: {e}{C.RESET}")
+        except Exception:
+            pass
         return False
 
 

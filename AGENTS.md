@@ -949,3 +949,43 @@ l'écran se redessinait par-dessus.
   proprement, `topo()` appelé 1 seule fois ⇒ la touche pressée mid-fetch est bien
   captée. `kbhit` ajouté à l'import tui dans xvault.py.
 - Syncé vers `~/.xelis-vault/src/scripts/`, compile OK sous le venv.
+
+# ✅ v12R-14 — Wallet Windows ne survivait pas + faute catch-22 du faucet (2026-08-30)
+
+## Bug commu 1 — Wallet RPC pas auto-relancé après arrêt (Windows)
+Symptôme : restart xvault → RPC 127.0.0.1:18082 jamais rétabli alors que le
+manual launch du même binaire marche.
+**Cause racine (onboarding.py)** : `launch_wallet` ne posait AUCUN `creationflags`
+sur Windows → le subprocess partage le process-group de la console parente et
+reçoit `CTRL_CLOSE_EVENT` quand la console xvault se ferme → le wallet meurt.
+**Fix** : nouveau helper module `_detached_kwargs()` — Windows =
+`creationflags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP` (enfant détaché,
+groupe isolé, survit à la fermeture console) ; POSIX = `start_new_session`
+(inchangé). Appliqué à `launch_wallet` ET au launcher miner.
+**Fix 2 (xvault.py `ensure_wallet_alive`)** : passe désormais le rpc_user/rpc_pass
+configurés à `launch_wallet` (avant hardcodés wallet/testpass) + wait 240s +
+affiche le VRAI motif d'échec au lieu de `except: return False` silencieux.
+⚠️ Note UX : pendant l'onboarding le wallet essaie d'abord 127.0.0.1:18081 avant
+le node public — comportement attendu (fallback local puis public).
+
+## Bug commu 2 — Faucet échoue BALANCE_ quand wallet a 0 XEL
+Catch-22 inhérent : le claim faucet construit une tx dont le **fee est payé par le
+wallet demandeur** → un wallet à 0 XEL ne peut payer AUCUN fee → le faucet censé
+l'amorcer est inutilisable. **Fix UX** (`screen_faucet`) : détecte
+`xel_bal < 0.1 XEL` et prévient clairement + demande confirmation explicite (au
+lieu d'exposer l'erreur RPC brute). Premier XEL à obtenir par une autre voie puis
+le faucet marche.
+
+## Question relayer (vérifiée live)
+`chat_relayer_status(admin)` = active, bond 50 VLT, endpoint
+`https://relay.xelisvault.io`, free **100 msgs/jour/user**, 1000 wallet slots,
+fee **1 XEL/msg** (⚠️ on-chain = 1 XEL, PAS 0.001 comme en v12R-8 — a été ré-set).
+VaultChat = messagerie E2E chiffrée store on-chain ; n'importe quelle adresse peut
+s'enregistrer comme relayer (bond) et échanger des messages chiffrés avec n'importe
+quelle adresse — ouvert, pas de whitelist fermée. Groupe admin créé (gc=1).
+
+## Fichiers modifiés
+- `scripts/onboarding.py` : `_detached_kwargs()` + usage dans launch_wallet/miner.
+- `scripts/xvault.py` : ensure_wallet_alive (creds config + erreur visible) ;
+  screen_faucet (avertissement catch-22 si XEL < 0.1).
+- Syncé vers `~/.xelis-vault/src/scripts/`, compile OK.

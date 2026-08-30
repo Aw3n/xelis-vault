@@ -415,22 +415,48 @@ def ensure_wallet(cfg) -> bool:
 
     if mode == "create":
         phrase = seed.split()  # exactly the words passed to --seed above
-        clear()
-        print(BANNER)
-        print(f"\n{C.GREEN}{C.BOLD}  WALLET CREATED!{C.RESET}")
-        print(f"  Address: {C.BOLD}{addr}{C.RESET}\n")
-        print(f"  {C.RED}{C.BOLD}╔══════════════════════════════════════════════════════════╗{C.RESET}")
-        print(f"  {C.RED}{C.BOLD}║  BACK UP YOUR SEED — SHOWN ONLY ONCE!                     ║{C.RESET}")
-        print(f"  {C.RED}{C.BOLD}║  Write it down on paper. Without it your funds are lost.  ║{C.RESET}")
-        print(f"  {C.RED}{C.BOLD}╚══════════════════════════════════════════════════════════╝{C.RESET}\n")
-        for i in range(0, 25, 5):
-            row = phrase[i:i + 5]
-            print("  " + "  ".join(f"{C.BOLD}{j+1:>2}.{C.RESET}{w:<12}" for j, w in
-                                    zip(range(i, i + 5), row)))
-        print()
-        typed = text_input("Type word #13 to confirm you backed it up").strip().lower()
-        if typed != phrase[12].lower():
-            print(f"  {C.YELLOW}Wrong word — remember this seed will never be shown again.{C.RESET}")
+        # Write the seed to a local (chmod 600) backup file as a safety net, so
+        # the wallet is never left unrecoverable even if the terminal display
+        # fails or the user closes the window mid-flow.
+        backup_file = None
+        try:
+            (VAULT_DIR / "seed_backup").mkdir(parents=True, exist_ok=True)
+            backup_file = VAULT_DIR / "seed_backup" / f"{network}-{addr[:12]}.seed.txt"
+            backup_file.write_text("".join(f"{i+1:>2}. {w}\n" for i, w in enumerate(phrase)))
+            backup_file.chmod(0o600)
+        except Exception:
+            backup_file = None
+
+        def _show_seed():
+            clear()
+            print(BANNER)
+            print(f"\n{C.GREEN}{C.BOLD}  WALLET CREATED!{C.RESET}")
+            print(f"  Address: {C.BOLD}{addr}{C.RESET}\n")
+            print(f"  {C.RED}{C.BOLD}╔══════════════════════════════════════════════════════════╗{C.RESET}")
+            print(f"  {C.RED}{C.BOLD}║  BACK UP YOUR SEED — SHOWN ONLY ONCE!                     ║{C.RESET}")
+            print(f"  {C.RED}{C.BOLD}║  Write it down on paper. Without it your funds are lost.  ║{C.RESET}")
+            print(f"  {C.RED}{C.BOLD}╚══════════════════════════════════════════════════════════╝{C.RESET}\n")
+            for i in range(0, 25, 5):
+                row = phrase[i:i + 5]
+                print("  " + "  ".join(f"{C.BOLD}{j+1:>2}.{C.RESET}{w:<12}" for j, w in
+                                        zip(range(i, i + 5), row)))
+            if backup_file:
+                print(f"  {C.DIM}A backup copy was saved to:{C.RESET}")
+                print(f"  {C.YELLOW}{backup_file}{C.RESET}")
+            print()
+            sys.stdout.flush()  # ensure the seed is written even on a slow/redirected console
+
+        _show_seed()
+        input("  Press Enter once you have written down all 25 words... ")
+        _show_seed()
+        # Confirm the user actually captured the seed: retry on mismatch so they
+        # can never walk away with an unrecoverable wallet.
+        while True:
+            typed = text_input("Type word #13 to confirm you backed it up").strip().lower()
+            if typed == phrase[12].lower():
+                break
+            print(f"  {C.YELLOW}That doesn't match word #13 shown above. Copy it exactly.{C.RESET}")
+            _show_seed()
         info_box("Wallet ready", [
             f"Binary : {binary}",
             f"Folder : {wdir}",
@@ -438,7 +464,7 @@ def ensure_wallet(cfg) -> bool:
             "",
             f"Wallet file password: {password}",
             "(saved in local config)",
-        ])
+        ] + (["", f"Seed backup: {backup_file}"] if backup_file else []))
     else:
         info_box("Wallet imported ✓", [f"RPC: {url}", f"Address: {addr[:34]}…"])
     return True

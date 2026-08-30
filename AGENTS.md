@@ -890,3 +890,35 @@ Diff confirmé : le runtime contenait encore `_read_int` (cassé), `vinfo['colla
 2. Vérifier `blake3`/`requests`/`cryptography` présents dans le venv (rich est
   optionnel, fallback ANSI).
 3. Puis chercher des bugs *logiques* dans les screens (type None-contamination).
+
+# ✅ v12R-12 — Fix 2 bugs commu (import json + seed jamais affichée) + infra relancée (2026-08-30)
+
+## Bug commu 1 — `xvault-miner.py` crash `NameError: json` (Windows)
+Le script utilise `json.loads`/`json.dumps` dans `Config.save/load` mais n'importait
+pas `json` → crash au `cfg.save()` dès la 1re action. **Fix: `import json`** en tête.
+Egalement syncé dans le runtime déployé.
+
+## Bug commu 2 — wallet créer : seed jamais affichée, saute direct à « Type word #13 »
+Comportement signalé sous Windows (terminal petit/lent, buffered stdout, ANSI).
+**Fix onboarding.py (bloc `mode=="create"`)** :
+- `sys.stdout.flush()` après l'affichage des 25 mots (garantit l'écriture même sur
+  console lent/redirigé).
+- Écran affiché **2 fois** (av+début) + `input("Press Enter ...")` entre les deux
+  → la seed reste à l'écran et ne peut pas être sautée.
+- Boucle de confirmation word #13 : si faux → message + ré-affichage + retry
+  (impossible de sortir sans recopier la bonne) → plus de wallet irrécupérable.
+- **Sauvegarde seed disque** : `~/.xelis-vault/seed_backup/<network>-<addr>.seed.txt`
+  (chmod 600) écrit juste après génération = filet de sécurité ; chemin affiché et
+  rappelé dans l'info final. Sécurité : fichier 600, que l'utilisateur peut supprimer.
+
+## Infra (relance vérifiée — tout tournait déjà, rien à redémarrer)
+- Keeper oracle `oracle_keeper3.py` (PID 45629, syncé au repo) en ligne : subit
+  x3, feed fg_0 à jour. Providers wallets 18086/87/88 up. Daemon topo **270010**,
+  mempool 0. Miners 8 threads (PID 3650+52596) — 2 miners redondants (perf non
+  bloquante). **Prix live $0.22225 (feed frais, topo 269993).**
+
+## Fichiers modifiés
+- `scripts/xvault-miner.py` : +`import json`.
+- `scripts/onboarding.py` : bloc create — flush seed, double affichage + pause
+  Enter, confirmation word #13 en boucle, backup seed 600 sur disque.
+- Syncé vers `~/.xelis-vault/src/scripts/` (xvault-miner, onboarding). Compile OK.

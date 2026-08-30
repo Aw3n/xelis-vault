@@ -1358,11 +1358,69 @@ def screen_chat(b: Backend):
 
 # --- Miner tools screen -----------------------------------------------------
 
+def _relayer_server_status(cfg) -> list:
+    """Returns render lines for the local relayer daemon running state."""
+    import onboarding
+    pid = onboarding.relayer_running()
+    if pid:
+        health = onboarding.relayer_health(cfg)
+        host = cfg.get("relayer_host") or "127.0.0.1"
+        port = int(cfg.get("relayer_port") or onboarding.RELAYER_DEFAULT_PORT)
+        badge = render_ok("RUNNING") if health else render_warn("STARTING")
+        lines = [f"  {badge}  (pid {pid})",
+                 f"  {render_metrics([('HTTP', f'{host}:{port}'),
+                                      ('anchoring', 'enabled' if cfg.get('relayer_anchor', True) else 'off')])}"]
+        if health:
+            try:
+                import json as _json
+                import urllib.request
+                with urllib.request.urlopen(f"http://{host}:{port}/status", timeout=4) as resp:
+                    s = _json.loads(resp.read())
+                lines.append(f"  {C.DIM}topo {s.get('topo')} · anchors {s.get('anchors_submitted')} "
+                             f"· outbox {len(s.get('outbox_new', []) or [])}{C.RESET}")
+            except Exception:
+                pass
+    else:
+        lines = [f"  {render_warn('NOT RUNNING')}  {C.DIM}(use 'Install & launch relayer' below){C.RESET}"]
+    return lines
+
+
+def _relayer_guide():
+    info_box("Relayer — guide (read me)", [
+        f"{C.BOLD}Qu'est-ce qu'un relayer VaultChat ?{C.RESET}",
+        "Un compte (avec un bond de 50 VLT) autorisé à relayer les messages",
+        "chiffrés et à ancrer les lots sur la chaîne pour gagner du VLT. Il",
+        "expose aussi un serveur que les clients interrogent (inbox/groupes).",
+        "",
+        f"{C.BOLD}Étapes pour devenir relayer (dans l'ordre) :{C.RESET}",
+        f"  1. {C.CYAN}Stake relayer bond{C.RESET}  — déposer min 50 VLT en garantie.",
+        f"  2. {C.CYAN}Whitelist self{C.RESET}     — admin marque l'adresse comme relayer.",
+        f"  3. {C.CYAN}Register relayer{C.RESET}   — annonce endpoint + quotas gratuits.",
+        f"  4. {C.CYAN}Set relayer fee{C.RESET}    — frais au-delà du quota gratuit.",
+        f"  5. {C.CYAN}Install & launch relayer{C.RESET} — démarre le vrai serveur local.",
+        "",
+        f"{C.BOLD}Champs de 'Register relayer' :{C.RESET}",
+        "  Endpoint url  — l'adresse publique du serveur de relais. Pour un",
+        "                 serveur local: http://127.0.0.1:18444 (ce que lance",
+        "                 ce CLI). Un vrai nom de domaine si tu l'exposes.",
+        "  Free msg/day  — messages gratuits par jour et par utilisateur (<=1000).",
+        "  Free slots    — nombre de wallets servis gratuitement (<=10000).",
+        f"  Fee token     — 0 = XEL, 1 = VLT.",
+        f"  Fee (atomic)  — frais par message au-delà du gratuit. Ex: 100000="
+        f"{C.DIM}0.001{C.RESET}, 100000000=1.",
+        f"Bond 50 VLT = 5000000000 atomiques (VLT a {DECIMALS} décimales).",
+        "",
+        f"{C.GRAY}Le daemon relayer (relayer_server.py) fait la synchro on-chain,",
+        f"répond sur l'endpoint HTTP et ancré les messages en lot pour gagner",
+        f"les récompenses. PID/logs: ~/.xelis-vault/relayer/ + logs/relayer.log.{C.RESET}",
+    ], color=C.CYAN)
+
+
 def screen_relayer(b: Backend):
-    """Interactive Relayer manager: status panel + actions."""
+    """Interactive Relayer manager: on-chain ops + local daemon + help."""
+    import onboarding
+    cfg = Config()
     r = b.chat_relayer_status()
-    topo = b.topo()
-    st = b.chat_relayer_status
     if not r:
         r = {}
     token_name = {0: "XEL", 1: "VLT"}.get(r.get("token"), "XEL")
@@ -1379,34 +1437,49 @@ def screen_relayer(b: Backend):
         f"  {C.DIM}Registration:{C.RESET}  {reg_txt}",
     ]
     print()
-    print(render_panel("  RELAYER  (VaultChat)", lines, border_color=C.MAGENTA, width=64))
-    print(f"  {C.DIM}Fee flow: messages over the free tier pay the relayer fee (default 0.001 XEL).{C.RESET}")
+    print(render_panel("  RELAYER  (VaultChat)  ·  on-chain", lines, border_color=C.MAGENTA, width=64))
+    print(render_panel("  RELAYER SERVER  (local daemon)", _relayer_server_status(cfg),
+                       border_color=C.MAGENTA, width=64))
+    print(f"  {C.DIM}Fee flow: messages over the free tier pay the relayer fee. The local daemon is"
+          f" what a real endpoint points to — 'Install & launch' runs it.{C.RESET}")
     print()
 
     opts = [
+        ("Install & launch relayer (run relayer_server.py)", "launch"),
+        ("Stop relayer server", "stop"),
         ("Stake relayer bond (min 50 VLT)", "bond"),
         ("Whitelist self (admin: set_relayer)", "whitelist"),
         ("Register relayer (endpoint + free limits)", "register"),
         ("Set relayer fee", "fee"),
         ("Claim accumulated fees", "claim"),
+        ("Help / how to be a relayer", "help"),
         ("Back", None),
     ]
     choice = menu("Relayer tools", opts)
-    if choice == "bond":
+    if choice == "launch":
+        ok, msg = onboarding.start_relayer(cfg.data)
+        info_box("Relayer server", [("✅ " if ok else "⚠️ ") + msg], color=(C.GREEN if ok else C.YELLOW))
+    elif choice == "stop":
+        ok, msg = onboarding.stop_relayer()
+        info_box("Relayer server", [msg], color=(C.GREEN if ok else C.YELLOW))
+    elif choice == "help":
+        _relayer_guide()
+    elif choice == "bond":
         amt = ask_amount(b, b.vlt_asset, "VLT bond to stake (min 50):", "50")
         atomic = parse_amount(amt)
         if atomic is None:
             return
-        if confirm(f"Stake {amt} VLT as relayer bond?"):
+        if confirm(f"Stake {amt} VLT as relayer bond (min 50 = 5,000,000,000 atomic)?"):
             run_tx(b, lambda a=atomic: b.chat_stake_bond(a), "Stake relayer bond")
     elif choice == "whitelist":
         if confirm("Whitelist this address as a relayer (requires admin)?"):
             run_tx(b, lambda: b.chat_set_relayer(b.address, True),
                    "Whitelist relayer")
     elif choice == "register":
-        ep = text_input("Relayer endpoint (url):").strip() or "https://relay.xelisvault.io"
-        lim = text_input("Free messages / day / user (<=1000):").strip() or "100"
-        slots = text_input("Free wallet slots (<=10000):").strip() or "1000"
+        ep = text_input("Relayer endpoint url (public address of your relay "
+                        "server; local example: http://127.0.0.1:18444):").strip() or "http://127.0.0.1:18444"
+        lim = text_input("Free messages / day / user (1-1000):").strip() or "100"
+        slots = text_input("Free wallet slots (1-10000):").strip() or "1000"
         try:
             lim, slots = int(lim), int(slots)
         except ValueError:
@@ -1417,7 +1490,8 @@ def screen_relayer(b: Backend):
                    "Register relayer")
     elif choice == "fee":
         tok = text_input("Fee token (0=XEL, 1=VLT):").strip() or "0"
-        fee = text_input("Fee in atomic units (e.g. 100000 = 0.001):").strip()
+        fee = text_input("Fee in atomic units (e.g. 100000 = 0.001 XEL, "
+                         "100000000 = 1 XEL):").strip()
         if not fee:
             return
         try:

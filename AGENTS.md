@@ -989,3 +989,63 @@ quelle adresse — ouvert, pas de whitelist fermée. Groupe admin créé (gc=1).
 - `scripts/xvault.py` : ensure_wallet_alive (creds config + erreur visible) ;
   screen_faucet (avertissement catch-22 si XEL < 0.1).
 - Syncé vers `~/.xelis-vault/src/scripts/`, compile OK.
+
+# ✅ v12R-15 — Vrai serveur relayer VaultChat (daemon) + infra rétablie (2026-08-30)
+
+## Incident — le testnet s'était arrêté (~24 min)
+Symptôme : l'explorer ne produisait plus de blocs. Diagnostic : le **miner était
+mort** (crash de son logger-fichier interne : `IO Error initializing logger:
+Read-only file system (os error 30)`) → plus de hashrate → le testnet, qui dépend
+de notre hashrate, s'est gelé. Le **daemon**, lui, tournait et restait aligné.
+Fix : relancé le miner en nohup depuis `/Users/adrien/xelis` avec stdout redirigé
+vers un NOUVEAU fichier (`logs/2026-08-30.xelis-miner-fixed.log`) pour contourner
+le fichier log cassé. Chaîne reprise : 271461 → 271474 → ...
+⚠️ Le wallet admin 18082 était aussi down et refusait d'ouvrir avec
+`Network mismatch (stored: Testnet)` → il faut `--network testnet`. Relancé :
+wallet_v125 sur 18082, nonce 5475, re-sync 271461→271490. PID 62901.
+
+## Le vrai serveur relayer — `scripts/relayer_server.py` (NOUVEAU)
+Daemon complet, stdlib-only (http.server), qui transforme un compte en relayer
+VaultChat réellement opérationnel (au lieu de la simple chaîne `endpoint` on-chain) :
+- **SYNC** : lit la chaîne (inbox directes `dmsgc_/dmsg_`, relayées `msgc_/msg_`,
+  groupes `group_<gid>`) et tient un ledger dédupliqué en
+  `~/.xelis-vault/relayer/ledger.json` (seen_relayered = adresses à rescanner).
+- **SERVE** : endpoint HTTP local (défaut `127.0.0.1:18444`) :
+  `/health`, `/status`, `/inbox/<addr>`, `/groups`, `/anchor`, `POST /relay`
+  (dépose un store_message on-chain pour un tiers).
+- **ANCHOR** : `try_anchor()` regroupe ≥5 messages relayés de ≥2 expéditeurs
+  distincts → Merkle root (blake3, fallback sha256) → `anchor_messages` (chunk 11)
+  pour gagner du VLT, en respectant les limites contrat (≥300 blocs/anchors, min 5
+  msgs, min 2 senders via `--anchor-blocks`).
+- Parsing struct `Group` = [id, group_pubkey(Hash), creator(Address), created_at,
+  active] (corrigé : le groupe admin apparaît en `/groups`).
+
+## Intégration CLI (`screen_relayer` refondu)
+- Nouveaux panneaux : « RELAYER (on-chain) » + « RELAYER SERVER (local daemon) »
+  avec état RUNNING/STARTING/NOT + topo/anchors/outbox.
+- Nouvelles options : **Install & launch relayer** (lance le daemon via
+  `onboarding.start_relayer`, health-check), **Stop relayer server**, **Help**.
+- **Aide/guide** complète : qu'est-ce qu'un relayer, les 5 étapes ordonnées
+  (bond→whitelist→register→fee→launch), la signification de CHAQUE champ
+  (endpoint url, free msg/day, free slots, fee token/atomic, bond 50 VLT=5e9).
+
+## Gestion daemon (onboarding.py)
+`relayer_running()` (PID `relayer/relayer.pid` + os.kill), `start_relayer(cfg)`
+(lance `relayer_server.py` via `sys.executable` en `_detached_kwargs()`, écrit le
+PID, health-check HTTP 12s), `stop_relayer()`, `relayer_health()`. Config
+`relayer_port/relayer_host/relayer_anchor`.
+
+## Validation live (chaîne canonique, daemon 18081 + wallet admin 18082)
+- `/health`, `/status` (relayer_account=admin, topo), `/inbox/<admin>` (2 messages
+  lus on-chain), `/groups` (groupe #0 admin parsé). 
+- `start_relayer` E2E : PID lancé, health OK, stop OK — via onboarding + CLI.
+- Ledger rempli correctement ; aucun daemon résiduel (arrêt propre).
+
+## Fichiers modifiés
+- `scripts/relayer_server.py` : NOUVEAU (daemon relayer complet).
+- `scripts/onboarding.py` : +relayer_running/start_relayer/stop_relayer/
+  relayer_health.
+- `scripts/xvault.py` : screen_relayer refondu (server status + launch/stop/help).
+- Syncé vers `~/.xelis-vault/src/scripts/`, compile OK.
+- ⚠️ Infra : miner relancé (fichier log fixé), wallet admin relancé avec
+  `--network testnet`.

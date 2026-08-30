@@ -670,6 +670,95 @@ def ensure_miner_configured(cfg) -> None:
             cfg.save()
 
 
+# ---------------------------------------------------------------------------
+# VaultChat relayer daemon management
+# ---------------------------------------------------------------------------
+RELAYER_DIR = VAULT_DIR / "relayer"
+RELAYER_PID_FILE = RELAYER_DIR / "relayer.pid"
+RELAYER_SCRIPT = Path(__file__).parent / "relayer_server.py"
+RELAYER_DEFAULT_PORT = 18444
+
+
+def relayer_running() -> Optional[int]:
+    try:
+        pid = int(RELAYER_PID_FILE.read_text().strip())
+    except Exception:
+        return None
+    try:
+        os.kill(pid, 0)
+        return pid
+    except OSError:
+        RELAYER_PID_FILE.unlink(missing_ok=True)
+        return None
+
+
+def relayer_health(cfg, port: Optional[int] = None) -> bool:
+    port = port or int(cfg.get("relayer_port") or RELAYER_DEFAULT_PORT)
+    try:
+        import urllib.request
+        host = cfg.get("relayer_host") or "127.0.0.1"
+        with urllib.request.urlopen(f"http://{host}:{port}/health",
+                                    timeout=4) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def start_relayer(cfg) -> tuple[bool, str]:
+    """Launch the VaultChat relayer daemon (relayer_server.py) detached."""
+    pid = relayer_running()
+    if pid:
+        return True, f"relayer already running (pid {pid})"
+    if not RELAYER_SCRIPT.exists():
+        return False, (f"relayer_server.py not found at {RELAYER_SCRIPT} — "
+                       "re-sync your scripts to ~/.xelis-vault/src/scripts/")
+    if not cfg.get("wallet_url"):
+        return False, "no wallet configured — configure a wallet first"
+
+    daemon = cfg.get("rpc_url") or PUBLIC_NODE
+    wallet_user = cfg.get("wallet_user") or "wallet"
+    wallet_pass = cfg.get("wallet_pass") or "testpass"
+    port = int(cfg.get("relayer_port") or RELAYER_DEFAULT_PORT)
+    host = cfg.get("relayer_host") or "127.0.0.1"
+
+    RELAYER_DIR.mkdir(parents=True, exist_ok=True)
+    log_file = open(LOG_DIR / "relayer.log", "ab")
+    cmd = [sys.executable, str(RELAYER_SCRIPT),
+           "--daemon-url", daemon,
+           "--wallet-url", cfg["wallet_url"],
+           "--wallet-user", wallet_user,
+           "--wallet-pass", wallet_pass,
+           "--host", host,
+           "--port", str(port)]
+    if not cfg.get("relayer_anchor", True):
+        cmd.append("--no-anchor")
+    proc = subprocess.Popen(cmd, stdout=log_file, stderr=log_file,
+                            **_detached_kwargs())
+    RELAYER_PID_FILE.write_text(str(proc.pid))
+
+    # health-check: wait up to ~12s for the HTTP endpoint to answer
+    for _ in range(12):
+        time.sleep(1)
+        if relayer_health(cfg, port):
+            return True, (f"relayer started (pid {proc.pid}) — endpoint "
+                          f"http://{host}:{port}")
+    return True, (f"relayer started (pid {proc.pid}) — HTTP endpoint not yet "
+                  f"up on http://{host}:{port}; check ~/.xelis-vault/logs/relayer.log")
+
+
+def stop_relayer() -> tuple[bool, str]:
+    pid = relayer_running()
+    if not pid:
+        return False, "relayer is not running"
+    try:
+        os.kill(pid, 15)
+        time.sleep(2)
+        RELAYER_PID_FILE.unlink(missing_ok=True)
+        return True, f"relayer stopped (pid {pid})"
+    except OSError as e:
+        return False, f"could not stop pid {pid}: {e}"
+
+
 
 def apply_bundled_contracts(cfg) -> bool:
     bundle = load_network_bundle()

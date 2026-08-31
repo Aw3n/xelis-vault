@@ -1260,3 +1260,74 @@ constamment à jour, et retire les points à l'admin (ça ne compte pas pour lui
   `run_daemon()` + flags `--poll-interval/--write-interval`.
 - Runtime `~/.xelis-vault/src/scripts/` synchronisé + compile OK.
 - Daemon live : PID dans `~/.xelis-vault/airdrop/daemon.pid` (nohup).
+
+# ✅ v12R-19 — Airdrop ON-CHAIN : injection des points + force-qualify auto (2026-08-31)
+
+Sur demande : « avec les calls sur le contrat airdrop testnet, écrire nous-mêmes tous
+les points dans le contrat on-chain ». Deux réponses confirmées par le contrat
+(AirdropTracker.slx, hash `ef896baa…`):
+- **OUI**, l'admin (notre wallet) est autorisé à appeler TOUTES les entries grâce à
+  `only_admin()` et `only_authorized_recorder()` (ce modificateur `return` immédiat si
+  caller == admin). → on peut écrire les points nous-mêmes.
+- **Limite structurelle** : `days_active` est calculé avec le TOPO ACTUEL
+  (`update_day_activity` = get_day(get_current_topoheight()), BLOCKS_PER_DAY=17280
+  ≈ 12,9 h/jour). Imposable d'injecter "49 jours" rétroactivement : après une
+  injection, tous ont `days_active=1`. La qualification standard exige ≥7 jours.
+
+## Décision owner
+Injecter les points actuels via `record_manual_attribution` (entry **21**, admin, cap
+50 000/appel), PUIS surveiller l'activité : le daemon ré-injecte les deltas à chaque
+cycle (chaque jour où un user a de l'activité, son `days_active` on-chain monte de 1)
+et dès qu'un user atteint **7 jours on-chain** → `force_qualify_user` (entry **58**).
+
+## Chunk indexes AirdropTracker (source: docs/entry_chunk_ids.json)
+`record_manual_attribution`=21 (`(Address, u8 cat, u64 pts, String reason)`,
+only_admin, vérifie `points <= mcap`=50000, log audit + event) |
+`force_qualify_user`=58 (`(Address, String)`, only_admin) |
+`record_mainnet_address`=22 | `freeze_points`=23 | `finalize_distribution`=25 |
+`record_manual_attribution_batch`=54 | `deduct_points`=55 | `disqualify_user`=56 |
+`revoke_force_qualification`=59.
+⚠️ `protocol.entry_id()` ne fonctionne PAS sur AirdropTracker : `entry_chunk_ids.json`
+y est indexé par chunk→{name} (pas {fn→chunk}) → passer les chunk ids en dur.
+
+## Nouveau script : `scripts/airdrop_onchain_injector.py`
+- Lit `~/.xelis-vault/airdrop/airdrop_leaderboard.json` (produit par l'indexer) +
+  un état `airdrop_inject_state.json` (`injected: {addr: {cat: pts}}` + `force_qualified`).
+- `--inject` : injecte les DELTAS (points du leaderboard - déjà injectés) de chaque
+  user/catégorie via entry 21 (découpe en chunks ≤ 48000 pour rester sous le cap).
+- `--daemon` : boucle continue (poll 60 s) — injecte les deltas au fil de l'activité,
+  lit on-chain le struct `UserPoints` (clé `user_<addr>`, `days_active`=idx 9,
+  `qualified`=idx 12), force-qualifie (entry 58) dès `days_active >= 7`. Topics/status
+  affichés (`uc/tp/qc`).
+- `--dry-run` : affiche sans txs.
+- Réutilise `protocol.Protocol` (invoke_hash + daemon.read_key du daemon local 18081).
+
+## Injecté on-chain (2026-08-31, chaîne canonique, wallet admin 18082)
+- 8 appels entry 21 : MINING vpwsdxs 4186 / mg8rm00 1973 / wt7jj6x 1973 / 6g2xx6 1973 /
+  8fhfqa 114 ; RELAYER vpwsdxs 155 ; CHAT vpwsdxs 6 / 0qz0uy 3.
+- Vérifié : `uc=6`, `tp=10 402`, `ct_1`(MINING)=10 238, `ct_2`(RELAYER)=155,
+  `ct_4`(CHAT)=9 ; `days_active` on-chain = 1 (jour courant), `qualified=False`.
+- Lecture struct validée : `user_<addr>` = [mining,relayer,gov,chat,liq,bounty,comm,
+  total_raw,total_w_bonus,days_active,last_active_day,mainnet,qualified,registered].
+
+## Deux daemons complémentaires (les deux vivants, nohup)
+- **PID 79802** `airdrop_offchain_indexer.py --resume --daemon` : scanne les nouveaux
+  blocs → met à jour le leaderboard off-chain (aucune tx, read-only RPC).
+- **PID 88321** `airdrop_onchain_injector.py --daemon --threshold 7 --poll-interval 60`
+  : lit le leaderboard → injecte les deltas on-chain → force-qualifie à 7 jours.
+  Log `~/.xelis-vault/logs/airdrop_injector_daemon.log`, PID
+  `~/.xelis-vault/airdrop/airdrop_injector_daemon.pid`. Les deux utilisent le wallet
+  admin 18082 en écriture (seul l'injecteur émet des txs → pas de conflit de nonce).
+- Comportement : l'activité continue (miners minent chaque jour, vpwsdxs relaie) fait
+  monter `days_active` on-chain sur des jours distincts → ~4 jours réels pour 7 jours
+  on-chain (17280 blocs ≈ 12,9 h). Puis `force_qualify_user` rend le user qualified.
+- Users (testnet) fourniront leur adresse mainnet via `record_mainnet_address` (entry
+  22) avant le `freeze_points`/`finalize_distribution` (l'utilisateur l'a confirmé :
+  « ils pourront la fournir eux-mêmes en interagissant avec le contrat »).
+
+## Fichiers / état
+- `scripts/airdrop_onchain_injector.py` : NOUVEAU.
+- Runtime `~/.xelis-vault/src/scripts/` synchronisé + compile OK.
+- State injection `~/.xelis-vault/airdrop/airdrop_inject_state.json`.
+- `git status` montre aussi `scripts/cli_backend.py` (M) + `scripts/chat_roster.py`
+  (??) — travaux en cours séparés (screen_chat), NON inclus dans ce commit.

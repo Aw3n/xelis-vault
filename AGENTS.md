@@ -1143,3 +1143,68 @@ Sur demande : « il faut que ça marche parfaitement sur Windows aussi » :
   l'utilisateur Windows veut relayer SA machine ; sinon, pour juste se CONNECTER à un
   relayer public, le CLI Windows utilise déjà `chat_relayers_list()` pour lister les
   relayers du contrat (voir v12R-16) — pas besoin de tunnel localement.
+
+# ✅ v12R-18 — Indexer AIRDROP OFF-CHAIN (scan rétroactif des 50000 blocs) (2026-08-31)
+
+Sur demande : construire un indexer on-chain→off-chain pour l'airdrop testnet qui
+scanne/écoute les transactions du testnet, identifie le contrat + le call ID
+(chunk/entry) pour déduire l'action, crédite des points par adresse wallet, et
+produit un fichier de classement (adresse → points par catégorie + total) —
+le plus simple possible à traiter, **rétroactif sur les ~50000 derniers blocs**.
+
+## Nouveau script : `scripts/airdrop_offchain_indexer.py` (resumable, concurrent)
+- **Stratégie** : scan rétroactif des derniers `--window` blocs (défaut 50000) via le
+  **nœud public** `https://testnet-node.xelis.io/json_rpc` (le daemon local est **pruné**
+  à topo ~275576 → ne peut lire que ~1000 blocs récents ; le nœud public remonte bien
+  jusqu'à ≥50000 blocs en arrière).
+- **Reprise (resumable)** : checkpoint JSON `~/.xelis-vault/airdrop/airdrop_index_ckpt.json`
+  (last_topo + tx_seen + by_addr + days_active) sauvegardé toutes les ~20s ; `--resume`
+  reprend là où on s'est arrêté (pas de double comptage).
+- **Concurrence** : `--workers 8` → ~35 blocs/s (50000 blocs ≈ 20-25 min). Rate-limit
+  Cloudflare (403/429/5xx) géré par retries + exponential backoff dans `rpc()`.
+- **Chemin d'extraction RPC** (validé) : `get_block_at_topoheight {topoheight}` →
+  `txs_hashes[]` + header `miner` ; `get_transaction {hash}` → `source` (ADRESSE
+  signataire du wallet = à créditer), `data.invoke_contract.{contract, entry_id,
+  parameters}`. `get_blocks`/`get_blocks_range`/etc. = **METHOD_NOT_FOUND** (pas de
+  batch → scan par bloc individuel).
+- **User-Agent OBLIGATOIRE** pour le nœud public (`urllib` plain → HTTP 403 Cloudflare).
+
+## Grille de points (carte contrat hash + chunk → catégorie + points)
+| Contrat (hash actif) | chunk | Action | Cat | Pts |
+|---|---|---|---|---|
+| any (header `miner`) | — | bloc PoW miné | MINING | 1 |
+| StakedOracle `e89bc25…` | 16 | submit_price | MINING | 1 |
+| XelisVaultMiner `6c70647…` | 21 / 15 | submit_heartbeat / register_miner | MINING | 50 / 10 |
+| VaultChat `54fbd12…` | 11 | anchor_messages | RELAYER | 10 |
+| VaultChat | 66 / 51 / 121 | register_as_relayer / set_relayer_fee / stake_relayer_bond | RELAYER | 50 / 5 / 5 |
+| VaultChat | 113 / 38 / 48 / 7 | send_direct_message / store_message / store_group_message / store_ephemeral | CHAT | 1 |
+| VaultChat | 8 / 9 | create_group / add_group_member | CHAT | 100 / 1 |
+| Governor `eb7a1ae…` | 4 / 3 | vote / propose | GOV | 50 / 500 |
+| GovernanceVault `1e0408c…` | 4 | stake | GOV | 5 |
+| VaultEngineV3 `dcefbd7…` | 17 | deposit | LIQ | 10×XEL (param0) |
+| PSM `977ddf7…` | 8 | mint | LIQ | 10×XEL (param0) |
+| VaultSwapV2 `5defc37…` | 17 | add_liquidity | LIQ | 10×XEL (param0) |
+| SavingsRate `69d7199…` | 8 | deposit | LIQ | 10×XEL (param0) |
+| PrivacyMixer `ffd504e…` | 6 | deposit | LIQ | 10×XEL (param1) |
+
+- Les actions de **config/admin** (set_registry, set_relayer, updates, deploy…) N'ont PAS
+  de règle → ignorées (pas de points). Vieux hash antérieurs (VaultChat `5904a314…`/
+  `73f7b78b…`, VE3 `844cab73…`, PrivacyMixer `d54cc19b…`/`d384649c…`, Governor
+  `608eec92…`/`8d22d5cf…`, Faucet `0169707c…`…) mappés via `LEGACY_HASHES`.
+
+## Sorties
+- `~/.xelis-vault/airdrop/airdrop_leaderboard.json` : classement (rank, address,
+  categories par catégorie, total, cat_count, days_active, qualified, share),
+  total_all, qualified_users, category_totals (1=MINING..7=COMMUNITY).
+- `~/.xelis-vault/airdrop/airdrop_leaderboard.csv` : même chose en CSV.
+- Qualification (plan) : `total >= 1000` ET `days_active >= 7` (jours ≈ topo//720).
+
+## Usage
+```
+python3 scripts/airdrop_offchain_indexer.py --window 50000 --workers 8
+python3 scripts/airdrop_offchain_indexer.py --resume --workers 8   # reprendre
+python3 scripts/airdrop_offchain_indexer.py --window N --rpc http://127.0.0.1:18081/json_rpc
+```
+- Syncé vers `~/.xelis-vault/src/scripts/` + compile OK sous le venv.
+- ⚠️ stdout bufferisé en nohup (log vide tant que le buffer non flush) — les checkpoint/
+  résultats finaux (JSON/CSV) s'écrivent quand même. Pour un log live : `python3 -u`.

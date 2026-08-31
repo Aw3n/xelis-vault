@@ -1208,3 +1208,55 @@ python3 scripts/airdrop_offchain_indexer.py --window N --rpc http://127.0.0.1:18
 - Syncé vers `~/.xelis-vault/src/scripts/` + compile OK sous le venv.
 - ⚠️ stdout bufferisé en nohup (log vide tant que le buffer non flush) — les checkpoint/
   résultats finaux (JSON/CSV) s'écrivent quand même. Pour un log live : `python3 -u`.
+
+# ✅ v12R-18b — Indexer DAEMON CONTINU + ADMIN EXCLU du scoring (2026-08-31)
+
+Sur demande : « lance le script constamment pour lire à chaque fois et mettre
+constamment à jour, et retire les points à l'admin (ça ne compte pas pour lui) ».
+
+## 1. Exclusion de l'admin du scoring
+- Constante `ADMIN_ADDRESS` (`xet:czr9q8k5…`) + set `EXCLUDE_ADDRS` dans
+  `airdrop_offchain_indexer.py`. Tout `book.add()` vers une adresse exclue est
+  **ignoré** → l'admin n'accumule AUCUN point (ni MINING via header `miner`,
+  ni LIQUIDITY/CHAT/RELAYER via ses txs).
+- `book_from_checkpoint()` **purgent aussi les adresses exclues** chargées depuis
+  un checkpoint historique → repartir du scan 50k avec `--resume` retire
+  immédiatement les 182k pts de l'admin accumulés précédemment.
+- `write_leaderboard()` ne reçoit donc jamais l'admin.
+
+## 2. Mode daemon continu (`--daemon`)
+- `run_daemon()` : boucle infinie qui (1) charge/reprend le checkpoint,
+  (2) sonde le topo toutes les `--poll-interval` s (défaut 15), (3) scanne les
+  nouveaux blocs > `last_topo` (scan_range concurrent), (4) ré-écrit le
+  leaderboard toutes les `--write-interval` s (défaut 300), (5) se relance sur
+  erreur après un sleep. Ctrl+C / SIGTERM → checkpoint + leaderboard finaux.
+- Lancement :
+  ```
+  nohup python3 -u scripts/airdrop_offchain_indexer.py --resume --daemon --workers 8 \
+    --checkpoint ~/.xelis-vault/airdrop/airdrop_index_ckpt.json \
+    --out-json ~/.xelis-vault/airdrop/airdrop_leaderboard.json \
+    --out-csv  ~/.xelis-vault/airdrop/airdrop_leaderboard.csv \
+    --poll-interval 15 --write-interval 60 \
+    > ~/.xelis-vault/logs/airdrop_indexer_daemon.log 2>&1 &
+  ```
+  PID écrit dans `~/.xelis-vault/airdrop/daemon.pid`. `python3 -u` (non bufferisé)
+  pour un log live. Vérification : `tail -f ~/.xelis-vault/logs/airdrop_indexer_daemon.log`.
+- Le daemon lit en continu (nouveaux blocs ≈ toutes les ~2.7 s) et met à jour le
+  classement en permanence → « mise à jour à chaque fois ».
+
+## 3. Résultat (daemon en cours, chaîne canonique, admin exclu)
+- Classement (topo ~277284) : **6 users, 4 qualifiés, total 10 095 pts**.
+  - #1 `vpwsdxs…` (relayer/miner commu) : 4 059 pts, 3 catégories, 9 jours — QUALIFIÉ
+  - #2-4 `mg8rm00…`/`wt7jj6x…`/`6g2xx6…` (miners) : 1 973 pts chacun, 49 jours — QUALIFIÉS
+  - #5 `8fhfqa…` 114 pts (N) · #6 `0qz0uy…` 3 pts (N)
+- Catégories : MINING 9 931 | RELAYER 155 | CHAT 9 | GOVERNANCE 0 | LIQUIDITY 0
+  (la LIQUIDITY/GOV était quasi exclusivement l'admin → exclue ; reste surtout le
+  minage PoW des adresses tierces). Les 3 autres miners pointent tous le même
+  compte = miner serveur unique → anti-sybil à considérer au finalize.
+
+## 4. Fichiers / état
+- `scripts/airdrop_offchain_indexer.py` : +`ADMIN_ADDRESS`/`EXCLUDE_ADDRS`,
+  exclusion dans `book.add` + `book_from_checkpoint`, mode `--daemon` +
+  `run_daemon()` + flags `--poll-interval/--write-interval`.
+- Runtime `~/.xelis-vault/src/scripts/` synchronisé + compile OK.
+- Daemon live : PID dans `~/.xelis-vault/airdrop/daemon.pid` (nohup).

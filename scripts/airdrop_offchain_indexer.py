@@ -48,6 +48,11 @@ LOCAL_NODE = "http://127.0.0.1:18081/json_rpc"
 
 XEL_DECIMALS = 8
 
+# Adresses EXCLUES du scoring (n'accumulent AUCUN point airdrop).
+# L'admin (déployeur/opérateur) ne compte pas : "ça ne compte pas pour lui".
+ADMIN_ADDRESS = "xet:czr9q8k5xlzqdptq7n2vapyjfduldts6tw3e6apl99vknzvmu4zsq8z9j8v"
+EXCLUDE_ADDRS = {ADMIN_ADDRESS}
+
 # ---------------------------------------------------------------------------
 # Contrats du protocole -> hash actif (deployment_state.json / protocol.py)
 # ---------------------------------------------------------------------------
@@ -245,6 +250,8 @@ class PointsBook:
     def add(self, addr: str, cat: str, pts: float, desc: str, topo: int, tx: str):
         if pts <= 0:
             return
+        if addr in EXCLUDE_ADDRS or not addr:
+            return
         self.by_addr[addr][cat] += pts
         day = topo // 720  # ~1 jour en blocs (≈2.7s * 720)
         self.days_active[addr].add(day)
@@ -424,9 +431,13 @@ def book_from_checkpoint(ck: dict) -> PointsBook:
     book.last_topo = ck.get("last_topo", 0)
     book.tx_seen = set(ck.get("tx_seen") or [])
     for a, cats in (ck.get("by_addr") or {}).items():
+        if a in EXCLUDE_ADDRS or not a:
+            continue
         for cat, pts in cats.items():
             book.by_addr[a][cat] = pts
     for a, days in (ck.get("days_active") or {}).items():
+        if a in EXCLUDE_ADDRS or not a:
+            continue
         book.days_active[a] = set(days)
     return book
 
@@ -481,6 +492,49 @@ def write_leaderboard(book: PointsBook, out_json: Path, out_csv: Path):
 
 
 # ---------------------------------------------------------------------------
+# Daemon continu (lit en permanence les nouveaux blocs)
+# ---------------------------------------------------------------------------
+def run_daemon(book: PointsBook, args, ck_path: Path, out_json: Path, out_csv):
+    """Boucle infinie : scanne les nouveaux blocs en continu, ré-écrit
+    régulièrement le leaderboard (admin exclu), checkpoint après chaque scan."""
+    print(f"[daemon] démarre (workers={args.workers}, poll={args.poll_interval}s)")
+    print(f"[daemon] adresses exclues du scoring: {sorted(EXCLUDE_ADDRS)}")
+    last_write = 0.0
+    while True:
+        try:
+            topo = get_topoheight(args.rpc)
+            if topo > book.last_topo:
+                start = book.last_topo + 1
+                print(f"[daemon] nouveaux blocs: scan {start}..{topo} "
+                      f"({topo - start + 1} blocs)")
+                def on_progress(done, total, t, elapsed):
+                    nonlocal last_write
+                    if time.time() - last_write > 20:
+                        save_checkpoint(ck_path, book)
+                    if done % 500 == 0 or done == total:
+                        print(f"[daemon] {t}/{topo} · {len(book.by_addr)} adresses, "
+                              f"{len(book.tx_seen)} txs")
+                scan_range(book, args.rpc, start, topo, workers=args.workers,
+                           sleep=args.sleep, on_progress=on_progress)
+            # ré-écrire le leaderboard périodiquement (même sans nouveaux blocs)
+            if time.time() - last_write > args.write_interval or topo <= book.last_topo:
+                save_checkpoint(ck_path, book)
+                out = write_leaderboard(book, out_json, out_csv)
+                print(f"[daemon] leaderboard écrit: {out['users']} users, "
+                      f"{out['qualified_users']} qualifiés, "
+                      f"total={out['total_points_all_users']} (topo {book.last_topo})")
+                last_write = time.time()
+        except KeyboardInterrupt:
+            save_checkpoint(ck_path, book)
+            write_leaderboard(book, out_json, out_csv)
+            print("[daemon] arrêt")
+            break
+        except Exception as e:
+            print(f"[daemon] erreur: {e}; retry dans {args.poll_interval}s")
+        time.sleep(args.poll_interval)
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main():
@@ -500,6 +554,12 @@ def main():
                     help="Pause secondes entre lots (anti rate-limit)")
     ap.add_argument("--workers", type=int, default=8,
                     help="Concurrence pour les requêtes RPC (défaut 8)")
+    ap.add_argument("--daemon", action="store_true",
+                    help="Mode continu : lit en boucle les nouveaux blocs (s'arrête jamais)")
+    ap.add_argument("--poll-interval", type=float, default=15.0,
+                    help="Poll des nouveaux blocs en secondes (mode daemon, défaut 15)")
+    ap.add_argument("--write-interval", type=float, default=300.0,
+                    help="Ré-écrire le leaderboard toutes les N secondes (mode daemon, défaut 300)")
     args = ap.parse_args()
 
     ck_path = Path(args.checkpoint)
@@ -510,6 +570,10 @@ def main():
     else:
         book = PointsBook()
         print("[fresh] nouveau scan")
+
+    if args.daemon:
+        run_daemon(book, args, ck_path, Path(args.out_json), args.out_csv)
+        return
 
     topo = get_topoheight(args.rpc)
     start = max(1, topo - args.window)

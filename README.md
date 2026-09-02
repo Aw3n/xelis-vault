@@ -109,6 +109,7 @@ Interactive dashboard that shows in real-time:
 - **Protocol stats** (budget, distribution, budget factor, active miners)
 - **Price feeds** (XEL/USD, deviation, sources count, staleness)
 - **Service selection** (oracle only, chat only, or both)
+- **MinerDelegation** — delegate VLT to miners, manage profile, claim rewards
 
 Quick start with flags:
 ```bash
@@ -193,6 +194,12 @@ XELIS Vault v12R-3 — 51 Silex contracts
 │  │ (peg stability│   │ (AMM + PSM, TWAP)  │                   │
 │  │  xUSD ↔ XEL) │    │  VLT/XEL pool      │                   │
 │  └─────────────┘    └────────────────────┘                   │
+│                                                              │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │                 MINER DELEGATION                        │  │
+│  │  MinerDelegation — delegate VLT, earn rewards,          │  │
+│  │  auto-compound, commission-based profiles               │  │
+│  └───────────────────────────────────────────────────────┘  │
 │                                                              │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │                    GOVERNANCE                           │  │
@@ -289,6 +296,22 @@ reward = block_reward × min(stake, CAP) / max(total, FLOOR)
 - **Reputation temporal decay** — inactive miners slowly lose reputation
 - **Compound rewards** — auto re-stake rewards for compound growth
 - **Graceful degradation** — protocol works with 1 to 100+ miners
+
+---
+
+## Miner Delegation
+
+MinerDelegation lets VLT holders delegate their stake to miners without running infrastructure themselves.
+
+- **Delegate VLT** — choose a miner and delegate your VLT (min 10 VLT)
+- **Earn rewards** — share in the miner's rewards proportionally to your stake
+- **Auto-compound** — automatically reinvest rewards for compound growth
+- **Commission** — miners set a commission rate (0–20%) on delegated rewards
+- **Undelegate** — queue undelegation with a 7-day delay before execution
+- **Profile** — miners can register a public profile (name, description, commission)
+- **Claim rewards** — claim delegator rewards or miner rewards at any time
+
+Access via `xvault-miner` → **MinerDelegation: delegate / profile**.
 
 ---
 
@@ -396,6 +419,7 @@ Full CLI guide: [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md)
 
 | Document | Description |
 |----------|-------------|
+| [Installation Guide](docs/INSTALLATION.md) | Install on Linux, macOS, Windows (EN/FR/ZH/JA/AR) |
 | [CLI Guide](docs/CLI_GUIDE.md) | Complete guide for `xvault` and `xvault-miner` |
 | [Chat Guide](docs/CHAT_GUIDE.md) | How E2E encrypted chat works |
 | [Whitepaper](docs/WHITEPAPER.md) | Full technical whitepaper |

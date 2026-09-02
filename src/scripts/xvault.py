@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from config import Config
+from config import Config, CONFIG_PATH
 from tui import (
     C, clear, hide_cursor, show_cursor, read_key, read_key_timeout, kbhit,
     menu, text_input, confirm, info_box, progress_bar, BANNER,

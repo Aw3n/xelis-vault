@@ -2,7 +2,7 @@
 
 ## For Miners: `xvault-miner`
 
-### First-time setup — fully automatic (v7.1)
+### First-time setup — fully automatic (v12R)
 
 ```bash
 xvault-miner --setup
@@ -40,7 +40,7 @@ when the bundled network file is missing.
 
 ## Historical notes (contracts not deployed era)
 
-> ⚠️ The section below predates the v12.x testnet deployments and the v7.1
+> ⚠️ The section below predates the v12.x testnet deployments and the v12R
 > auto-configuration. Kept for reference only.
 
 ## For Miners: `xvault-miner` (legacy)

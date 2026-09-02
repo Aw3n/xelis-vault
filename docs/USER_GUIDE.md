@@ -625,7 +625,7 @@ XELIS Vault is a protocol, not a tax authority. Track your own rewards
 consult a tax professional.
 
 ### Q11. Where do I get help?
-- Discord: https://discord.gg/UHpYAWbG — `#support` channel
+- Discord: https://discord.gg/vyXTVRNSyu — `#support` channel
 - Email: `support@xelisvault.io`
 - GitHub Issues: https://github.com/XelisVault/xelis-vault/issues
 - Documentation: [docs/](.)

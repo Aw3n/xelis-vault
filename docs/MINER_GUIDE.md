@@ -678,7 +678,7 @@ accepted, so no `distribute_reward` calls happen. Your stake and reputation
 are unaffected. Mining resumes when `unpause()` (entry ID 12) is called.
 
 ### Q12. Where do I get help?
-- Discord: https://discord.gg/UHpYAWbG — `#mining` channel
+- Discord: https://discord.gg/vyXTVRNSyu — `#mining` channel
 - Twitter / X: https://x.com/xelisvault
 - Email: `mining@xelisvault.io`
 - GitHub Issues: https://github.com/XelisVault/xelis-vault/issues

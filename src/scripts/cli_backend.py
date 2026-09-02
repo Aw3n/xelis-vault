@@ -46,6 +46,7 @@ _BUNDLE_MTIME = None
 _BUNDLE_PATH = None
 _REGISTRY_CACHE = {}
 _REGISTRY_TTL = 300
+_REGISTRY_MAX = 128
 
 def _bundle_candidates() -> list:
     global _BUNDLE_PATH
@@ -287,6 +288,8 @@ class Backend:
                 resolved[key] = h                # snake_case alias
                 resolved[name] = h               # canonical CamelCase key
         self.contracts.update(resolved)
+        if len(_REGISTRY_CACHE) >= _REGISTRY_MAX:
+            _REGISTRY_CACHE.clear()
         _REGISTRY_CACHE[cache_key] = (time.time(), resolved)
 
     def _ensure_tracked_assets(self):

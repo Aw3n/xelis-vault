@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config import Config, CONFIG_PATH
 from tui import (
     C, clear, hide_cursor, show_cursor, read_key, read_key_timeout, kbhit,
-    menu, text_input, confirm, info_box, progress_bar, BANNER,
+    menu, text_input, confirm, info_box, progress_bar, BANNER, _RICH,
     has_rich, render_panel, render_metrics, render_bar, render_badge,
     render_ok, render_warn, render_error, render_status, render_hint,
 )
@@ -34,6 +34,7 @@ from cli_backend import (
     Backend, DECIMALS, OpResult, AIRDROP_CATEGORIES, ZERO_HASH,
 )
 from protocol import SERVICE_ORACLE, SERVICE_CHAT, MIN_STAKE_VLT
+import onboarding
 
 VAULT_DIR = Path.home() / ".xelis-vault"
 
@@ -273,7 +274,6 @@ def screen_dashboard(b: Backend):
     across the whole wait, so the connection latency (e.g. a remote public node)
     never makes the screen unresponsive. Any key reliably returns to the menu.
     """
-    from tui import _RICH  # whether rich rendering path is active
     hide_cursor()
 
     def _pressed():
@@ -2026,7 +2026,6 @@ def ensure_wallet_alive(cfg: Config) -> bool:
     comes from the public node and the local wallet process is (re)started
     transparently in the background.
     """
-    import onboarding
     binary = cfg.get("wallet_binary")
     wpath = cfg.get("wallet_path")
     password = cfg.get("wallet_password")
@@ -2078,16 +2077,16 @@ def main():
     cfg = Config()
     first_run = not CONFIG_PATH.exists()
     b = None
-    cfg_snapshot = None
+    cfg_version = None
 
     while True:
         if not first_run and cfg.get("wallet_binary"):
             ensure_wallet_alive(cfg)
 
-        current_snapshot = json.dumps(cfg.data, sort_keys=True)
-        if b is None or current_snapshot != cfg_snapshot:
+        current_version = cfg._version
+        if b is None or current_version != cfg_version:
             b = Backend(cfg.data)
-            cfg_snapshot = current_snapshot
+            cfg_version = current_version
 
         online = b.topo() > 0
         wallet_ok = bool(b.wallet)

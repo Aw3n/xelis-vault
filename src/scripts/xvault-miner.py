@@ -49,6 +49,8 @@ REFRESH_INTERVAL = 5
 
 _FETCH_LIVE_CACHE = {}
 _FETCH_LIVE_TTL = 2.0
+_FETCH_LIVE_MAX = 64
+_FETCH_EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
 # Miner struct field order (XelisVaultMiner.slx `Miner`) returned for key
 # `miner_<addr>`:
@@ -293,16 +295,15 @@ def fetch_live(cfg, b: Backend) -> dict:
     live["connected"] = True
     live["topo"] = topo
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        futures = {
-            "balances": ex.submit(_safe, b.balances, {}),
-            "miner": ex.submit(_safe, b.my_miner),
-            "stats": ex.submit(_safe, b.miner_stats, {}),
-            "price": ex.submit(_safe, b.price, None),
-            "tunnel": ex.submit(_safe, relayer_tunnel_status, None),
-            "relayer": ex.submit(_safe, lambda: b.chat_relayer_status(b.address) if b.has_wallet else None, None),
-        }
-        results = {k: f.result() for k, f in futures.items()}
+    futures = {
+        "balances": _FETCH_EXECUTOR.submit(_safe, b.balances, {}),
+        "miner": _FETCH_EXECUTOR.submit(_safe, b.my_miner),
+        "stats": _FETCH_EXECUTOR.submit(_safe, b.miner_stats, {}),
+        "price": _FETCH_EXECUTOR.submit(_safe, b.price, None),
+        "tunnel": _FETCH_EXECUTOR.submit(_safe, relayer_tunnel_status, None),
+        "relayer": _FETCH_EXECUTOR.submit(_safe, lambda: b.chat_relayer_status(b.address) if b.has_wallet else None, None),
+    }
+    results = {k: f.result() for k, f in futures.items()}
 
     bal, e = results["balances"]
     if e:
@@ -359,6 +360,8 @@ def fetch_live(cfg, b: Backend) -> dict:
     relayer, _ = results["relayer"]
     live["relayer"] = relayer
 
+    if len(_FETCH_LIVE_CACHE) >= _FETCH_LIVE_MAX:
+        _FETCH_LIVE_CACHE.clear()
     _FETCH_LIVE_CACHE[cache_key] = (now, live)
     return live
 

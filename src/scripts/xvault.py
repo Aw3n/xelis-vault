@@ -1754,6 +1754,7 @@ def _clipboard_copy(text: str) -> bool:
 # --- Miner tools screen -----------------------------------------------------
 
 def screen_miner_tools(b: Backend):
+    cfg = _load_cfg()
     while True:
         m = b.my_miner()
         stats = b.miner_stats()

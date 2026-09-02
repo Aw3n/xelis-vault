@@ -24,6 +24,7 @@ import signal
 import sys
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
@@ -45,6 +46,9 @@ VAULT_DIR = Path.home() / ".xelis-vault"
 LOG_DIR = VAULT_DIR / "logs"
 
 REFRESH_INTERVAL = 5
+
+_FETCH_LIVE_CACHE = {}
+_FETCH_LIVE_TTL = 2.0
 
 # Miner struct field order (XelisVaultMiner.slx `Miner`) returned for key
 # `miner_<addr>`:
@@ -262,22 +266,49 @@ def svc_badges(mask):
 # ---------------------------------------------------------------------------
 
 def fetch_live(cfg, b: Backend) -> dict:
+    now = time.time()
+    cache_key = id(b)
+    cached = _FETCH_LIVE_CACHE.get(cache_key)
+    if cached and now - cached[0] < _FETCH_LIVE_TTL:
+        return cached[1]
+
     live = {"connected": False, "topo": 0, "balances": {},
             "miner": {}, "stats": {}, "feeds": [], "relayer": None,
             "error": "", "diag": {}}
+
+    def _safe(fn, default=None):
+        try:
+            return fn(), None
+        except Exception as e:
+            return default, e
+
     try:
         topo = b.topo()
     except Exception as e:
         live["error"] = f"daemon unreachable: {e}"
         return live
     if not topo:
+        _FETCH_LIVE_CACHE[cache_key] = (now, live)
         return live
     live["connected"] = True
     live["topo"] = topo
-    try:
-        live["balances"] = b.balances() or {}
-    except Exception as e:
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futures = {
+            "balances": ex.submit(_safe, b.balances, {}),
+            "miner": ex.submit(_safe, b.my_miner),
+            "stats": ex.submit(_safe, b.miner_stats, {}),
+            "price": ex.submit(_safe, b.price, None),
+            "tunnel": ex.submit(_safe, relayer_tunnel_status, None),
+            "relayer": ex.submit(_safe, lambda: b.chat_relayer_status(b.address) if b.has_wallet else None, None),
+        }
+        results = {k: f.result() for k, f in futures.items()}
+
+    bal, e = results["balances"]
+    if e:
         live["error"] = f"balances failed: {e}"
+    live["balances"] = bal or {}
+
     try:
         live["diag"] = {
             "address": getattr(b, "address", "(unknown)"),
@@ -289,50 +320,46 @@ def fetch_live(cfg, b: Backend) -> dict:
     except Exception:
         pass
 
-    try:
-        m = b.my_miner()
-        if isinstance(m, list) and len(m) >= 15:
-            try:
-                live["miner"] = {
-                    "endpoint": str(m[M_ENDPOINT]),
-                    "stake": int(m[M_STAKE]),
-                    "mask": int(m[M_MASK]),
-                    "registered_at": int(m[M_AT]),
-                    "hb_topo": int(m[M_HB]),
-                    "rewards": int(m[M_REW]),
-                    "slashed": int(m[M_SLASH]),
-                    "reputation": int(m[M_REP]),
-                    "valid_submissions": int(m[M_VSUB]),
-                    "anchors": int(m[M_ANCH]),
-                    "total_submissions": int(m[M_TSUB]),
-                    "active": bool(m[M_ACTIVE]),
-                }
-            except (ValueError, TypeError):
-                pass
-    except Exception as e:
+    m, e = results["miner"]
+    if e:
         live["error"] = f"my_miner failed: {e}"
-
-    try:
-        live["stats"] = b.miner_stats() or {}
-    except Exception as e:
-        live["error"] = f"miner_stats failed: {e}"
-    try:
-        p = b.price()
-        if p:
-            price_raw, feed_topo, stale = p
-            live["feeds"].append({"name": "XEL/USD", "price_raw": price_raw,
-                                  "age": max(0, topo - feed_topo), "stale": stale})
-    except Exception:
-        pass
-    try:
-        live["tunnel"] = relayer_tunnel_status(cfg)
-    except Exception:
-        live["tunnel"] = None
-    if getattr(b, "has_wallet", False):
+    elif isinstance(m, list) and len(m) >= 15:
         try:
-            live["relayer"] = b.chat_relayer_status(b.address)
-        except Exception:
-            live["relayer"] = None
+            live["miner"] = {
+                "endpoint": str(m[M_ENDPOINT]),
+                "stake": int(m[M_STAKE]),
+                "mask": int(m[M_MASK]),
+                "registered_at": int(m[M_AT]),
+                "hb_topo": int(m[M_HB]),
+                "rewards": int(m[M_REW]),
+                "slashed": int(m[M_SLASH]),
+                "reputation": int(m[M_REP]),
+                "valid_submissions": int(m[M_VSUB]),
+                "anchors": int(m[M_ANCH]),
+                "total_submissions": int(m[M_TSUB]),
+                "active": bool(m[M_ACTIVE]),
+            }
+        except (ValueError, TypeError):
+            pass
+
+    stats, e = results["stats"]
+    if e:
+        live["error"] = f"miner_stats failed: {e}"
+    live["stats"] = stats or {}
+
+    price, _ = results["price"]
+    if price:
+        price_raw, feed_topo, stale = price
+        live["feeds"].append({"name": "XEL/USD", "price_raw": price_raw,
+                              "age": max(0, topo - feed_topo), "stale": stale})
+
+    tunnel, _ = results["tunnel"]
+    live["tunnel"] = tunnel
+
+    relayer, _ = results["relayer"]
+    live["relayer"] = relayer
+
+    _FETCH_LIVE_CACHE[cache_key] = (now, live)
     return live
 
 

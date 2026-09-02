@@ -46,6 +46,9 @@ RELAYER_DEFAULT_FEE_ATOMIC = 1_000_000  # 0.01 XEL/VLT per message
 MINER_HEARTBEAT_WARN_BLOCKS = 1000
 MIN_RELAYER_BOND_VLT = 50
 
+_WALLET_ALIVE_CACHE = {}
+_WALLET_ALIVE_TTL = 10.0
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -2031,10 +2034,16 @@ def ensure_wallet_alive(cfg: Config) -> bool:
         return False
     port = int(cfg.get("wallet_rpc_port") or 18082)
     url = f"http://127.0.0.1:{port}"
+    cache_key = (url, cfg.get("wallet_user", "wallet"))
+    now = time.time()
+    cached = _WALLET_ALIVE_CACHE.get(cache_key)
+    if cached and now - cached[0] < _WALLET_ALIVE_TTL:
+        return cached[1]
     try:
         onboarding.rpc_call(url, "get_address",
                             auth=(cfg.get("wallet_user", "wallet"),
                                   cfg.get("wallet_pass", "testpass")), timeout=3)
+        _WALLET_ALIVE_CACHE[cache_key] = (now, True)
         return True  # already up
     except Exception:
         pass
@@ -2047,31 +2056,39 @@ def ensure_wallet_alive(cfg: Config) -> bool:
                                  Path(wpath), port, rpc_user=user, rpc_pass=pwd)
         addr = onboarding.wait_for_wallet(url, (user, pwd), timeout_s=240)
         if addr:
+            _WALLET_ALIVE_CACHE[cache_key] = (now, True)
             return True
         try:
             print(f"  {C.YELLOW}Auto-relaunched wallet did not answer on {url} "
                   f"after 240s. See ~/.xelis-vault/logs/wallet.log{C.RESET}")
         except Exception:
             pass
+        _WALLET_ALIVE_CACHE[cache_key] = (now, False)
         return False
     except Exception as e:
         try:
             print(f"  {C.RED}Auto-relaunch of wallet failed: {e}{C.RESET}")
         except Exception:
             pass
+        _WALLET_ALIVE_CACHE[cache_key] = (now, False)
         return False
 
 
 def main():
     cfg = Config()
     first_run = not CONFIG_PATH.exists()
+    b = None
+    cfg_snapshot = None
 
     while True:
-        # transparently bring the managed wallet back before building Backend
         if not first_run and cfg.get("wallet_binary"):
             ensure_wallet_alive(cfg)
 
-        b = Backend(cfg.data)
+        current_snapshot = json.dumps(cfg.data, sort_keys=True)
+        if b is None or current_snapshot != cfg_snapshot:
+            b = Backend(cfg.data)
+            cfg_snapshot = current_snapshot
+
         online = b.topo() > 0
         wallet_ok = bool(b.wallet)
         if wallet_ok:

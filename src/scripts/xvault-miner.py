@@ -137,7 +137,7 @@ def _fallback_rpc_if_needed(cfg) -> str:
     try:
         r = requests.post(url, json={"jsonrpc": "2.0", "id": 1,
                                      "method": "get_topoheight", "params": {}},
-                          timeout=3)
+                           timeout=1.5)
         if r.status_code == 200:
             return ""
     except Exception:
@@ -146,7 +146,7 @@ def _fallback_rpc_if_needed(cfg) -> str:
         r2 = requests.post(PUBLIC_TESTNET_RPC,
                            json={"jsonrpc": "2.0", "id": 1,
                                  "method": "get_topoheight", "params": {}},
-                           timeout=5)
+                           timeout=3)
         if r2.status_code == 200:
             cfg.data["rpc_url"] = PUBLIC_TESTNET_RPC
             cfg.save()
@@ -554,7 +554,9 @@ def interactive_setup(cfg):
 
 def check_contracts(cfg):
     """Contracts come from the network bundle; only setup state matters."""
-    bundle_ok = bool(Backend(cfg.data).C("miner"))
+    bundle = load_bundle()
+    bundle_ok = bool(bundle.get("contracts", {}).get("miner")
+                     or bundle.get("contracts", {}).get("XelisVaultMiner"))
     has_wallet = bool(cfg.get("wallet_url"))
     if not bundle_ok or not has_wallet:
         clear()
@@ -1333,11 +1335,13 @@ def main():
         interactive_setup(cfg)
         return
 
+    print(f"{C.DIM}  Loading dashboard...{C.RESET}", flush=True)
     hint = _fallback_rpc_if_needed(cfg)
     mode = check_contracts(cfg)
 
     auto_refresh = True
     running = [True]
+    b = Backend(cfg.data)
 
     def on_signal(sig, frame):
         running[0] = False
@@ -1350,7 +1354,6 @@ def main():
     hide_cursor()
     try:
         while running[0]:
-            b = Backend(cfg.data)
             live = fetch_live(cfg, b) if mode != "demo" or b.topo() else \
                 {"connected": False, "topo": 0, "balances": {}, "miner": {},
                  "stats": {}, "feeds": [], "relayer": None}
@@ -1365,11 +1368,13 @@ def main():
             elif key == "s":
                 show_cursor()
                 interactive_setup(cfg)
+                b = Backend(cfg.data)
                 hide_cursor()
             elif key == "R":
                 show_cursor()
                 if confirm("Reset configuration to defaults? This will clear all settings."):
                     cfg.reset()
+                    b = Backend(cfg.data)
                     info_box("Reset", [render_ok("Configuration reset to defaults.")], color=C.GREEN)
                 hide_cursor()
             elif key == "r":

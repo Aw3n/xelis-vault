@@ -85,6 +85,7 @@ def _check_balance(b: Backend, asset: str, atomic: int) -> bool:
     """True if the wallet can spend `atomic` of `asset`; shows error otherwise."""
     asset_name = {ZERO_HASH: "XEL", b.vlt_asset: "VLT", b.xusd_asset: "xUSD"}.get(asset, asset[:16])
     addr = getattr(b, "address", "(unknown)")
+    balance_error = "unknown"
     try:
         avail = b.balance(asset)
     except Exception as e:
@@ -344,34 +345,24 @@ def render_dashboard(cfg, live, hint=""):
     now = datetime.now().strftime("%H:%M:%S")
     addr = cfg.get("miner_address") or cfg.get("wallet_url") and "(wallet set)" or "(not set)"
 
-    print(f"{C.CYAN}{C.BOLD}  XELIS VAULT {C.RESET}{render_badge('MINER / ORACLE OPERATOR', C.MAGENTA)}")
-    print(f"{C.DIM}  {platform.system()}/{platform.machine()}  {C.GRAY}·{C.RESET}  {render_badge('TESTNET', C.YELLOW)}")
-    print(f"{C.GRAY}{'─' * 60}{C.RESET}")
-
-    conn = render_ok("CONNECTED") if live["connected"] else \
-        render_error("OFFLINE — is the daemon running?")
-    topo = f"{live['topo']:,}" if live["connected"] else "-"
-    print(f"  {C.DIM}{now}{C.RESET}   {C.DIM}Topoheight:{C.RESET} {C.BOLD}{topo}{C.RESET}   {conn}")
+    print(f"{C.CYAN}{C.BOLD}  XELIS VAULT {C.RESET}{render_badge('MINER / ORACLE OPERATOR', C.MAGENTA)}  "
+          f"{C.DIM}{now}{C.RESET}")
     print(f"  {C.DIM}Operator:{C.RESET} {addr}")
+
+    conn = render_ok("ONLINE") if live["connected"] else \
+        render_error("OFFLINE")
+    topo = f"{live['topo']:,}" if live["connected"] else "-"
+    print(f"  {C.DIM}Daemon:{C.RESET} {conn}  {C.DIM}Topo:{C.RESET} {C.BOLD}{topo}{C.RESET}")
+
     if live.get("error"):
         print(f"  {C.RED}{C.BOLD}  ! {live['error']}{C.RESET}")
 
-    # Show diagnostic info
-    diag = live.get("diag", {})
-    if diag:
-        print()
-        print(f"  {C.DIM}DIAGNOSTIC:{C.RESET}")
-        print(f"    Wallet address: {diag.get('address', '(unknown)')}")
-        print(f"    Wallet URL: {diag.get('wallet_url', '(not set)')}")
-        print(f"    VLT asset: {diag.get('vlt_asset', '(not loaded)')[:32]}...")
-        print(f"    xUSD asset: {diag.get('xusd_asset', '(not loaded)')[:32]}...")
-        print(f"    Wallet reachable: {diag.get('has_wallet', False)}")
-
-    # ── Miner status ──
+    # ── Compact miner + protocol overview ──
     m = live.get("miner") or {}
+    stats = live.get("stats") or {}
     if m:
         active = m.get("active", False)
-        status = render_ok("REGISTERED") if active else render_warn("INACTIVE")
+        status = render_ok("ACTIVE") if active else render_warn("INACTIVE")
         rep = m.get("reputation", 3000)
         tier = tier_name(rep)
         tcolor = tier_color(tier)
@@ -379,138 +370,99 @@ def render_dashboard(cfg, live, hint=""):
         hb = m.get("hb_topo", 0)
         if hb and live["connected"]:
             age = max(0, live["topo"] - hb)
-            hb_txt = (render_ok(f"{age} blk ago") if age < 1000
-                      else render_warn(f"{age} blk ago"))
+            hb_txt = (render_ok(f"{age} blk") if age < 1000
+                      else render_warn(f"{age} blk"))
         else:
             hb_txt = f"{C.DIM}never{C.RESET}"
-        m_lines = [
-            f"  {status}   {render_badge(f'Reputation {rep} · {tier}', tcolor)}",
-            render_metrics([
-                ("Stake", bfmt(m.get("stake"), "VLT")),
-                ("Rewards", f"{C.GREEN}{bfmt(m.get('rewards'), 'VLT')}{C.RESET}"),
-            ], width=54),
-            render_metrics([
-                ("Services", svc_badges(mask)),
-                ("Last heartbeat", hb_txt),
-            ], width=54),
-            f"  {C.DIM}Submissions:{C.RESET} {m.get('valid_submissions', 0)} valid / "
-            f"{m.get('total_submissions', 0)} total   "
-            f"{C.DIM}Anchors:{C.RESET} {m.get('anchors', 0)}   "
-            f"{C.DIM}Slashed:{C.RESET} {C.RED}{bfmt(m.get('slashed'), 'VLT')}{C.RESET}",
-            f"  {C.DIM}Endpoint:{C.RESET} {m.get('endpoint') or '—'}",
-            f"  {C.DIM}Reputation:{C.RESET} {tier_bar(rep)} {rep}/10000",
-        ]
         print()
-        print(render_panel("  MINER  STATUS", m_lines, border_color=C.CYAN, width=58))
+        print(f"  {status}  {render_badge(f'{tier} {rep}', tcolor)}  "
+              f"{C.DIM}Stake:{C.RESET} {bfmt(m.get('stake'), 'VLT')}  "
+              f"{C.DIM}Rewards:{C.RESET} {bfmt(m.get('rewards'), 'VLT')}  "
+              f"{C.DIM}HB:{C.RESET} {hb_txt}")
+        svcs = []
+        if mask & 1: svcs.append(f"{C.CYAN}Oracle{C.RESET}")
+        if mask & 2: svcs.append(f"{C.MAGENTA}Chat{C.RESET}")
+        svc_txt = " ".join(svcs) if svcs else f"{C.DIM}none{C.RESET}"
+        print(f"  {C.DIM}Services:{C.RESET} {svc_txt}  "
+              f"{C.DIM}Slashed:{C.RESET} {bfmt(m.get('slashed'), 'VLT')}  "
+              f"{C.DIM}Submissions:{C.RESET} {m.get('valid_submissions', 0)}/{m.get('total_submissions', 0)}")
+        print(f"  {C.DIM}Endpoint:{C.RESET} {m.get('endpoint') or '—'}  "
+              f"{tier_bar(rep)} {rep}/10000")
     else:
         print()
-        print(render_panel("  MINER  STATUS", [
-            render_warn("Not registered"),
-            f"{C.DIM}This address has no miner profile on-chain yet.",
-            f"{C.DIM}Press {C.BOLD}m{C.RESET}{C.DIM} → Register to start earning VLT.",
-        ], border_color=C.CYAN, width=58))
+        print(f"  {render_warn('NOT REGISTERED')}  {C.DIM}Press m → Register to earn VLT{C.RESET}")
 
-    # ── Wallet balances ──
+    # ── Balances ──
     bal = live.get("balances") or {}
-    b_lines = []
-    for sym in ("XEL", "VLT", "xUSD"):
-        v = bal.get(sym)
-        b_lines.append(f"  {C.BOLD}{sym:<5}{C.RESET}  {bfmt(v)}")
-    print()
-    print(render_panel("  WALLET  BALANCE", b_lines, border_color=C.GREEN, width=28))
+    if bal:
+        parts = []
+        for sym in ("XEL", "VLT", "xUSD"):
+            v = bal.get(sym)
+            parts.append(f"{C.BOLD}{sym}{C.RESET}={bfmt(v)}")
+        print()
+        print(f"  {'  '.join(parts)}")
 
     # ── Protocol stats ──
-    stats = live.get("stats") or {}
-    s_lines = []
-    if stats.get("total_staked") is not None:
-        s_lines.append(f"  Total staked:  {C.BOLD}{bfmt(stats['total_staked'], 'VLT')}{C.RESET}")
-    if stats.get("budget") is not None and stats.get("distributed") is not None:
-        pct = stats["distributed"] * 100 // stats["budget"]
-        s_lines += [
-            f"  Budget spent:  {pct}%",
-            f"                 {render_bar(pct / 100, 24)}",
-        ]
-    if stats.get("min_stake") is not None:
-        s_lines.append(f"  Min stake:     {bfmt(stats['min_stake'], 'VLT')}")
-    if stats.get("budget") is not None:
-        s_lines.append(f"  Reward budget: {C.BOLD}{bfmt(stats['budget'], 'VLT')}{C.RESET}")
-    if not s_lines:
-        s_lines.append(f"  {C.DIM}(miner contract not reachable){C.RESET}")
-    print()
-    print(render_panel("  PROTOCOL  STATS", s_lines, border_color=C.BLUE, width=32))
+    if stats:
+        pct = None
+        if stats.get("budget") and stats.get("distributed") is not None:
+            pct = stats["distributed"] * 100 // stats["budget"]
+        parts = []
+        if stats.get("total_staked") is not None:
+            parts.append(f"{C.DIM}Staked:{C.RESET} {bfmt(stats['total_staked'], 'VLT')}")
+        if pct is not None:
+            parts.append(f"{C.DIM}Budget:{C.RESET} {pct}% {render_bar(pct / 100, 16)}")
+        if stats.get("min_stake") is not None:
+            parts.append(f"{C.DIM}Min:{C.RESET} {bfmt(stats['min_stake'], 'VLT')}")
+        if parts:
+            print()
+            print(f"  {'  '.join(parts)}")
 
     # ── Price feeds ──
-    f_lines = []
     feeds = live.get("feeds") or []
     if feeds:
-        for f in feeds[:6]:
+        f_parts = []
+        for f in feeds[:3]:
             c = C.RED if f["stale"] else C.GREEN
-            icon = "●" if f["stale"] else "●"
             price = f["price_raw"] / 10 ** DECIMALS
-            f_lines.append(
-                f"  {c}{icon}{C.RESET} ${price:>9,.4f}  {f['name']:<9}"
-                f"  {C.DIM}age {f['age']} blk{C.RESET}")
+            stale = f" {C.YELLOW}(stale {f['age']}blk){C.RESET}" if f["stale"] else ""
+            f_parts.append(f"{c}${price:,.2f}{C.RESET}{stale}")
+        if f_parts:
+            print()
+            print(f"  {C.DIM}Price:{C.RESET} {'  '.join(f_parts)}")
     else:
-        f_lines.append(f"  {C.DIM}(no oracle data yet){C.RESET}")
-    print()
-    print(render_panel("  PRICE  FEEDS", f_lines, border_color=C.YELLOW, width=40))
+        print()
+        print(f"  {C.DIM}(no oracle data yet){C.RESET}")
 
-    # ── Relayer status ──
+    # ── Relayer + tunnel (compact) ──
     rl = live.get("relayer")
-    if rl:
-        r_lines = []
-        ok = rl.get("active")
-        r_lines.append(f"  {render_status(bool(ok), 'Relayer')}")
-        if rl.get("bond"):
-            r_lines.append(f"  Bond: {C.BOLD}{bfmt(rl['bond'], 'VLT')}{C.RESET}")
-        reg = rl.get("registered")
-        if reg:
-            r_lines.append(f"  Endpoint: {C.CYAN}{reg.get('endpoint', '')}{C.RESET}")
-            r_lines.append(f"  {C.DIM}Free: {reg.get('free_daily_limit', '')} msg/day · "
-                           f"{reg.get('free_wallet_slots', '')} slots{C.RESET}")
-        print()
-        print(render_panel("  RELAYER  (VaultChat)", r_lines, border_color=C.MAGENTA, width=48))
-
-    # ── Tunnel status ──
     tunnel = live.get("tunnel")
-    if tunnel:
-        t_lines = []
-        t_url = tunnel.get("url") or ""
-        if t_url:
-            t_lines.append(f"  Public URL: {C.CYAN}{t_url}{C.RESET}")
-        else:
-            t_lines.append(f"  {render_warn('No tunnel running')}")
-        tpid = tunnel.get("tunnel_pid")
-        if tpid:
-            t_lines.append(f"  Tunnel PID: {tpid}")
-        rpid = tunnel.get("relayer_pid")
-        if rpid:
-            t_lines.append(f"  Relayer PID: {rpid}")
-        local = tunnel.get("local_endpoint") or ""
-        if local:
-            t_lines.append(f"  Local endpoint: {local}")
-        wd = _watchdog_state.get("last") or {}
-        if wd:
-            ok = wd.get("ok")
-            msg = wd.get("message") or ""
-            endpoint = wd.get("endpoint")
-            healthy = wd.get("healthy")
-            if _watchdog_state.get("enabled"):
-                t_lines.append(f"  Watchdog: {render_ok('ON')} {msg}")
+    if rl or tunnel:
+        r_parts = []
+        if rl:
+            ok = rl.get("active")
+            r_parts.append(f"{C.DIM}Relayer:{C.RESET} {render_status(bool(ok), '')}")
+            if rl.get("bond"):
+                r_parts.append(f"{C.DIM}Bond:{C.RESET} {bfmt(rl['bond'], 'VLT')}")
+        if tunnel:
+            t_url = tunnel.get("url") or ""
+            if t_url:
+                r_parts.append(f"{C.DIM}Tunnel:{C.RESET} {C.CYAN}{t_url[:40]}{C.RESET}")
             else:
-                t_lines.append(f"  Watchdog: {render_warn('OFF')}")
-            if endpoint:
-                t_lines.append(f"  Endpoint on-chain: {endpoint}")
-            if healthy is not None:
-                t_lines.append(f"  Public health: {render_ok('OK') if healthy else render_warn('UNREACHABLE')}")
-        print()
-        print(render_panel("  PUBLIC  TUNNEL", t_lines, border_color=C.BLUE, width=52))
+                r_parts.append(f"{C.DIM}Tunnel:{C.RESET} {render_warn('OFF')}")
+            wd = _watchdog_state.get("last") or {}
+            if wd and _watchdog_state.get("enabled"):
+                healthy = wd.get("healthy")
+                r_parts.append(f"{C.DIM}Watchdog:{C.RESET} {render_ok('OK') if healthy else render_warn('UNREACHABLE')}")
+        if r_parts:
+            print()
+            print(f"  {'  '.join(r_parts)}")
 
     print()
     print(f"{C.GRAY}{'─' * 60}{C.RESET}")
     if not cfg.get("wallet_url"):
-        print(f"  {render_warn('No wallet connected — run setup (s).')}")
-    print(f"  {C.DIM}q Quit │ r Refresh │ R Reset │ a Auto-refresh │ s Setup │ m Actions │ p Provider guide{C.RESET}")
+        print(f"  {render_warn('No wallet — run setup (s)')}")
+    print(f"  {C.DIM}q Quit │ r Refresh │ R Reset │ a Auto │ s Setup │ m Actions │ p Guide{C.RESET}")
     if hint:
         print(f"  {hint}")
 

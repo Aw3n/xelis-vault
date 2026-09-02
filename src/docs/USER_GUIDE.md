@@ -92,11 +92,6 @@ xelis_wallet call-contract <VaultSwapV2> swap \
     --deposit 0x0000...0000 10000000000
 ```
 
-### OTC
-
-For large amounts, contact the team at `otc@xelisvault.io` for an
-over-the-counter trade.
-
 ---
 
 ## 4. Lending — VaultEngine
@@ -625,8 +620,7 @@ XELIS Vault is a protocol, not a tax authority. Track your own rewards
 consult a tax professional.
 
 ### Q11. Where do I get help?
-- Discord: https://discord.gg/UHpYAWbG — `#support` channel
-- Email: `support@xelisvault.io`
+- Discord: https://discord.gg/vyXTVRNSyu — `#support` channel
 - GitHub Issues: https://github.com/XelisVault/xelis-vault/issues
 - Documentation: [docs/](.)
 

@@ -39,6 +39,7 @@ from tui import (
 )
 from cli_backend import Backend, DECIMALS, ZERO_HASH
 from protocol import MIN_STAKE_VLT
+from onboarding import relayer_tunnel_status
 
 VAULT_DIR = Path.home() / ".xelis-vault"
 LOG_DIR = VAULT_DIR / "logs"
@@ -324,7 +325,6 @@ def fetch_live(cfg, b: Backend) -> dict:
     except Exception:
         pass
     try:
-        from onboarding import relayer_tunnel_status
         live["tunnel"] = relayer_tunnel_status(cfg)
     except Exception:
         live["tunnel"] = None

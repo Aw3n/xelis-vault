@@ -41,22 +41,42 @@ MIN_AUCTION_DURATION_BLOCKS = 1440
 # Network bundle loading (contracts + assets)
 # ---------------------------------------------------------------------------
 
+_BUNDLE_CACHE = None
+_BUNDLE_MTIME = None
+_BUNDLE_PATH = None
+_REGISTRY_CACHE = {}
+_REGISTRY_TTL = 300
+
 def _bundle_candidates() -> list:
+    global _BUNDLE_PATH
     here = Path(__file__).parent
-    return [
+    candidates = [
         here.parent / "network" / "testnet.json",      # installed layout
         here.parent.parent / "network" / "testnet.json",
         here / "network_testnet.json",
     ]
+    _BUNDLE_PATH = candidates[0]
+    return candidates
 
 
 def load_bundle() -> dict:
+    global _BUNDLE_CACHE, _BUNDLE_MTIME
+    try:
+        mtime = _BUNDLE_PATH.stat().st_mtime
+    except Exception:
+        mtime = None
+    if mtime and mtime == _BUNDLE_MTIME and _BUNDLE_CACHE is not None:
+        return _BUNDLE_CACHE
     for c in _bundle_candidates():
         if c.exists():
             try:
-                return json.loads(c.read_text())
+                _BUNDLE_CACHE = json.loads(c.read_text())
+                _BUNDLE_MTIME = mtime
+                return _BUNDLE_CACHE
             except Exception:
                 pass
+    _BUNDLE_CACHE = {}
+    _BUNDLE_MTIME = mtime
     return {}
 
 
@@ -250,6 +270,13 @@ class Backend:
                or self.contracts.get("contract_registry"))
         if not reg:
             return
+        daemon_url = getattr(self, "daemon", None)
+        url = getattr(daemon_url, "url", "") if daemon_url else ""
+        cache_key = (url, reg)
+        cached = _REGISTRY_CACHE.get(cache_key)
+        if cached and time.time() - cached[0] < _REGISTRY_TTL:
+            self.contracts.update(cached[1])
+            return
         resolved = {}
         for key, name in _REGISTRY_NAMES.items():
             try:
@@ -260,6 +287,7 @@ class Backend:
                 resolved[key] = h                # snake_case alias
                 resolved[name] = h               # canonical CamelCase key
         self.contracts.update(resolved)
+        _REGISTRY_CACHE[cache_key] = (time.time(), resolved)
 
     def _ensure_tracked_assets(self):
         """Make sure the wallet knows about VLT and xUSD before balance checks."""

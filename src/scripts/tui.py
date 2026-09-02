@@ -75,7 +75,8 @@ else:
     _PILL_RIGHT = "]"
 
 def clear():
-    os.system("cls" if os.name == "nt" else "clear")
+    sys.stdout.write("\033c" if os.name == "nt" else "\033c")
+    sys.stdout.flush()
 
 def hide_cursor():
     sys.stdout.write("\033[?25l")

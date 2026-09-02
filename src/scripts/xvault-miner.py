@@ -259,7 +259,7 @@ def svc_badges(mask):
 # Live data collection (real reads via the backend)
 # ---------------------------------------------------------------------------
 
-def fetch_live(b: Backend) -> dict:
+def fetch_live(cfg, b: Backend) -> dict:
     live = {"connected": False, "topo": 0, "balances": {},
             "miner": {}, "stats": {}, "feeds": [], "relayer": None,
             "error": "", "diag": {}}
@@ -1399,7 +1399,7 @@ def main():
     try:
         while running[0]:
             b = Backend(cfg.data)
-            live = fetch_live(b) if mode != "demo" or b.topo() else \
+            live = fetch_live(cfg, b) if mode != "demo" or b.topo() else \
                 {"connected": False, "topo": 0, "balances": {}, "miner": {},
                  "stats": {}, "feeds": [], "relayer": None}
             render_dashboard(cfg, live, hint)

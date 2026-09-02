@@ -94,6 +94,43 @@ Press `Q` or `Ctrl+C`
 
 ---
 
+## Miner Delegation (v12R-3)
+
+`MinerDelegation` lets VLT holders delegate stake to miners without running
+infrastructure.
+
+### Delegate VLT
+
+From the miner dashboard (`xvault-miner`):
+
+1. Select **MinerDelegation: delegate / profile**
+2. Choose **Delegate to a miner**
+3. Enter the miner address and amount (min 10 VLT)
+4. Choose auto-compound option
+5. Confirm the transaction
+
+### Undelegate
+
+1. Select **Undelegate (queue)**
+2. Enter amount to undelegate
+3. Confirm — undelegation has a 7-day delay before execution
+
+### Claim rewards
+
+- **Delegator rewards:** claim your share of miner rewards
+- **Miner rewards:** miners claim their own rewards + commission
+
+### Miner profile
+
+Miners can register a public profile:
+- Name (3–32 chars)
+- Description
+- Commission rate (0–20%)
+
+Access via `xvault-miner` → **MinerDelegation: delegate / profile**.
+
+---
+
 ## For Community: `xvault`
 
 ### First-time setup (wallet creation)

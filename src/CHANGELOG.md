@@ -15,6 +15,8 @@ the `return 0` convention; values are exposed via storage keys (`lvid`, `lpc`).
   VaultSwap XEL/xUSD pool (+liquidity), Faucet refill, admin miner registered.
 - xvault CLI: remote-node mode (reads via public node), auto wallet relaunch,
   miner start/stop over wss, registry-resolved contract hashes.
+- **MinerDelegation contract deployed + wired**: miners push `own_stake` to MD,
+  oracle reads total stake from MD, `xvault-miner` UI includes delegate/profile/claim menu.
 
 ## [v12.1 testnet] — 2026-08-22
 

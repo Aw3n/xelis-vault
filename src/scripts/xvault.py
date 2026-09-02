@@ -213,6 +213,7 @@ def _check_balance(b: Backend, asset: str, atomic: int) -> bool:
     """True if the wallet can spend `atomic` of `asset`; offers max otherwise."""
     asset_name = {ZERO_HASH: "XEL", b.vlt_asset: "VLT", b.xusd_asset: "xUSD"}.get(asset, asset[:16])
     addr = getattr(b, "address", "(unknown)")
+    e = None
     try:
         avail = b.balance(asset)
     except Exception as e:
@@ -228,7 +229,7 @@ def _check_balance(b: Backend, asset: str, atomic: int) -> bool:
             "",
             f"Wallet: {addr}",
             f"Asset: {asset_name} ({asset[:16]}...)",
-            f"Error: {str(e)[:80]}",
+            f"Error: {str(e)[:80]}" if e else "",
             "",
             f"{C.GRAY}Check that the wallet is running and the RPC is reachable.{C.RESET}",
         ], color=C.RED)

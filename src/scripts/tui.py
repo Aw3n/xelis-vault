@@ -120,12 +120,16 @@ def _read_key_windows():
             ch2 = msvcrt.getch()
         except Exception:
             return "UNKNOWN"
-        if ch2 == b"H": return "UP"
-        if ch2 == b"P": return "DOWN"
-        if ch2 == b"M": return "RIGHT"
-        if ch2 == b"K": return "LEFT"
+        _UP = {b"H", b"A"}
+        _DOWN = {b"P", b"B"}
+        _RIGHT = {b"M", b"C"}
+        _LEFT = {b"K", b"D"}
+        if ch2 in _UP: return "UP"
+        if ch2 in _DOWN: return "DOWN"
+        if ch2 in _RIGHT: return "RIGHT"
+        if ch2 in _LEFT: return "LEFT"
         return "SPECIAL"
-    if ch == b"\r": return "ENTER"
+    if ch in (b"\r", b"\n"): return "ENTER"
     if ch == b"\x03": return "CTRL_C"
     if ch == b"\x04": return "CTRL_D"
     if ch == b"\x1b": return "ESC"

@@ -266,6 +266,15 @@ def register_miner_cli(cfg, endpoint: str, services: str, stake_vlt: float):
     if not getattr(b, "address", None):
         print("ERROR: cannot read connected wallet address.")
         return
+    # Check if miner binary is available (warning only, not blocking)
+    from onboarding import find_miner_binary
+    miner_bin = find_miner_binary()
+    if not miner_bin:
+        print("WARNING: xelis_miner binary not found locally.")
+        print("  You can still register on-chain, but you will need to")
+        print("  download the miner binary to start mining locally.")
+        print("  Run with --setup or see documentation for details.")
+        print()
     mask = {"both": 3, "oracle": 1, "chat": 2}.get(services or "both", 3)
     min_atomic = b.miner_stake_min() or MIN_STAKE_VLT
     try:
@@ -283,6 +292,9 @@ def register_miner_cli(cfg, endpoint: str, services: str, stake_vlt: float):
     ok, msg = confirm_miner_tx(b, res, "Miner registration", expect_active=True)
     if ok:
         print("OK: miner ACTIVE on-chain -> " + res.tx[:44] + "...")
+        if not miner_bin:
+            print("NOTE: To start mining locally, download xelis_miner and")
+            print("      run 'xvault-miner --miner' or use the Actions menu.")
     else:
         print("FAILED: " + msg)
 
@@ -892,6 +904,20 @@ def action_registration_flow(cfg, b):
     if not b.ping_wallet():
         info_box("Register miner", _wallet_unreachable_msg(cfg), color=C.RED)
         return
+    # Check if miner binary is available (warning only, not blocking)
+    from onboarding import find_miner_binary
+    miner_bin = find_miner_binary()
+    if not miner_bin:
+        info_box("Miner binary not found", [
+            render_warn("xelis_miner binary not found locally."),
+            "",
+            "You can still register on-chain, but you will need to",
+            "download the miner binary to start mining locally.",
+            "",
+            f"Download from: {C.CYAN}https://github.com/xelis-project/xelis-blockchain/releases{C.RESET}",
+            f"Or run with: {C.CYAN}--setup{C.RESET}",
+        ], color=C.YELLOW)
+        print()
     m = b.my_miner()
     if m and isinstance(m, list) and len(m) >= 15:
         if bool(m[M_ACTIVE]):
@@ -1017,11 +1043,18 @@ def action_registration_flow(cfg, b):
     ok, msg = confirm_miner_tx(b, res, "Miner registration", expect_active=True)
     if ok:
         if "ACTIVE" in msg:
-            info_box("Registered", [
+            lines = [
                 render_ok("Miner profile ACTIVE on-chain ✓"), "",
                 f"Tx: {res.tx[:44]}…",
                 "Next: enable services & send a heartbeat from the Actions menu.",
-            ], color=C.GREEN)
+            ]
+            if not miner_bin:
+                lines.extend([
+                    "",
+                    f"{C.YELLOW}NOTE: To start mining locally, download xelis_miner from:{C.RESET}",
+                    f"{C.CYAN}https://github.com/xelis-project/xelis-blockchain/releases{C.RESET}",
+                ])
+            info_box("Registered", lines, color=C.GREEN)
         else:
             info_box("Registration pending", [
                 render_warn("Transaction confirmed, but profile not yet ACTIVE."),

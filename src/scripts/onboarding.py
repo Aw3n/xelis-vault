@@ -561,8 +561,14 @@ def ensure_daemon(cfg) -> bool:
 
 def find_miner_binary() -> Optional[str]:
     exe = "xelis_miner.exe" if platform.system() == "Windows" else "xelis_miner"
+    # Also check script directory and current working directory
+    script_dir = Path(__file__).parent.parent.parent / "bin"
+    cwd = Path.cwd() / "bin"
     candidates = [
         BIN_DIR / exe,
+        script_dir / exe,
+        cwd / exe,
+        Path.cwd() / exe,
         Path.home() / ".xelis" / exe,
         Path.home() / "xelis" / exe,
         shutil.which("xelis_miner"),
@@ -649,11 +655,15 @@ def start_miner(cfg) -> tuple[bool, str]:
         return True, f"miner already running (pid {pid})"
 
     binary = cfg.get("miner_binary") or find_miner_binary()
-    if not binary and platform.system() != "Darwin":
+    if not binary:
+        # Try to download on all platforms (including macOS)
         binary = download_miner_binary()
     if not binary:
-        return False, ("xelis_miner not found — install it in ~/.xelis-vault/bin/ "
-                       "or build from source")
+        system = platform.system()
+        exe = "xelis_miner.exe" if system == "Windows" else "xelis_miner"
+        return False, (f"xelis_miner not found — download it from "
+                       f"https://github.com/xelis-project/xelis-blockchain/releases "
+                       f"and place it in {BIN_DIR}/{exe}, or run with --setup")
     cfg.data["miner_binary"] = binary
 
     addr = cfg.get("miner_address")

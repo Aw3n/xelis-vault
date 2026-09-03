@@ -82,7 +82,7 @@ echo "        [OK] Cleanup done"
 echo ""
 echo "  [3/4] Starting wallet..."
 echo "        RPC: ${RPC_URL}"
-echo "        Address: xet:8fhfqammfpxg5w22y4uxztu79tq4vzht3hh46q3gktyu7q9ry3qqqha5ncy"
+echo "        Address: (will be displayed after wallet starts)"
 
 mkdir -p "${WALLET_DIR}"
 mkdir -p "${LOG_DIR}"

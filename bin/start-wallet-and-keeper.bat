@@ -88,7 +88,7 @@ echo        [OK] Cleanup done
 echo.
 echo  [3/4] Starting wallet...
 echo        RPC: %RPC_URL%
-echo        Address: xet:8fhfqammfpxg5w22y4uxztu79tq4vzht3hh46q3gktyu7q9ry3qqqha5ncy
+echo        Address: (will be displayed after wallet starts)
 
 start "XELIS Vault - Wallet" cmd /k "title XELIS Vault - Wallet && "%WALLET_BIN%" --seed "%SEED%" --network testnet --wallet-path "%WALLET_DIR%" --password testpass --rpc-bind-address 127.0.0.1:%RPC_PORT% --rpc-username wallet --rpc-password testpass --daemon-address %DAEMON_RPC%"
 

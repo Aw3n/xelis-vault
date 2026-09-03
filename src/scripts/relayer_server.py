@@ -31,9 +31,11 @@ import argparse
 import hashlib
 import json
 import os
+import signal
 import sys
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -76,7 +78,194 @@ def default_cfg() -> dict:
         "anchor_enabled": True,
         "anchor_blocks": ANCHOR_RATE_LIMIT_BLOCKS,
         "sync_interval": 3.0,
+        "tunnel_enabled": False,
+        "tunnel_binary": "",
     }
+
+
+# ---------------------------------------------------------------------------
+# Cloudflare Tunnel Manager (trycloudflare.com — free, no account needed)
+# ---------------------------------------------------------------------------
+class TunnelManager:
+    """Manages a Cloudflare quick tunnel to expose the relayer publicly.
+
+    Features:
+    - Auto-start/stop cloudflared process
+    - Auto-restart on crash (with backoff)
+    - URL extraction from log tail
+    - Health checking of the public URL
+    """
+    def __init__(self, cfg: dict, local_port: int):
+        self.cfg = cfg
+        self.local_port = local_port
+        self.proc = None
+        self.pid_file = RELAYER_DIR / "tunnel.pid"
+        self.log_file = RELAYER_DIR / "tunnel.log"
+        self.url = ""
+        self.healthy = False
+        self.lock = threading.Lock()
+        self.stop_event = threading.Event()
+        self._restart_count = 0
+        self._max_restart_backoff = 60.0
+
+    def start(self) -> tuple[bool, str]:
+        """Start the tunnel process and wait for the public URL."""
+        import platform
+        import shutil
+        import subprocess
+        import stat as _stat
+
+        if self.proc and self.proc.poll() is None:
+            return True, f"tunnel already running (pid {self.proc.pid})"
+
+        # Find cloudflared binary
+        binary = self.cfg.get("tunnel_binary") or ""
+        if not binary:
+            candidates = [
+                VAULT_DIR / "bin" / ("cloudflared.exe" if platform.system() == "Windows" else "cloudflared"),
+                shutil.which("cloudflared") or "",
+            ]
+            for c in candidates:
+                if c and Path(c).exists():
+                    binary = str(c)
+                    break
+        if not binary:
+            return False, "cloudflared not found — install it or set tunnel_binary in config"
+
+        self.cfg["tunnel_binary"] = binary
+        RELAYER_DIR.mkdir(parents=True, exist_ok=True)
+
+        log_f = open(self.log_file, "ab")
+        try:
+            if platform.system() == "Windows":
+                kwargs = {"creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+                          "stdin": subprocess.DEVNULL}
+            else:
+                kwargs = {"start_new_session": True, "stdin": subprocess.DEVNULL}
+            self.proc = subprocess.Popen(
+                [binary, "tunnel", "--no-autoupdate", "--url", f"http://127.0.0.1:{self.local_port}"],
+                stdout=log_f, stderr=log_f, **kwargs)
+        except Exception as e:
+            log_f.close()
+            return False, f"failed to start cloudflared: {e}"
+
+        self.pid_file.write_text(str(self.proc.pid))
+        log_f.close()
+
+        # Wait for URL (up to 25s)
+        import re
+        for _ in range(25):
+            time.sleep(1)
+            url = self._extract_url()
+            if url:
+                with self.lock:
+                    self.url = url
+                return True, f"tunnel started -> {url}"
+        return True, "tunnel started but URL not ready yet"
+
+    def stop(self):
+        """Stop the tunnel process."""
+        import platform
+        import subprocess as _sp
+        if self.proc and self.proc.poll() is None:
+            try:
+                if platform.system() == "Windows":
+                    _sp.run(["taskkill", "/PID", str(self.proc.pid), "/F", "/T"],
+                            capture_output=True, timeout=10)
+                else:
+                    self.proc.terminate()
+                    for _ in range(10):
+                        time.sleep(0.2)
+                        if self.proc.poll() is not None:
+                            break
+                    else:
+                        self.proc.kill()
+            except Exception:
+                pass
+        self.proc = None
+        self.pid_file.unlink(missing_ok=True)
+        with self.lock:
+            self.url = ""
+            self.healthy = False
+
+    def _extract_url(self) -> str:
+        """Extract the trycloudflare.com URL from the tunnel log tail.
+
+        Handles multiple cloudflared output formats:
+          - plain URL: https://xxx.trycloudflare.com
+          - pipe-delimited: | https://xxx.trycloudflare.com |
+          - with path: https://xxx.trycloudflare.com/
+        Reads the last 128KB (was 64KB) to handle verbose log output."""
+        import re
+        try:
+            with open(self.log_file, "rb") as f:
+                f.seek(0, os.SEEK_END)
+                size = f.tell()
+                f.seek(max(0, size - 131_072))
+                txt = f.read().decode("utf-8", "replace")
+            url = ""
+            for m in re.finditer(r"https?://[a-z0-9-]+\.trycloudflare\.com/?", txt):
+                url = m.group(0).rstrip("/")
+            return url
+        except Exception:
+            return ""
+
+    def check_health(self) -> bool:
+        """Quick HTTP HEAD/GET check that the public tunnel URL is reachable.
+
+        Uses two attempts (HEAD then GET) because some Cloudflare edge nodes
+        may block HEAD requests while allowing GET. Short timeout keeps the
+        watchdog responsive."""
+        import requests
+        with self.lock:
+            url = self.url
+        if not url:
+            self.healthy = False
+            return False
+        for attempt in range(2):
+            try:
+                if attempt == 0:
+                    r = requests.head(url, timeout=5, allow_redirects=True)
+                else:
+                    r = requests.get(url, timeout=5, allow_redirects=True, stream=True)
+                    r.close()
+                self.healthy = r.status_code < 400
+                return self.healthy
+            except Exception:
+                pass
+        self.healthy = False
+        return False
+
+    def status(self) -> dict:
+        with self.lock:
+            url = self.url
+        return {
+            "enabled": True,
+            "running": self.proc is not None and self.proc.poll() is None,
+            "pid": self.proc.pid if self.proc else None,
+            "url": url,
+            "healthy": self.healthy,
+            "restarts": self._restart_count,
+        }
+
+    def run_watchdog(self, check_interval: float = 30.0):
+        """Background loop: restart tunnel if dead, check health periodically."""
+        while not self.stop_event.is_set():
+            # Check if process is alive
+            if self.proc is None or self.proc.poll() is not None:
+                self._restart_count += 1
+                backoff = min(self._max_restart_backoff,
+                              2 ** min(self._restart_count, 6))
+                self.stop_event.wait(backoff)
+                if self.stop_event.is_set():
+                    break
+                ok, msg = self.start()
+                if ok:
+                    self._restart_count = 0  # reset on success
+            else:
+                # Process alive — check health
+                self.check_health()
+            self.stop_event.wait(check_interval)
 
 
 # ---------------------------------------------------------------------------
@@ -165,6 +354,11 @@ class Relayer:
         self.anchored_count = 0
         self.last_anchor_ts = 0
         self.sync_errors = 0
+        self.tunnel = None       # TunnelManager (optional)
+        # Shared worker pool: inbox/group scans fan out across it instead of
+        # paying one sequential RPC round-trip per message (up to 200 per
+        # address — that used to stall every /inbox request for seconds).
+        self._pool = ThreadPoolExecutor(max_workers=16)
         self._connect()
 
     # -- connection ------------------------------------------------------
@@ -206,11 +400,15 @@ class Relayer:
 
     # -- message reading ---------------------------------------------------
     def _read_inbox(self, kind: str, addr: str, count_key: str, prefix: str, limit=200):
-        """Read `count_key` for addr then index prefix<addr>_<i>, split '|'."""
+        """Read `count_key` for addr then index prefix<addr>_<i>, split '|'.
+        Slot reads are fanned out across the worker pool — was one sequential
+        RPC per message (up to 200 round-trips per inbox request)."""
         n = self._int(self._rd(count_key + addr))
+        raws = list(self._pool.map(
+            lambda i: self._rd(f"{prefix}{addr}_{i}"),
+            range(min(n, limit))))
         out = []
-        for i in range(min(n, limit)):
-            raw = self._rd(f"{prefix}{addr}_{i}")
+        for i, raw in enumerate(raws):
             if not raw:
                 continue
             parts = str(raw).split("|")
@@ -246,27 +444,38 @@ class Relayer:
         except Exception:
             pass
         new = 0
-        for addr in list(addrs):
-            for m in self._read_inbox("relayed", addr, "msgc_", "msg_"):
-                if not m["blob"]:
-                    continue
-                key = f"{m['sender']}|{m['ts']}|{m['slot']}"
-                with self.lock:
-                    if not self.ledger.is_seen("relayed", key):
-                        self.ledger.mark_seen("relayed", key)
-                        self.outbox_new.append(m["blob"])
-                        self.outbox_senders.add(m["sender"])
-                        new += 1
-                    else:
+        addr_list = list(addrs)
+        if addr_list:
+            # NOTE: scans run sequentially on purpose — each _read_inbox
+            # already fans its slot reads out across the shared pool; nesting
+            # pool submissions (pool task calling pool.map) would deadlock
+            # the fixed worker pool. Sequential outer, parallel inner.
+            for addr in addr_list:
+                for m in self._read_inbox("relayed", addr, "msgc_", "msg_"):
+                    if not m["blob"]:
                         continue
-                self.ledger.save()
+                    key = f"{m['sender']}|{m['ts']}|{m['slot']}"
+                    with self.lock:
+                        if not self.ledger.is_seen("relayed", key):
+                            self.ledger.mark_seen("relayed", key)
+                            self.outbox_new.append(m["blob"])
+                            self.outbox_senders.add(m["sender"])
+                            new += 1
+                        else:
+                            continue
+                    self.ledger.save()
         if new:
             self._w(f"sync: +{new} new relayed message(s) enqueued")
         return new
 
     # -- HTTP-facing reads (real per-address reads on demand) --------------
     def inbox_for(self, addr: str) -> list:
-        """Read the on-chain inbox for an address: direct + relayed, dedup."""
+        """Read the on-chain inbox for an address: direct + relayed, dedup.
+
+        NOTE: the two scans run sequentially here on purpose — _read_inbox
+        already fans its slot reads out across the shared pool, and nesting
+        pool submissions (pool task calling pool.map) would deadlock the
+        fixed worker pool once every worker waits on an inner task."""
         out = []
         out += self._read_inbox("direct", addr, "dmsgc_", "dmsg_")
         out += self._read_inbox("relayed", addr, "msgc_", "msg_")
@@ -290,9 +499,12 @@ class Relayer:
 
     def groups(self) -> list:
         gc = self._int(self._rd("gc"))
+        if gc <= 0:
+            return []
+        raws = list(self._pool.map(lambda gid: self._rd(f"group_{gid}"),
+                                   range(gc)))
         groups = []
-        for gid in range(gc):
-            raw = self._rd(f"group_{gid}")
+        for gid, raw in enumerate(raws):
             if not raw:
                 continue
             # Group struct: [id, group_pubkey(Hash), creator(Address), created_at, active]
@@ -312,7 +524,7 @@ class Relayer:
             my_addr = self.b.address or ""
         except Exception:
             my_addr = ""
-        return {
+        result = {
             "running_since": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.started)),
             "uptime_s": int(time.time() - self.started),
             "daemon_url": self.cfg["daemon_url"],
@@ -327,6 +539,10 @@ class Relayer:
             "sync_errors": self.sync_errors,
             "topo": self._topo(),
         }
+        # Include tunnel status if enabled
+        if self.tunnel:
+            result["tunnel"] = self.tunnel.status()
+        return result
 
     def _read_relayer_registration(self):
         addr = self.b.address
@@ -435,22 +651,31 @@ class Handler(BaseHTTPRequestHandler):
         p = self.path.split("?")[0].strip("/")
         parts = p.split("/")
         name = parts[0] if parts else ""
-        if name == "health":
-            self._json(200, {"ok": True, "service": "xelisvault-relayer",
-                             "time": time.time()})
-        elif name == "status":
-            self._json(200, self.relayer.status())
-        elif name == "inbox" and len(parts) >= 2:
-            self._json(200, {"addr": parts[1],
-                             "messages": self.relayer.inbox_for(parts[1])})
-        elif name == "groups":
-            self._json(200, {"groups": self.relayer.groups()})
-        elif name == "anchor":
-            self._json(200, self.relayer.try_anchor())
-        else:
-            self._json(404, {"error": "not found",
-                             "routes": ["/health", "/status", "/inbox/<addr>",
-                                        "/groups", "/anchor", "/relay"]})
+        try:
+            if name == "health":
+                self._json(200, {"ok": True, "service": "xelisvault-relayer",
+                                 "time": time.time(),
+                                 "uptime_s": int(time.time() - self.relayer.started)})
+            elif name == "status":
+                self._json(200, self.relayer.status())
+            elif name == "inbox" and len(parts) >= 2:
+                self._json(200, {"addr": parts[1],
+                                 "messages": self.relayer.inbox_for(parts[1])})
+            elif name == "groups":
+                self._json(200, {"groups": self.relayer.groups()})
+            elif name == "anchor":
+                self._json(200, self.relayer.try_anchor())
+            elif name == "tunnel":
+                if self.relayer.tunnel:
+                    self._json(200, self.relayer.tunnel.status())
+                else:
+                    self._json(200, {"enabled": False, "message": "tunnel not configured"})
+            else:
+                self._json(404, {"error": "not found",
+                                 "routes": ["/health", "/status", "/inbox/<addr>",
+                                            "/groups", "/anchor", "/relay", "/tunnel"]})
+        except Exception as e:
+            self._json(500, {"error": str(e)[:200]})
 
     def do_POST(self):
         p = self.path.split("?")[0].strip("/")
@@ -479,6 +704,26 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+class _QuietThreadingHTTPServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer that silently ignores broken-client socket errors
+    (ConnectionResetError, BrokenPipeError) instead of printing tracebacks."""
+
+    def handle_error(self, request, client_address):
+        import traceback
+        exc_type, exc_val, *_ = sys.exc_info()
+        # Silently ignore common client-disconnect errors
+        if exc_type in (ConnectionResetError, BrokenPipeError,
+                        ConnectionAbortedError):
+            return
+        # On Windows, WSAECONNRESET (10054) surfaces as ConnectionResetError
+        # but sometimes as OSError with errno 10053/10054
+        if isinstance(exc_val, OSError) and getattr(exc_val, "errno", None) in (
+                10053, 10054):
+            return
+        # Everything else: print the traceback as usual
+        traceback.print_exc()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="XELIS VaultChat relayer daemon")
     c = default_cfg()
@@ -491,6 +736,10 @@ def main() -> int:
     ap.add_argument("--no-anchor", action="store_true", help="disable auto anchoring")
     ap.add_argument("--anchor-blocks", type=int, default=c["anchor_blocks"])
     ap.add_argument("--sync-interval", type=float, default=c["sync_interval"])
+    ap.add_argument("--tunnel", action="store_true",
+                    help="auto-start Cloudflare tunnel (trycloudflare.com)")
+    ap.add_argument("--tunnel-binary", default=c.get("tunnel_binary", ""),
+                    help="path to cloudflared binary (auto-detected if empty)")
     ap.add_argument("--once", action="store_true",
                     help="run one sync + optional anchor then exit (for tests)")
     args = ap.parse_args()
@@ -501,6 +750,8 @@ def main() -> int:
         "host": args.host, "port": args.port,
         "anchor_enabled": not args.no_anchor,
         "anchor_blocks": args.anchor_blocks, "sync_interval": args.sync_interval,
+        "tunnel_enabled": args.tunnel,
+        "tunnel_binary": args.tunnel_binary,
     }
     r = Relayer(cfg)
 
@@ -512,15 +763,41 @@ def main() -> int:
 
     RELAYER_DIR.mkdir(parents=True, exist_ok=True)
     PID_PATH.write_text(str(os.getpid()))
+
+    # Start tunnel if enabled
+    tunnel_thread = None
+    if cfg["tunnel_enabled"]:
+        r.tunnel = TunnelManager(cfg, cfg["port"])
+        ok, msg = r.tunnel.start()
+        print(f"[tunnel] {msg}")
+        if ok:
+            tunnel_thread = threading.Thread(target=r.tunnel.run_watchdog,
+                                             args=(30.0,), daemon=True)
+            tunnel_thread.start()
+
+    def _shutdown(sig, frame):
+        print(f"\n[relayer] shutdown signal received…")
+        r.stop.set()
+        if r.tunnel:
+            r.tunnel.stop()
+
+    signal.signal(signal.SIGINT, _shutdown)
+    signal.signal(signal.SIGTERM, _shutdown)
+
     try:
         Handler.relayer = r
-        httpd = ThreadingHTTPServer((cfg["host"], cfg["port"]), Handler)
+        httpd = _QuietThreadingHTTPServer((cfg["host"], cfg["port"]), Handler)
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
+        print(f"[relayer] listening on http://{cfg['host']}:{cfg['port']}")
+        if r.tunnel and r.tunnel.url:
+            print(f"[relayer] public tunnel: {r.tunnel.url}")
         r.run()
     except KeyboardInterrupt:
         pass
     finally:
+        if r.tunnel:
+            r.tunnel.stop()
         try:
             PID_PATH.unlink(missing_ok=True)
         except Exception:

@@ -592,6 +592,29 @@ def render_dashboard(cfg, live, hint=""):
             print(render_panel("  RELAYER  &  TUNNEL", r_lines,
                                border_color=C.CYAN, width=60))
 
+    # ── Keeper status line ──
+    kp = keeper_running()
+    if kp:
+        print(f"  {C.DIM}Keeper:{C.RESET}  {render_ok('RUNNING')} {C.DIM}(pid {kp} — prices + heartbeats auto){C.RESET}")
+    else:
+        services = cfg.get("services", "both")
+        if services in ("oracle", "both"):
+            _missing = []
+            if not cfg.get("wallet_url"):
+                _missing.append("wallet_url")
+            if not cfg.get("miner_address"):
+                _missing.append("miner_address")
+            _state_f = Path(__file__).resolve().parent.parent / "docs" / "deployment_state.json"
+            _dmap_f = Path(__file__).resolve().parent.parent / "docs" / "entry_chunk_ids.json"
+            if not _state_f.exists():
+                _missing.append("deployment_state")
+            if not _dmap_f.exists():
+                _missing.append("entry_chunk_ids")
+            if _missing:
+                print(f"  {C.DIM}Keeper:{C.RESET}  {render_warn('WAITING')} {C.DIM}(missing: {', '.join(_missing)} — run setup s){C.RESET}")
+            else:
+                print(f"  {C.DIM}Keeper:{C.RESET}  {render_warn('STOPPED')} {C.DIM}(press m → Launch keeper){C.RESET}")
+
     # ── Footer ──
     print()
     print(f"{C.GRAY}{'─' * 60}{C.RESET}")
@@ -802,12 +825,15 @@ def keeper_running() -> int | None:
         return None
 
 
-def launch_keeper(cfg) -> None:
+def launch_keeper(cfg, auto=False) -> None:
     import subprocess
     script = Path(__file__).parent / "oracle_keeper3.py"
     if not script.exists():
-        info_box("Keeper", [render_error(f"oracle_keeper3.py not found at {script}")],
-                 color=C.RED)
+        if auto:
+            print(f"{C.RED}  ERROR: oracle_keeper3.py not found at {script}{C.RESET}")
+        else:
+            info_box("Keeper", [render_error(f"oracle_keeper3.py not found at {script}")],
+                     color=C.RED)
         return
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     logf = open(LOG_DIR / "keeper.log", "ab")
@@ -822,11 +848,15 @@ def launch_keeper(cfg) -> None:
     proc = subprocess.Popen([py, str(script)], stdout=logf, stderr=logf,
                             **detach_kwargs)
     KEEPER_PID.write_text(str(proc.pid))
-    info_box("Keeper launched", [
-        render_ok(f"Oracle keeper started (pid {proc.pid})"), "",
-        "It submits prices and heartbeats automatically.",
-        f"Log: {LOG_DIR / 'keeper.log'}",
-    ], color=C.GREEN)
+    if auto:
+        print(f"{C.GREEN}  ✓ Oracle keeper auto-started (pid {proc.pid})"
+              f" — prices + heartbeats{C.RESET}")
+    else:
+        info_box("Keeper launched", [
+            render_ok(f"Oracle keeper started (pid {proc.pid})"), "",
+            "It submits prices and heartbeats automatically.",
+            f"Log: {LOG_DIR / 'keeper.log'}",
+        ], color=C.GREEN)
 
 
 def _terminate(pid: int) -> None:
@@ -1742,7 +1772,6 @@ def main():
         ok, msg = start_miner(cfg)
         print(("OK: " if ok else "ERREUR: ") + msg)
         if ok:
-            from pathlib import Path
             log_path = Path.home() / ".xelis-vault" / "logs" / "miner.log"
             print(f"Journal du mineur : {log_path}")
         time.sleep(2)
@@ -1780,6 +1809,41 @@ def main():
     print(f"{C.DIM}  Loading dashboard...{C.RESET}", flush=True)
     hint = _fallback_rpc_if_needed(cfg)
     mode = check_contracts(cfg)
+
+    # ── Auto-launch oracle keeper if service is oracle/both ──────────────
+    # Only if all required data is actually filled in:
+    #   - wallet_url (so keeper can submit transactions)
+    #   - miner_address (so we're registered on-chain)
+    #   - deployment_state.json + entry_chunk_ids.json (contracts deployed)
+    services = cfg.get("services", "both")
+    _state_file = Path(__file__).resolve().parent.parent / "docs" / "deployment_state.json"
+    _dmap_file = Path(__file__).resolve().parent.parent / "docs" / "entry_chunk_ids.json"
+    keeper_ready = (
+        services in ("oracle", "both")
+        and mode != "demo"
+        and cfg.get("wallet_url")
+        and cfg.get("miner_address")
+        and _state_file.exists()
+        and _dmap_file.exists()
+    )
+    if keeper_ready:
+        if not keeper_running():
+            print(f"{C.DIM}  Auto-starting oracle keeper...{C.RESET}", flush=True)
+            launch_keeper(cfg, auto=True)
+            time.sleep(1)
+        else:
+            pid = keeper_running()
+            print(f"{C.DIM}  Oracle keeper already running (pid {pid}){C.RESET}", flush=True)
+
+    # ── Auto-start tunnel watchdog if service is chat/both ───────────────
+    if services in ("chat", "both") and mode != "demo" \
+            and cfg.get("wallet_url") and cfg.get("miner_address"):
+        if not _watchdog_state["enabled"]:
+            _watchdog_state["enabled"] = True
+            _wd_thread = threading.Thread(target=_watchdog_loop, args=(cfg, 60.0), daemon=True)
+            _wd_thread.start()
+            _watchdog_state["thread"] = _wd_thread
+            print(f"{C.DIM}  Tunnel watchdog auto-started (chat endpoint sync){C.RESET}", flush=True)
 
     auto_refresh = True
     running = [True]

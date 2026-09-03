@@ -5,9 +5,10 @@
   "wallet_pass": "your_wallet_password_here",
   "miner_address": "",
   "miner_endpoint": "",
-  "services": "oracle",
+  "services": "both",
   "compound": false,
   "contracts": {},
   "miner_binary": "",
-  "miner_threads": "4"
+  "miner_threads": "4",
+  "relayer_port": 18444
 }

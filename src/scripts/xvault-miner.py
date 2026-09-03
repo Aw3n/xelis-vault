@@ -1742,8 +1742,9 @@ def main():
         ok, msg = start_miner(cfg)
         print(("OK: " if ok else "ERREUR: ") + msg)
         if ok:
-            print("Journal du mineur : %s\\.xelis-vault\\logs\\miner.log"
-                  % os.path.expanduser("~"))
+            from pathlib import Path
+            log_path = Path.home() / ".xelis-vault" / "logs" / "miner.log"
+            print(f"Journal du mineur : {log_path}")
         time.sleep(2)
         return
 

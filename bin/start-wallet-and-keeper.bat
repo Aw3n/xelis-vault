@@ -12,10 +12,21 @@ set "VAULT_DIR=%USERPROFILE%\.xelis-vault"
 set "WALLET_BIN=%VAULT_DIR%\bin\xelis_wallet.exe"
 set "WALLET_DIR=%VAULT_DIR%\wallets\xvault-user"
 set "LOG_DIR=%VAULT_DIR%\logs"
-set "SEED=ponies quick lair sovereign woven taxi drinks javelin seeded succeed scamper answers shackles welders efficient vacation aloof dying anchor rising soil aided examine gesture lair"
 set "RPC_PORT=18082"
 set "RPC_URL=http://127.0.0.1:%RPC_PORT%/json_rpc"
 set "DAEMON_RPC=https://testnet-node.xelis.io"
+
+:: Seed can be provided via environment variable
+if not defined XELIS_WALLET_SEED (
+    echo.
+    echo   [!] No seed provided. Set XELIS_WALLET_SEED environment variable
+    echo       or create wallet manually with: xelis_wallet.exe --generate
+    echo.
+    echo       Example: set XELIS_WALLET_SEED=your seed words here
+    pause
+    exit /b 1
+)
+set "SEED=%XELIS_WALLET_SEED%"
 
 :: Try to find xvault-miner.exe in common locations
 set "KEEPER_EXE="
@@ -77,7 +88,7 @@ echo        [OK] Cleanup done
 echo.
 echo  [3/4] Starting wallet...
 echo        RPC: %RPC_URL%
-echo        Address: YOUR_WALLET_ADDRESS_HERE
+echo        Address: xet:8fhfqammfpxg5w22y4uxztu79tq4vzht3hh46q3gktyu7q9ry3qqqha5ncy
 
 start "XELIS Vault - Wallet" cmd /k "title XELIS Vault - Wallet && "%WALLET_BIN%" --seed "%SEED%" --network testnet --wallet-path "%WALLET_DIR%" --password testpass --rpc-bind-address 127.0.0.1:%RPC_PORT% --rpc-username wallet --rpc-password testpass --daemon-address %DAEMON_RPC%"
 
@@ -152,4 +163,3 @@ echo  Press any key to close this launcher window...
 pause >nul
 
 endlocal
-

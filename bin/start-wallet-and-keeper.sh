@@ -8,10 +8,19 @@ VAULT_DIR="${HOME}/.xelis-vault"
 WALLET_BIN="${VAULT_DIR}/bin/xelis_wallet"
 WALLET_DIR="${VAULT_DIR}/wallets/xvault-user"
 LOG_DIR="${VAULT_DIR}/logs"
-SEED="ponies quick lair sovereign woven taxi drinks javelin seeded succeed scamper answers shackles welders efficient vacation aloof dying anchor rising soil aided examine gesture lair"
 RPC_PORT=18082
 RPC_URL="http://127.0.0.1:${RPC_PORT}/json_rpc"
 DAEMON_RPC="https://testnet-node.xelis.io"
+
+# Seed can be provided via environment variable or will be prompted
+SEED="${XELIS_WALLET_SEED:-}"
+if [[ -z "${SEED}" ]]; then
+    echo "  [!] No seed provided. Set XELIS_WALLET_SEED environment variable"
+    echo "      or create wallet manually with: xelis_wallet --generate"
+    echo ""
+    echo "      Example: export XELIS_WALLET_SEED=\"your seed words here\""
+    exit 1
+fi
 
 # Find keeper binary (exe or Python fallback)
 KEEPER_EXE=""
@@ -73,7 +82,7 @@ echo "        [OK] Cleanup done"
 echo ""
 echo "  [3/4] Starting wallet..."
 echo "        RPC: ${RPC_URL}"
-echo "        Address: YOUR_WALLET_ADDRESS_HERE"
+echo "        Address: xet:8fhfqammfpxg5w22y4uxztu79tq4vzht3hh46q3gktyu7q9ry3qqqha5ncy"
 
 mkdir -p "${WALLET_DIR}"
 mkdir -p "${LOG_DIR}"
@@ -170,4 +179,3 @@ echo "  ║                                                                  ║
 echo "  ║  To stop: pkill -f xelis_wallet; pkill -f xvault-miner          ║"
 echo "  ╚══════════════════════════════════════════════════════════════════╝"
 echo ""
-

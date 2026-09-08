@@ -56,6 +56,9 @@ ASSET_MAP = {
     ("Linux", "aarch64"): "aarch64-unknown-linux-gnu.tar.gz",
     ("Linux", "armv7l"): "armv7-unknown-linux-gnueabihf.tar.gz",
     ("Windows", "AMD64"): "x86_64-pc-windows-msvc.zip",
+    ("Windows", "x86_64"): "x86_64-pc-windows-msvc.zip",
+    ("Darwin", "x86_64"): "x86_64-apple-darwin.tar.gz",
+    ("Darwin", "arm64"): "aarch64-apple-darwin.tar.gz",
 }
 
 DEFAULT_DAEMONS = ["http://127.0.0.1:18081"]
@@ -588,19 +591,42 @@ def download_miner_binary() -> Optional[str]:
         return None
     print(f"\n  {C.DIM}Downloading the official xelis miner…{C.RESET}")
     try:
-        rel = requests.get(GITHUB_API, timeout=30).json()
+        rel = None
+        for _attempt in range(2):
+            try:
+                rel = requests.get(GITHUB_API, timeout=10,
+                                   headers={"Accept": "application/vnd.github+json"}).json()
+                break
+            except Exception:
+                time.sleep(1)
+        if not rel or not rel.get("assets"):
+            print(f"  {C.RED}Could not reach GitHub API (rate-limited or offline).{C.RESET}")
+            return None
         assets = {a["name"]: a["browser_download_url"] for a in rel.get("assets", [])}
         name = next((n for n in assets if n.endswith(asset_suffix)), None)
         if not name:
+            print(f"  {C.RED}No miner asset matching {asset_suffix} on this release.{C.RESET}")
             return None
+        url = assets[name]
         dest = BIN_DIR / name
         BIN_DIR.mkdir(parents=True, exist_ok=True)
-        with requests.get(assets[name], stream=True, timeout=300) as r:
+        with requests.get(url, stream=True, timeout=120) as r:
             r.raise_for_status()
+            total = int(r.headers.get("content-length", 0))
+            print(f"  {C.DIM}{name} ({rel.get('tag_name', '')})…{C.RESET}")
+            downloaded = 0
             with open(dest, "wb") as f:
                 for chunk in r.iter_content(1024 * 256):
-                    f.write(chunk)
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total:
+                            pct = downloaded * 100 // total
+                            bar = "=" * (pct // 5)
+                            print(f"\r  {C.DIM}[{bar:<20}] {pct}%{C.RESET}", end="", flush=True)
+            print()
         if dest.suffix == ".zip":
+            import zipfile
             with zipfile.ZipFile(dest) as z:
                 for member in z.infolist():
                     target = BIN_DIR / member.filename
@@ -608,6 +634,7 @@ def download_miner_binary() -> Optional[str]:
                         raise ValueError(f"unsafe zip member: {member.filename}")
                 z.extractall(BIN_DIR)
         else:
+            import tarfile
             with tarfile.open(dest) as t:
                 for member in t.getmembers():
                     target = BIN_DIR / member.name
@@ -618,11 +645,14 @@ def download_miner_binary() -> Optional[str]:
         exe = BIN_DIR / ("xelis_miner.exe" if system == "Windows" else "xelis_miner")
         if exe.exists():
             exe.chmod(exe.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+            print(f"  {C.GREEN}Miner binary downloaded and installed.{C.RESET}")
             return str(exe)
         found = next((p for p in BIN_DIR.rglob("*xelis_miner*") if p.is_file()), None)
         if found:
             found.chmod(found.stat().st_mode | stat.S_IEXEC)
+            print(f"  {C.GREEN}Miner binary downloaded and installed.{C.RESET}")
             return str(found)
+        print(f"  {C.RED}Downloaded but could not locate the miner executable.{C.RESET}")
     except Exception as e:
         print(f"  {C.RED}Download error: {e}{C.RESET}")
     return None

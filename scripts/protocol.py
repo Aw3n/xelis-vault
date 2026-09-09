@@ -54,7 +54,28 @@ ASSET_NAMES = {
 DECIMALS = {XEL_ASSET: 8, VLT_ASSET: 8, XUSD_ASSET: 8}
 
 # Registered contract hashes (deploy log — registry cur_<Name> is authoritative)
-CONTRACT_HASHES = {
+# Registered contract hashes (loaded dynamically from deployment_state.json
+# so a redeploy is picked up automatically without editing this file).
+# Fallback to the static table below if the state file is missing/unreadable.
+def _load_contract_hashes() -> dict:
+    """Load contract + asset hashes from docs/deployment_state.json."""
+    state_path = REPO_ROOT / "docs" / "deployment_state.json"
+    try:
+        state = json.loads(state_path.read_text())
+        hashes = {}
+        for name, h in state.get("contracts", {}).items():
+            if isinstance(h, str) and len(h) == 64:
+                hashes[name] = h
+        for name, h in state.get("assets", {}).items():
+            if isinstance(h, str) and len(h) == 64:
+                hashes[name] = h
+        if hashes:
+            return hashes
+    except Exception:
+        pass
+    return _STATIC_CONTRACT_HASHES
+
+_STATIC_CONTRACT_HASHES = {
     "AssetVault": "665331adf13d97ac2bfd00d2cb5f0a90f7db436001fddf2be2fc8d9cab72fe0e",
     "ComplianceModule": "33c9e397a641ee60169eb9c66ac2dc5848d8be302ad54fa62f505038188ce457",
     "ContractRegistry": "ab5e5b56bd251e14ef4a58eec88f73765cc87a072f5b9e4d83fcf8dbb5db7669",
@@ -86,6 +107,8 @@ CONTRACT_HASHES = {
     "XelisVaultMiner": "1ec871fa1ae06ff624ae8c38685137faac927ec301af9fd0c9609031223bd798",
     "xUSD": "df4820a0859801f349b60d70994e1316a66f3bbebf5c1f7205892ac2fd927e26",
 }
+
+CONTRACT_HASHES = _load_contract_hashes()
 
 # Oracle feed ids
 FEED_XEL_USD = 0

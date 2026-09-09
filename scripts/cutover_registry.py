@@ -73,6 +73,16 @@ def main():
 
     print("\nCutover complete.")
 
+    # Persist the new state so all tooling picks up the v12 hashes automatically.
+    merged = dict(v11)
+    merged["contracts"] = dict(v12["contracts"])
+    merged["assets"] = dict(v12["assets"])
+    merged.setdefault("steps_done", []).append("registry_cutover_v12")
+    merged.setdefault("log", []).append(
+        "[cutover] registry upgraded to v12 hashes")
+    STATE_PATH.write_text(json.dumps(merged, indent=2))
+    print(f"State written to {STATE_PATH}")
+
 
 if __name__ == "__main__":
     main()

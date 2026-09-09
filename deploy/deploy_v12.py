@@ -43,6 +43,25 @@ STATE = load_state()
 
 def save():
     STATE_PATH.write_text(json.dumps(STATE, indent=2))
+    # Regenerate network/testnet.json so cli_backend picks up the latest hashes.
+    _write_bundle(STATE)
+
+
+def _write_bundle(state: dict):
+    """Write network/testnet.json from the deployment state."""
+    bundle = {
+        "contracts": state.get("contracts", {}),
+        "vlt_asset": state.get("assets", {}).get("VLT", ""),
+        "xusd_asset": state.get("assets", {}).get("XUSD", ""),
+        "oracle_feed_id": 0,
+    }
+    for out in [REPO / "src" / "network" / "testnet.json",
+                REPO / "network" / "testnet.json"]:
+        try:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(bundle, indent=2))
+        except Exception:
+            pass
 
 
 def log(msg: str):

@@ -41,10 +41,10 @@ from protocol import Protocol, val_hash, val_u64, val_u8, val_str, val_addr
 PUBLIC = "https://testnet-node.xelis.io"
 WALLET_URL = "http://127.0.0.1:18082/json_rpc"
 AUTH = ("wallet", "testpass")
-VLT = "3f1f9a3c0a90a0a548670a069e8edad5c0c20914b20b289426b2857c6715f58f"
-XUSD = "be39794c4a32f231d410c8be3a4d9e80455c667d902c5edf8527dea52533356e"
+VLT = "aac746ad93a2e0393320ef4c34dbf164abb61c6c54eb7ab2add48dc0e21498b9"
+XUSD = "91e58661276c35c87ff82cfce4080e1031a3b969cb81b58fb76097a7f321770b"
 ZERO = "0" * 64
-CB_HASH = "a84fc6d305b4ed1a6e15c310461799172272ec1cabf209316e724c3ede420f40"
+CB_HASH = "330179348592980c017ed3d762195bff1062bd95191dd802fe268679cdcb8573"
 
 PASS, FAIL = 0, 0
 BG_LOG = Path("/tmp/xvault_bg_ops.log")

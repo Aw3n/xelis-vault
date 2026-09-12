@@ -858,13 +858,14 @@ def tunnel_running() -> Optional[int]:
 
 
 def tunnel_url() -> str:
-    """Return the last public URL from the tunnel log (trycloudflare.com)."""
+    """Return the LAST public URL from the tunnel log (trycloudflare.com).
+    The log is append-only across restarts, so the current URL is the last match."""
     try:
         txt = TUNNEL_LOG.read_text(errors="replace")
         import re
-        m = re.search(r"https://[a-z0-9-]+\.trycloudflare\.com", txt)
-        if m:
-            return m.group(0)
+        matches = re.findall(r"https://[a-z0-9-]+\.trycloudflare\.com", txt)
+        if matches:
+            return matches[-1]
     except Exception:
         pass
     return ""

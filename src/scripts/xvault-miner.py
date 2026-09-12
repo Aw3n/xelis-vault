@@ -310,7 +310,9 @@ def interactive_setup(cfg):
     print(f"  {C.GREEN}  • https://mine.xelisvault.io{C.RESET}{C.DIM}   — a public relay you run/control{C.RESET}")
     print(f"  {C.GREEN}  • http://127.0.0.1:18081{C.RESET}{C.DIM}   — direct local node{C.RESET}")
     print(f"  {C.GREEN}  • ws://1.2.3.4:18081{C.RESET}{C.DIM}      — your own public node{C.RESET}\n")
-    cfg.data["miner_endpoint"] = text_input("Public endpoint URL", endp)
+    new_endp = text_input("Public endpoint URL", endp)
+    endpoint_changed = (new_endp != endp) and bool(endp) and bool(new_endp)
+    cfg.data["miner_endpoint"] = new_endp
     print(f"{C.DIM}  → Cannot be empty and is written on-chain at registration.{C.RESET}")
     time.sleep(0.4)
 
@@ -323,13 +325,28 @@ def interactive_setup(cfg):
         cfg.data["services"] = services
 
     cfg.save()
-    info_box("Setup Complete", [
+    msg_lines = [
         render_ok("Configuration saved!"), "",
         f"Services:  {cfg.get('services')}",
         f"Address:   {(cfg.get('miner_address') or '(none)')}",
         f"Endpoint:  {(cfg.get('miner_endpoint') or '(none)')}", "",
         "Contract addresses load automatically from the network bundle.",
-    ], color=C.GREEN)
+    ]
+    # Auto-update on-chain endpoint if it changed and miner is already registered
+    if endpoint_changed and cfg.get("wallet_url"):
+        try:
+            b2 = Backend(cfg.data)
+            if b2.has_wallet and b2.my_miner():
+                print(f"{C.DIM}  Endpoint changed — updating on-chain...{C.RESET}")
+                res = b2.miner_update_endpoint(cfg.get("miner_endpoint"))
+                if res.ok:
+                    msg_lines.append(render_ok(f"On-chain endpoint updated"))
+                else:
+                    msg_lines.append(render_warn(f"On-chain update failed: {res.reason}"))
+                    msg_lines.append(f"{C.DIM}  Use Actions > Update endpoint to retry.{C.RESET}")
+        except Exception:
+            pass
+    info_box("Setup Complete", msg_lines, color=C.GREEN)
 
 
 def check_contracts(cfg):
@@ -597,11 +614,52 @@ def action_enable_service(cfg, b):
             info_box("Failed", [render_error(f"Reason: {res.reason}")], color=C.RED)
 
 
+def action_update_endpoint(cfg, b):
+    """Update the miner's public endpoint URL on-chain."""
+    if not b.has_wallet:
+        info_box("Update endpoint", [render_error("No wallet connected.")], color=C.RED)
+        return
+    if not b.my_miner():
+        info_box("Update endpoint", [
+            render_error("Not registered yet."),
+            "Register first (Actions > Register as miner).",
+        ], color=C.RED)
+        return
+    current = cfg.get("miner_endpoint") or ""
+    on_chain = ""
+    try:
+        m = b.my_miner()
+        if isinstance(m, list) and len(m) > M_ENDPOINT:
+            on_chain = str(m[M_ENDPOINT])
+    except Exception:
+        pass
+    print(f"  {C.DIM}Current config:    {current}{C.RESET}")
+    if on_chain:
+        print(f"  {C.DIM}Current on-chain:  {on_chain}{C.RESET}")
+    new_ep = text_input("New public endpoint URL:", current).strip()
+    if not new_ep or new_ep == current:
+        return
+    if not confirm(f"Update on-chain endpoint to {new_ep}?"):
+        return
+    cfg.data["miner_endpoint"] = new_ep
+    cfg.save()
+    res = b.miner_update_endpoint(new_ep)
+    if res.ok:
+        info_box("Endpoint updated", [
+            render_ok("On-chain endpoint updated"),
+            f"  {C.CYAN}{new_ep}{C.RESET}", "",
+            f"Tx: {res.tx[:40]}...",
+        ], color=C.GREEN)
+    else:
+        info_box("Update failed", [render_error(f"Reason: {res.reason}")], color=C.RED)
+
+
 def action_menu(cfg, b):
     from onboarding import miner_running, start_miner, stop_miner
     running = miner_running()
     opts = [
         ("Register as miner (guided)", "reg"),
+        ("Update public endpoint on-chain", "updatep"),
         ("Send heartbeat now", "hb"),
         ("Increase miner stake", "stake"),
         ("Enable a service", "svc"),
@@ -615,6 +673,8 @@ def action_menu(cfg, b):
     choice = menu("Miner actions", opts)
     if choice == "reg":
         action_registration_flow(cfg, b)
+    elif choice == "updatep":
+        action_update_endpoint(cfg, b)
     elif choice == "hb":
         action_heartbeat(cfg, b)
     elif choice == "stake":

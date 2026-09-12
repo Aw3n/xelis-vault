@@ -196,7 +196,7 @@ CHUNKS = {
                         "set_registry": 10},
     "StakedOracle":   {"submit_price": 16, "aggregate_now": 17},
     "XelisVaultMiner": {"register_miner": 15, "enable_service": 16, "increase_stake": 18,
-                        "submit_heartbeat": 21},
+                        "submit_heartbeat": 21, "update_endpoint": 22},
     "GovernanceVault": {"stake": 4, "unstake": 5, "claim_rewards": 6,
                          "get_total_staked": 25, "get_user_staked": 26,
                          "notify_reward_amount": 12, "set_reward_distributor": 13},
@@ -878,6 +878,11 @@ class Backend:
             "XelisVaultMiner", "register_miner",
             [val_str(endpoint_url), val_hash(pubkey), val_u8(services_mask & 0xFF)],
             deposits=dep, max_gas=25_000_000)
+
+    def miner_update_endpoint(self, new_endpoint: str) -> OpResult:
+        """Update the miner's public endpoint URL on-chain (update_endpoint entry)."""
+        return self._invoke("XelisVaultMiner", "update_endpoint",
+                            [val_str(new_endpoint)], max_gas=5_000_000)
 
     def miner_stake_min(self) -> int | None:
         """The contract's MIN_STAKE (atomic) — used as the registration default."""

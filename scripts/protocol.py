@@ -19,12 +19,14 @@ Live environment (testnet):
 from __future__ import annotations
 
 import json
+import ssl
 import sys
 import time
 from pathlib import Path
 from typing import Any, Optional
 
 import requests
+import urllib3
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS = REPO_ROOT / "docs"
@@ -311,9 +313,15 @@ def _post(url: str, method: str, params: Any, auth: Optional[tuple] = None,
                 raise RPCError(f"{method}: {err}",
                                transient=_is_transient(method, err))
             return data.get("result")
+        except (requests.exceptions.SSLError, urllib3.exceptions.SSLError) as e:
+            last_exc = e
+            time.sleep(2 * (attempt + 1))   # SSL handshake failures are transient
         except ValueError as e:     # non-JSON body — retry after a pause
             last_exc = e
             time.sleep(2 * (attempt + 1))
+    if isinstance(last_exc, (requests.exceptions.SSLError, urllib3.exceptions.SSLError)):
+        raise RPCError(f"{method}: SSL connection failed to {url} after 3 retries: {last_exc}",
+                       transient=True) from last_exc
     raise RPCError(f"{method}: non-JSON response from {url}",
                    transient=True) from last_exc
 

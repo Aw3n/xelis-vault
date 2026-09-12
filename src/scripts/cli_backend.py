@@ -20,7 +20,6 @@
 from __future__ import annotations
 
 import json
-import secrets
 import sys
 import time
 from pathlib import Path
@@ -34,8 +33,6 @@ from protocol import (
 )
 
 ZERO_HASH = "0" * 64
-
-MIN_AUCTION_DURATION_BLOCKS = 1440
 
 # ---------------------------------------------------------------------------
 # Network bundle loading (contracts + assets)
@@ -58,6 +55,49 @@ def load_bundle() -> dict:
             except Exception:
                 pass
     return {}
+
+
+_SNAKE_TO_CAMEL = {
+    "contract_registry": "ContractRegistry",
+    "compliance_module": "ComplianceModule",
+    "vlt_token": "VLTToken",
+    "xusd": "xUSD",
+    "faucet": "FaucetContract",
+    "miner": "XelisVaultMiner",
+    "staked_oracle": "StakedOracle",
+    "miner_pool": "MinerPool",
+    "interest_rate_model": "InterestRateModel",
+    "vault_engine": "VaultEngineV3",
+    "savings_rate": "SavingsRate",
+    "flash_loan": "FlashLoan",
+    "flash_callback": "FlashCallback",
+    "vault_swap": "VaultSwapV2",
+    "psm": "PSM",
+    "lending_market": "LendingMarket",
+    "peer_loan": "PeerLoan",
+    "syndicate_pool": "SyndicatePool",
+    "sealed_bid_auction": "SealedBidAuction",
+    "privacy_mixer": "PrivacyMixer",
+    "mixer": "PrivacyMixer",
+    "asset_vault": "AssetVault",
+    "treasury_vault": "TreasuryVault",
+    "revenue_share": "RevenueShare",
+    "payroll": "Payroll",
+    "governance_vault": "GovernanceVault",
+    "timelock": "Timelock",
+    "guardian_multisig": "GuardianMultisig",
+    "governor": "Governor",
+    "oracle_governance": "OracleGovernance",
+    "vault_chat": "VaultChat",
+    "foundervesting": "FounderVesting",
+    "founder_vesting_4y": "FounderVesting4y",
+    "founder_vesting_10y": "FounderVesting10y",
+    "fee_distributor": "FeeDistributor",
+    "miner_delegation": "MinerDelegation",
+    "airdrop_tracker": "AirdropTracker",
+    "airdrop": "AirdropTracker",
+    "registry": "ContractRegistry",
+}
 
 
 # Fallbacks (current testnet deployment) if the bundle file is missing.
@@ -120,6 +160,26 @@ _REGISTRY_NAMES = {
     "asset_vault": "AssetVault",
     "faucet": "FaucetContract",
     "airdrop": "AirdropTracker",
+    "flash_loan": "FlashLoan",
+    "flash_callback": "FlashCallback",
+    "peer_loan": "PeerLoan",
+    "syndicate_pool": "SyndicatePool",
+    "sealed_bid_auction": "SealedBidAuction",
+    "governor": "Governor",
+    "governance_vault": "GovernanceVault",
+    "timelock": "Timelock",
+    "guardian_multisig": "GuardianMultisig",
+    "vault_chat": "VaultChat",
+    "miner_pool": "MinerPool",
+    "miner_delegation": "MinerDelegation",
+    "fee_distributor": "FeeDistributor",
+    "oracle_governance": "OracleGovernance",
+    "lending_market": "LendingMarket",
+    "interest_rate_model": "InterestRateModel",
+    "payroll": "Payroll",
+    "revenue_share": "RevenueShare",
+    "compliance_module": "ComplianceModule",
+    "foundervesting": "FounderVesting",
 }
 # ---------------------------------------------------------------------------
 # Compiled entry-chunk ids (source of truth: docs/entry_chunk_ids.json)
@@ -138,41 +198,40 @@ CHUNKS = {
     "XelisVaultMiner": {"register_miner": 15, "enable_service": 16, "increase_stake": 18,
                         "submit_heartbeat": 21},
     "GovernanceVault": {"stake": 4, "unstake": 5, "claim_rewards": 6,
-                         "get_total_staked": 9, "get_user_staked": 10,
+                         "get_total_staked": 25, "get_user_staked": 26,
                          "notify_reward_amount": 12, "set_reward_distributor": 13},
     "Governor":        {"propose": 3, "vote": 4, "queue": 5, "cancel": 6,
-                         "get_proposal_count": 7},
-    "FlashLoan":       {"flash_loan": 6, "get_fee_bps": 7, "get_total_earned": 8,
-                         "get_available_liquidity": 9, "set_fee_bps": 10,
+                         "get_proposals_count": 18},
+    "FlashLoan":       {"flash_loan": 6, "get_fee_bps_entry": 7, "get_total_earned_entry": 8,
+                         "get_available_liquidity_entry": 9, "set_fee_bps": 10,
                          "verify_callback": 23},
-    "FlashCallback":   {"on_flash_loan": 2, "set_flash_loan": 4, "claim_profit": 5},
+    "FlashCallback":   {"on_flash_loan": 2, "set_flash_loan": 4, "claim_profit": 3},
     "PeerLoan":        {"create_offer": 6, "cancel_offer": 7, "accept_offer": 8,
-                         "repay": 9, "claim_collateral": 10, "get_offer": 11,
-                         "get_offers_count": 12},
+                         "repay": 9, "claim_collateral": 10, "get_offer": 25,
+                         "get_offers_count": 26},
     "SyndicatePool":   {"create_pool": 8, "supply": 9, "withdraw_supply": 10,
                          "activate_pool": 11, "repay": 12, "claim": 13,
-                         "get_pool": 14, "get_lender_position": 15,
-                         "get_pools_count": 16},
+                         "get_pool": 29, "get_lender_position": 30,
+                         "get_pools_count": 31},
     "SealedBidAuction": {"create_auction": 13, "commit": 14, "reveal": 15,
                           "settle": 16, "declare_winner": 17, "refund_bid": 18,
                           "claim_asset": 19, "claim_proceeds": 20,
-                          "get_auction": 21, "get_auctions_count": 22},
+                          "get_auction": 34, "get_auctions_count": 35},
     "Timelock":         {"execute_proposal": 6, "cancel_proposal": 7,
                           "set_min_delay": 9, "set_governor": 11},
     "VaultChat":        {"register_session": 7, "create_group": 8,
-                           "add_group_member": 9, "anchor_messages": 11,
-                           "store_message": 38, "store_group_message": 48,
-                           "set_relayer": 20, "set_relayer_fee": 51,
-                           "claim_relayer_fees": 56, "stake_relayer_bond": 121,
-                           "register_as_relayer": 66,
-                           "update_relayer_endpoint": 119,
-                           "send_direct_message": 113, "get_session": 13,
-                           "get_group": 14, "is_active": 16,
-                           "get_last_anchor": 17, "get_groups_count": 18},
-    "MinerDelegation":  {"register_miner_profile": 5, "update_miner_profile": 6,
-                         "delegate": 7, "undelegate": 8, "execute_undelegate": 9,
-                         "claim_delegator_rewards": 10, "claim_miner_rewards": 11},
+                          "add_group_member": 9, "anchor_messages": 11,
+                          "store_message": 38, "store_group_message": 48,
+                          "set_relayer": 20, "set_relayer_fee": 51,
+                          "claim_relayer_fees": 56, "stake_relayer_bond": 121,
+                          "register_as_relayer": 66,
+                          "update_relayer_endpoint": 119,
+                          "send_direct_message": 113, "get_session": 29,
+                          "get_group": 30, "is_session_active": 32,
+                          "get_last_anchor": 33, "get_groups_count": 34},
     "AirdropTracker":  {"record_mainnet_address": 22},
+    "FaucetContract":  {"distribute": 6, "refill_xel": 4, "refill_vlt": 5,
+                         "set_claim_amounts": 7},
 }
 
 # Airdrop categories (AirdropTracker.slx consts).
@@ -218,8 +277,21 @@ class Backend:
         self.cfg = cfg
         bundle = load_bundle() or _FALLBACK
         contracts = dict(_FALLBACK["contracts"])
-        contracts.update({k: v for k, v in bundle.get("contracts", {}).items() if v})
-        # accept both naming styles from older bundles
+        bundle_c = bundle.get("contracts") or {}
+        # CamelCase keys from the bundle are authoritative.
+        for k, v in bundle_c.items():
+            if v and k not in _SNAKE_TO_CAMEL:
+                contracts[k] = v
+        # snake_case keys only fill a camel hash that is still missing
+        for k, v in bundle_c.items():
+            if not v:
+                continue
+            camel = _SNAKE_TO_CAMEL.get(k)
+            if camel and camel not in contracts:
+                contracts[camel] = v
+        for snake, camel in _SNAKE_TO_CAMEL.items():
+            if camel in contracts:
+                contracts[snake] = contracts[camel]
         alias = {"oracle": "staked_oracle", "vault_engine_v3": "vault_engine",
                  "psm_contract": "psm"}
         for a, b in alias.items():
@@ -241,7 +313,6 @@ class Backend:
         auth = (cfg.get("wallet_user") or "wallet", cfg.get("wallet_pass") or "testpass")
         self.wallet = WalletClient(wallet_url, auth) if wallet_url else None
         self._resolve_via_registry()
-        self._ensure_tracked_assets()
 
     def _resolve_via_registry(self):
         """ContractRegistry cur_<Name> overrides static tables (authoritative)."""
@@ -261,17 +332,6 @@ class Backend:
                 resolved[name] = h               # canonical CamelCase key
         self.contracts.update(resolved)
 
-    def _ensure_tracked_assets(self):
-        """Make sure the wallet knows about VLT and xUSD before balance checks."""
-        if not self.wallet:
-            return
-        try:
-            for asset in (self.vlt_asset, self.xusd_asset):
-                if asset and asset != ZERO_HASH:
-                    self.wallet.track_asset(asset)
-        except Exception:
-            pass
-
     # -- helpers ----------------------------------------------------------
 
     @property
@@ -288,17 +348,14 @@ class Backend:
     def has_wallet(self) -> bool:
         return bool(self.wallet)
 
-    def ping_wallet(self) -> bool:
-        if not self.wallet:
-            return False
-        try:
-            self.wallet.address()
-            return True
-        except Exception:
-            return False
-
     def C(self, key: str) -> str:
-        return self.contracts.get(key, "")
+        v = self.contracts.get(key, "")
+        if v:
+            return v
+        camel = _SNAKE_TO_CAMEL.get(key)
+        if camel:
+            return self.contracts.get(camel, "")
+        return ""
 
     def topo(self) -> int:
         try:
@@ -310,17 +367,9 @@ class Backend:
         if not self.wallet:
             return None
         try:
-            if asset and asset != ZERO_HASH:
-                try:
-                    self.wallet.track_asset(asset)
-                except Exception:
-                    pass
             return self.wallet.balance(asset)
-        except Exception as e:
-            try:
-                return self.wallet.balance(asset)
-            except Exception:
-                return None
+        except Exception:
+            return None
 
     def balances(self) -> dict:
         out = {}
@@ -374,14 +423,7 @@ class Backend:
 
     def my_miner(self) -> Optional[list]:
         mn = self.C("miner")
-        addr = None
-        if self.wallet:
-            try:
-                addr = self.wallet.address()
-            except Exception:
-                pass
-        if not addr:
-            addr = self.address
+        addr = self.address
         if not mn or not addr:
             return None
         m = self.daemon.read_key(mn, f"miner_{addr}")
@@ -413,7 +455,7 @@ class Backend:
                  (self.vlt_asset, self.xusd_asset)]
         for a, b in pairs:
             lo, hi = (a, b) if a < b else (b, a)
-            pool = self.daemon.read_key(vs, f"p_{lo}_{hi}")
+            pool = self.daemon.read_key(vs, f"p{lo}_{hi}")
             if isinstance(pool, list) and len(pool) >= 6:
                 pools.append({"a": str(pool[0]), "b": str(pool[1]),
                               "reserve_a": int(pool[2]), "reserve_b": int(pool[3])})
@@ -548,7 +590,13 @@ class Backend:
     def _invoke(self, contract_key: str, fn: str, params=None, deposits=None,
                 max_gas: int = 10_000_000) -> OpResult:
         contract = self.C(contract_key)
-        chunk = CHUNKS.get(contract_key, {}).get(fn)
+        chunk_key = contract_key
+        chunk = CHUNKS.get(chunk_key, {}).get(fn)
+        if chunk is None:
+            alt = _SNAKE_TO_CAMEL.get(contract_key)
+            if alt:
+                chunk_key = alt
+                chunk = CHUNKS.get(chunk_key, {}).get(fn)
         if not contract or chunk is None:
             return OpResult(False, reason=f"{contract_key}.{fn} unavailable")
         if not self.wallet:
@@ -589,7 +637,7 @@ class Backend:
     # --- VaultEngine V3 ------------------------------------------------------
 
     def vault_deposit(self, xel_amount_atomic: int) -> OpResult:
-        salt = secrets.token_hex(32)
+        salt = format(int(time.time()) & 0xFFFFFFFF, "x").zfill(64)
         return self._invoke("VaultEngineV3", "deposit",
                             [val_hash(self.xel_asset), val_u64(xel_amount_atomic),
                              val_hash(salt)],
@@ -846,22 +894,11 @@ class Backend:
     # --- Faucet -------------------------------------------------------------------
 
     def faucet_distribute(self, addresses: list) -> OpResult:
-        fa = self.C("faucet")
-        chunk = 6  # distribute(Address[])
-        if not fa or not self.wallet:
-            return OpResult(False, reason="Faucet unavailable")
-        try:
-            tx = self.wallet.invoke(fa, chunk,
-                                    [{"type": "object", "value": [val_addr(a) for a in addresses]}],
-                                    deposits={}, max_gas=10_000_000)
-        except RPCError as e:
-            msg = str(e)
-            if "Module error: " in msg:
-                msg = msg.split("Module error: ", 1)[1].split(":")[0].strip()
-            return OpResult(False, reason=msg[:200])
-        except Exception as e:
-            return OpResult(False, reason=str(e)[:200])
-        return OpResult(True, tx=tx)
+        return self._invoke(
+            "FaucetContract", "distribute",
+            [{"type": "object", "value": [val_addr(a) for a in addresses]}],
+            max_gas=10_000_000,
+        )
 
     # --- Governance ----------------------------------------------------------
 
@@ -1106,8 +1143,8 @@ class Backend:
     # --- SealedBidAuction ----------------------------------------------------
 
     def au_create(self, asset: str, amount_atomic: int, bid_asset: str,
-                  min_bid: int, cdur: int = MIN_AUCTION_DURATION_BLOCKS,
-                  rdur: int = MIN_AUCTION_DURATION_BLOCKS) -> OpResult:
+                  min_bid: int, cdur: int = 1440,
+                  rdur: int = 1440) -> OpResult:
         return self._invoke("SealedBidAuction", "create_auction",
                             [val_hash(asset), val_u64(amount_atomic),
                              val_hash(bid_asset), val_u64(min_bid),
@@ -1494,160 +1531,6 @@ class Backend:
             return self.daemon.read_key(vc, key)
         except Exception:
             return None
-
-    # --- MinerDelegation ------------------------------------------------------
-
-    def delegation_register_profile(self, name: str, description: str,
-                                    commission_bps: int) -> OpResult:
-        """Register/update miner profile for delegation."""
-        return self._invoke("MinerDelegation", "register_miner_profile",
-                            [val_str(name), val_str(description), val_u64(commission_bps)],
-                            max_gas=10_000_000)
-
-    def delegation_delegate(self, miner_addr: str, amount_vlt: int,
-                            auto_compound: bool = False) -> OpResult:
-        """Delegate VLT to a miner."""
-        return self._invoke("MinerDelegation", "delegate",
-                            [val_addr(miner_addr), val_u64(amount_vlt),
-                             val_bool(auto_compound)],
-                            deposits={self.vlt_asset: {"amount": amount_vlt}},
-                            max_gas=15_000_000)
-
-    def delegation_undelegate(self, amount_vlt: int) -> OpResult:
-        """Queue undelegation of VLT from current miner."""
-        return self._invoke("MinerDelegation", "undelegate",
-                            [val_u64(amount_vlt)],
-                            max_gas=10_000_000)
-
-    def delegation_execute_undelegate(self) -> OpResult:
-        """Execute pending undelegation after delay."""
-        return self._invoke("MinerDelegation", "execute_undelegate",
-                            [], max_gas=10_000_000)
-
-    def delegation_get_profile(self, miner_addr: str) -> dict | None:
-        """Get miner's delegation profile: (name, description, commission_bps)."""
-        md = self.C("MinerDelegation")
-        if not md or not self.daemon:
-            return None
-        try:
-            raw = self.daemon.read_key(md, f"mp_{miner_addr}")
-            if isinstance(raw, list) and len(raw) >= 3:
-                return {
-                    "name": str(raw[0]),
-                    "description": str(raw[1]),
-                    "commission_bps": int(raw[2]),
-                }
-        except Exception:
-            pass
-        return None
-
-    def delegation_my_delegation(self) -> dict | None:
-        """Get my current delegation info."""
-        md = self.C("MinerDelegation")
-        if not md or not self.daemon or not self.address:
-            return None
-        try:
-            raw = self.daemon.read_key(md, f"del_{self.address}")
-            if isinstance(raw, list) and len(raw) >= 5:
-                return {
-                    "miner": str(raw[0]),
-                    "amount": int(raw[1]),
-                    "index": int(raw[2]),
-                    "delegated_at": int(raw[3]),
-                    "auto_compound": bool(raw[4]) if len(raw) > 4 else False,
-                }
-        except Exception:
-            pass
-        return None
-
-    def delegation_miner_stake(self, miner_addr: str) -> int:
-        """Get total stake of a miner (own + delegated)."""
-        md = self.C("MinerDelegation")
-        if not md or not self.daemon:
-            return 0
-        try:
-            raw = self.daemon.read_key(md, f"mp_{miner_addr}")
-            if isinstance(raw, list) and len(raw) >= 7:
-                return int(raw[6])
-        except Exception:
-            pass
-        return 0
-
-    def delegation_update_profile(self, name: str, description: str,
-                                  commission_bps: int) -> OpResult:
-        """Update miner profile for delegation."""
-        return self._invoke("MinerDelegation", "update_miner_profile",
-                            [val_str(name), val_str(description), val_u64(commission_bps)],
-                            max_gas=10_000_000)
-
-    def delegation_claim_delegator_rewards(self) -> OpResult:
-        """Claim delegator rewards."""
-        return self._invoke("MinerDelegation", "claim_delegator_rewards",
-                            [], max_gas=10_000_000)
-
-    def delegation_claim_miner_rewards(self) -> OpResult:
-        """Claim miner rewards (own + commission)."""
-        return self._invoke("MinerDelegation", "claim_miner_rewards",
-                            [], max_gas=10_000_000)
-
-    def delegation_total_delegated(self) -> int:
-        """Total delegated VLT across all miners."""
-        md = self.C("MinerDelegation")
-        if not md or not self.daemon:
-            return 0
-        try:
-            raw = self.daemon.read_key(md, "td")
-            return int(raw) if isinstance(raw, int) else 0
-        except Exception:
-            return 0
-
-    def delegation_miner_count(self) -> int:
-        """Number of registered miners."""
-        md = self.C("MinerDelegation")
-        if not md or not self.daemon:
-            return 0
-        try:
-            raw = self.daemon.read_key(md, "mc")
-            return int(raw) if isinstance(raw, int) else 0
-        except Exception:
-            return 0
-
-    def delegation_miner_pending(self, miner_addr: str) -> int:
-        """Pending rewards for a miner."""
-        md = self.C("MinerDelegation")
-        if not md or not self.daemon:
-            return 0
-        try:
-            raw = self.daemon.read_key(md, f"mpr_{miner_addr}")
-            return int(raw) if isinstance(raw, int) else 0
-        except Exception:
-            return 0
-
-    def delegation_delegator_pending(self, delegator_addr: str) -> int:
-        """Pending rewards for a delegator (computed from index + extra)."""
-        md = self.C("MinerDelegation")
-        if not md or not self.daemon or not delegator_addr:
-            return 0
-        try:
-            del_raw = self.daemon.read_key(md, f"del_{delegator_addr}")
-            if not isinstance(del_raw, list) or len(del_raw) < 5:
-                return 0
-            miner_addr = str(del_raw[0])
-            amount = int(del_raw[1])
-            index_snapshot = int(del_raw[2])
-            profile_raw = self.daemon.read_key(md, f"mp_{miner_addr}")
-            if not isinstance(profile_raw, list) or len(profile_raw) < 8:
-                return 0
-            reward_index = int(profile_raw[7])
-            index_diff = reward_index - index_snapshot
-            if index_diff <= 0:
-                return 0
-            pending = (amount * index_diff) // 10**18
-            extra_raw = self.daemon.read_key(md, f"dpr_{delegator_addr}")
-            extra = int(extra_raw) if isinstance(extra_raw, int) else 0
-            return pending + extra
-        except Exception:
-            return 0
 
     # --- Generic int reader --------------------------------------------------
 

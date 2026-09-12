@@ -1,9 +1,9 @@
 import json, os, subprocess, time, requests
 
-L = "http://127.0.0.1:18081/json_rpc"
-O = "https://testnet-node.xelis.io/json_rpc"
-LOG = "/tmp/sync_monitor.log"
-DAEMON_DIR = "/Users/adrien/xelis"
+L = os.environ.get("XELIS_LOCAL_RPC", "http://127.0.0.1:18081/json_rpc")
+O = os.environ.get("XELIS_OFFICIAL_RPC", "https://testnet-node.xelis.io/json_rpc")
+LOG = os.environ.get("XELIS_SYNC_LOG", "/tmp/sync_monitor.log")
+DAEMON_DIR = os.environ.get("XELIS_DAEMON_DIR", os.path.expanduser("~/xelis"))
 
 def log(msg):
     line = f"[{time.strftime('%m-%d %H:%M:%S')}] {msg}"
@@ -56,22 +56,22 @@ while True:
     now = time.time()
 
     if of is None:
-        log("official node unreachable — waiting")
+        log("officiel injoignable — attente")
         consecutive_bad += 1
     elif lo is None:
-        log("local not ready")
+        log("local pas pret")
         consecutive_bad += 1
     else:
         lt, ot = lo["topoheight"], of["topoheight"]
         lh, oh = lo["top_block_hash"], of["top_block_hash"]
         if lt == ot and lh == oh:
             if consecutive_bad >= 3 or prev_local != lt:
-                log(f"SYNCHRONIZED ✓ topo={lt:,} hash={lh[:16]}")
+                log(f"SYNCHRONISE ✓ topo={lt:,} hash={lh[:16]}")
             consecutive_bad = 0
             last_progress = now
         elif lt > ot:
-            # my node is AHEAD of official (normal if their node stalls and we mine):
-            # verify the common block at official topo is identical
+            # on est DEVANT l'officiel (normal si leur node stalle et qu'on mine):
+            # verifier que le bloc commun au topo officiel est identique
             try:
                 b = requests.post(O, json={"jsonrpc": "2.0", "method": "get_block_at_topoheight",
                                            "params": {"topoheight": ot}, "id": 1}, timeout=15).json().get("result")
@@ -81,25 +81,25 @@ while True:
                     consecutive_bad = 0
                     last_progress = now
                     if prev_local != lt:
-                        log(f"AHEAD (my node ahead of frozen node): local {lt:,} vs off {ot:,} — common ancestor OK")
+                        log(f"AHEAD (on mine devant node gelé): local {lt:,} vs off {ot:,} — ancêtre commun OK")
                 else:
                     consecutive_bad += 1
-                    log(f"REAL FORK @topo {ot}: different hashes ({consecutive_bad})")
+                    log(f"FORK réel @topo {ot}: hashes différents ({consecutive_bad})")
             except Exception:
-                log("common ancestor check failed")
-        else:  # lt < ot : behind / syncing
+                log("check ancêtre commun échoué")
+        else:  # lt < ot : en retard / en cours de sync
             if lt > prev_local:
                 last_progress = now
                 if lt // 10000 != (prev_local // 10000 if prev_local >= 0 else -1):
-                    log(f"syncing: {lt:,}/{ot:,} ({lt/max(ot,1)*100:.1f}%)")
+                    log(f"sync en cours: {lt:,}/{ot:,} ({lt/max(ot,1)*100:.1f}%)")
                 consecutive_bad = max(0, consecutive_bad - 1)
             else:
                 stuck_min = (now - last_progress) / 60
                 if stuck_min > 25:
                     consecutive_bad += 1
-                    log(f"stuck {stuck_min:.0f} min @topo {lt:,} ({consecutive_bad})")
+                    log(f"stalle {stuck_min:.0f} min @topo {lt:,} ({consecutive_bad})")
             if ot - lt < 5000 and lt > 0:
-                # near tip: compare hashes to detect fork
+                # proche du tip: comparer les hashes pour detecter un fork
                 try:
                     b = requests.post(O, json={"jsonrpc": "2.0", "method": "get_block_at_topoheight",
                                                "params": {"topoheight": lt}, "id": 1}, timeout=15).json().get("result")

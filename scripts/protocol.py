@@ -53,8 +53,25 @@ ASSET_NAMES = {
 
 DECIMALS = {XEL_ASSET: 8, VLT_ASSET: 8, XUSD_ASSET: 8}
 
+def _load_state_hashes() -> dict:
+    """Prefer docs/deployment_state.json; skip upgrade-alias keys."""
+    path = DOCS / "deployment_state.json"
+    if not path.exists():
+        return {}
+    try:
+        raw = (json.loads(path.read_text()).get("contracts") or {})
+    except Exception:
+        return {}
+    skip = ("_r5", "_v2", "_v4R3")
+    return {
+        k: v for k, v in raw.items()
+        if isinstance(v, str) and len(v) == 64
+        and not any(k.endswith(s) for s in skip)
+    }
+
+
 # Registered contract hashes (deploy log — registry cur_<Name> is authoritative)
-CONTRACT_HASHES = {
+_CONTRACT_HASHES_FALLBACK = {
     "AirdropTracker": "ef896baa1c88d64462500b48c8a6d0fb47b92b46718d1949c79d8d0268769dca",
     "AssetVault": "e65d593b5818af605caffbc5c56dbf2ee966b8b7baad18e165a6012b7f7343df",
     "ComplianceModule": "1c0f143207c24d3b3e7fd04000cd1425e498505171de45ca980238e9f71c7f4a",
@@ -92,6 +109,9 @@ CONTRACT_HASHES = {
     "XelisVaultMiner": "6c70647e233dd634aa05cd6bdca06b521947c4c682d7decac0700d8a79d4b024",
     "xUSD": "4836190ca2f2278cfc3e8ad8c7e05bbd0070de253c64615f6eea2c19885063a1",
 }
+
+CONTRACT_HASHES = dict(_CONTRACT_HASHES_FALLBACK)
+CONTRACT_HASHES.update(_load_state_hashes())
 
 # Oracle feed ids
 FEED_XEL_USD = 0
@@ -220,18 +240,31 @@ def entry_map() -> dict:
     return _ENTRY_MAP
 
 
+def _fn_to_chunk(table: dict) -> dict:
+    """docs/entry_chunk_ids.json is keyed by compiled chunk id -> {name, kind}."""
+    out = {}
+    for cid, info in (table or {}).items():
+        if isinstance(info, dict) and "name" in info:
+            out[info["name"]] = int(cid)
+        elif isinstance(info, int):
+            out[str(cid)] = int(info)
+    return out
+
+
 def entry_id(contract_name: str, fn: str) -> int:
     m = entry_map().get(_entry_key(contract_name))
     if not m:
         raise RuntimeError(f"no entry map for contract {contract_name}")
-    if fn not in m:
-        raise RuntimeError(f"{contract_name}.{fn} is not an Entry chunk "
-                          f"(All/pub-fn chunks are not wallet-invokable)")
-    return m[fn]
+    by_name = _fn_to_chunk(m)
+    if fn in by_name:
+        return by_name[fn]
+    if fn in m and not isinstance(m[fn], dict):
+        return int(m[fn])
+    raise RuntimeError(f"{contract_name}.{fn} is not an Entry/All chunk")
 
 
 def list_entries(contract_name: str) -> dict:
-    return entry_map().get(contract_name, {})
+    return _fn_to_chunk(entry_map().get(_entry_key(contract_name), {}))
 
 
 # ---------------------------------------------------------------------------
@@ -483,17 +516,33 @@ class Protocol:
 
     # --- resolution --------------------------------------------------------
     def resolve(self, name: str) -> str:
-        """Registry cur_<Name> first, then static deploy table."""
-        name = name.replace("VaultEngineV3", "VaultEngine")
+        """Registry cur_<Name> first, then static deploy table.
+
+        Registry stores both `cur_VaultEngine` and `cur_VaultEngineV3`.
+        Try the requested name, then the historical alias.
+        """
+        aliases = {
+            "VaultEngineV3": ("VaultEngineV3", "VaultEngine"),
+            "VaultEngine": ("VaultEngine", "VaultEngineV3"),
+            "VaultSwapV2": ("VaultSwap", "VaultSwapV2"),
+            "VaultSwap": ("VaultSwap", "VaultSwapV2"),
+        }
+        names = aliases.get(name, (name,))
         if name in self._registry_cache:
             return self._registry_cache[name]
-        h = self.daemon.read_key(CONTRACT_HASHES["ContractRegistry"],
-                                 f"cur_{name}")
-        if h:
-            self._registry_cache[name] = h
-            return h
-        if name in CONTRACT_HASHES:
-            return CONTRACT_HASHES[name]
+        reg = CONTRACT_HASHES.get("ContractRegistry")
+        for n in names:
+            if n in self._registry_cache:
+                self._registry_cache[name] = self._registry_cache[n]
+                return self._registry_cache[n]
+            h = self.daemon.read_key(reg, f"cur_{n}") if reg else None
+            if h:
+                self._registry_cache[name] = h
+                self._registry_cache[n] = h
+                return h
+        for n in names:
+            if n in CONTRACT_HASHES:
+                return CONTRACT_HASHES[n]
         raise RuntimeError(f"cannot resolve contract {name}")
 
     def hash_of(self, name: str) -> str:

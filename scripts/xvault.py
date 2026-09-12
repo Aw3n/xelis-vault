@@ -33,50 +33,7 @@ from cli_backend import (
     Backend, DECIMALS, OpResult, AIRDROP_CATEGORIES,
 )
 
-VAULT_DIR = Path.home() / ".xelis-vault"
-CONFIG_PATH = VAULT_DIR / "config" / "config.json"
-
-
-# ---------------------------------------------------------------------------
-# Config
-# ---------------------------------------------------------------------------
-
-class Config:
-    def __init__(self):
-        self.data = {
-            "rpc_url": "http://127.0.0.1:18081",
-            "wallet_url": "http://127.0.0.1:18082",
-            "wallet_user": "wallet",
-            "wallet_pass": "testpass",
-            "miner_address": "",
-        }
-        self.load()
-
-    def load(self):
-        if CONFIG_PATH.exists():
-            try:
-                stored = json.loads(CONFIG_PATH.read_text())
-                for k in self.data:
-                    if k in stored:
-                        self.data[k] = stored[k]
-            except Exception:
-                pass
-
-    def save(self):
-        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        CONFIG_PATH.write_text(json.dumps(self.data, indent=2))
-        try:
-            import os
-            os.chmod(CONFIG_PATH, 0o600)   # contains the wallet file password
-        except Exception:
-            pass
-
-    def get(self, key, default=""):
-        return self.data.get(key, default)
-
-    @property
-    def contracts(self):
-        return self.data.get("contracts", {})
+from config import Config, CONFIG_PATH, VAULT_DIR
 
 
 # ---------------------------------------------------------------------------
@@ -1463,10 +1420,13 @@ def screen_relayer(b: Backend):
         d = r["registered"]
         reg_txt = (f"{render_badge(d.get('endpoint', ''), C.CYAN)}"
                    f" {C.DIM}free {d.get('free_daily_limit','0')} msg/day · {d.get('free_wallet_slots','0')} slots{C.RESET}")
+    fee_txt = f"{r.get('fee', 1000000)/10**DECIMALS:g} {token_name}/msg"
     lines = [
         f"{status}",
-        f"{render_metrics([('Bond', b.fmt(r.get('bond', 0), 'VLT')),
-                           ('Fee', f"{r.get('fee', 1000000)/10**DECIMALS:g} {token_name}/msg")])}",
+        render_metrics([
+            ("Bond", b.fmt(r.get("bond", 0), "VLT")),
+            ("Fee", fee_txt),
+        ]),
         f"  {C.DIM}Registration:{C.RESET}  {reg_txt}",
     ]
     print()
@@ -1568,9 +1528,11 @@ def screen_activity(b: Backend):
     count = st.get("count", 0)
     lines = [
         f"  Wallet:  {short_addr(b.address) if b.address else st.get('wallet','—')}",
-        f"  {render_metrics([('Recorded txs', count),
-                            ('First', st.get('first_ts') or '—'),
-                            ('Last', st.get('last_ts') or '—')])}",
+        "  " + render_metrics([
+            ("Recorded txs", count),
+            ("First", st.get("first_ts") or "—"),
+            ("Last", st.get("last_ts") or "—"),
+        ]),
         "  " + (f"{C.DIM}Every transaction you execute from this CLI is logged here "
                 f"automatically.{C.RESET}"),
     ]
@@ -1718,10 +1680,14 @@ def screen_miner_tools(b: Backend):
                         else f"{C.DIM}never{C.RESET}"))
         lines = [
             f"{status}   {render_badge(f'Reputation {rep}', C.YELLOW)}",
-            f"{render_metrics([('Stake', b.fmt(stake, 'VLT')),
-                               ('Rewards earned', b.fmt(rewards, 'VLT'))])}",
-            f"{render_metrics([('Services', svc_txt),
-                               ('Last heartbeat', hb_txt)])}",
+            render_metrics([
+                ("Stake", b.fmt(stake, "VLT")),
+                ("Rewards earned", b.fmt(rewards, "VLT")),
+            ]),
+            render_metrics([
+                ("Services", svc_txt),
+                ("Last heartbeat", hb_txt),
+            ]),
         ]
     else:
         lines = [
@@ -1895,8 +1861,22 @@ def ensure_wallet_alive(cfg: Config) -> bool:
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="XELIS Vault community CLI")
+    parser.add_argument("--balance", action="store_true", help="Print balances and exit")
+    parser.add_argument("--rpc", help="Daemon JSON-RPC URL")
+    args = parser.parse_args()
+
     cfg = Config()
+    if args.rpc:
+        cfg.data["rpc_url"] = args.rpc
     first_run = not CONFIG_PATH.exists()
+    if args.balance:
+        b = Backend(cfg.data)
+        bals = b.balances()
+        for k, v in bals.items():
+            print(f"{k}: {b.fmt(v)}")
+        return
 
     while True:
         # transparently bring the managed wallet back before building Backend

@@ -8,7 +8,7 @@
 param([string]$Args = "")
 
 $ErrorActionPreference = "Stop"
-$VERSION = "7.0"
+$VERSION = "12R-3"
 $REPO = "XelisVault/xelis-vault"
 $REPO_URL = "https://github.com/$REPO.git"
 $INSTALL_DIR = "$env:USERPROFILE\.xelis-vault"
@@ -141,7 +141,12 @@ if (-not (Test-Path $VENV_DIR)) {
 Write-Info "Installing Python dependencies..."
 $pipExe = "$VENV_DIR\Scripts\pip.exe"
 & $pipExe install --quiet --upgrade pip
-& $pipExe install --quiet requests python-dotenv
+$reqFile = "$INSTALL_DIR\src\requirements.txt"
+if (Test-Path $reqFile) {
+    & $pipExe install --quiet -r $reqFile
+} else {
+    & $pipExe install --quiet requests python-dotenv cryptography blake3
+}
 Write-Success "Dependencies installed"
 
 # ── Config file ─────────────────────────────────────────────────────────────
@@ -151,10 +156,10 @@ $configFile = "$CONFIG_DIR\config.json"
 if (-not (Test-Path $configFile)) {
     $configJson = @'
 {
-  "version": "7.0",
+  "version": "12R-3",
   "network": "testnet",
-  "rpc_url": "http://127.0.0.1:18081",
-  "wallet_url": "http://127.0.0.1:18082",
+   "rpc_url": "https://testnet-node.xelis.io/json_rpc",
+   "wallet_url": "http://127.0.0.1:18082",
   "wallet_user": "wallet",
   "wallet_pass": "testpass",
   "miner_endpoint": "",
@@ -200,7 +205,7 @@ $xvaultBat | Out-File -FilePath "$BIN_DIR\xvault.bat" -Encoding ascii
 # xvault-relayer.bat
 $xvaultRelayerBat = @"
 @echo off
-"$VENV_DIR\Scripts\python.exe" "$INSTALL_DIR\src\scripts\relayer_daemon.py" %*
+"$VENV_DIR\Scripts\python.exe" "$INSTALL_DIR\src\scripts\relayer_server.py" %*
 "@
 $xvaultRelayerBat | Out-File -FilePath "$BIN_DIR\xvault-relayer.bat" -Encoding ascii
 

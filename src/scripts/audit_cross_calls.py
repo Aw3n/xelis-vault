@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""audit_cross_calls.py — Detects cross-contract calls to non-'all' chunks.
+"""audit_cross_calls.py — Détecte les appels cross-contract vers des chunks non-'all'.
 
-VM rule: Contract::call(N) requires Access::All (pub fn). A call to an Entry
-or Internal chunk produces the runtime revert "Chunk is not public".
+Règle VM : Contract::call(N) exige Access::All (pub fn). Un appel vers un chunk
+Entry ou Internal produit le revert runtime "Chunk is not public".
 
-Method:
-  1. Compile each .slx with xelis_compile_tool, parse stderr -> access by chunk.
-  2. Find each site `VAR.call(Nu16, ...)`.
-  3. Resolve VAR -> target contract (local bindings, getters get_*_contract,
-     semantic alias on storage keys).
-  4. Report any site whose resolved target is not 'all' at chunk N.
+Méthode :
+  1. Compile chaque .slx avec xelis_compile_tool, parse stderr -> accès par chunk.
+  2. Trouve chaque site `VAR.call(Nu16, ...)`.
+  3. Résout VAR -> contrat cible (bindings locaux, getters get_*_contract,
+     alias sémantique sur les clés de storage).
+  4. Signale tout site dont la cible résolue n'est pas 'all' au chunk N.
 """
 import re
 import subprocess
@@ -18,7 +18,16 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 CONTRACTS = REPO / "contracts"
-TOOL = Path("/Users/adrien/opencode/xelis-compile-tool/target/release/xelis_compile_tool")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from compile_tool import find_compile_tool
+TOOL = None
+
+
+def _tool() -> Path:
+    global TOOL
+    if TOOL is None:
+        TOOL = find_compile_tool()
+    return TOOL
 
 CORE = [
     ("ContractRegistry", "proxy/ContractRegistry.slx"),
@@ -58,7 +67,7 @@ CORE = [
     ("AirdropClaim", "airdrop/AirdropClaim.slx"),
 ]
 
-# semantic alias -> contract name (applied on variable names / keys)
+# alias sémantique -> nom de contrat (appliqué sur noms de variables / clés)
 ALIASES = [
     (r"miner_delegation|delegation", "MinerDelegation"),
     (r"miner_pool", "MinerPool"),
@@ -90,7 +99,7 @@ ALIASES = [
     (r"tracker|airdrop", "AirdropTracker"),
 ]
 
-DYNAMIC_RECEIVERS = {"target", "callback_target"}  # dynamic resolution (multisig)
+DYNAMIC_RECEIVERS = {"target", "callback_target"}  # résolution dynamique (multisig)
 
 
 def compile_and_parse(rel_path: str):
@@ -98,7 +107,7 @@ def compile_and_parse(rel_path: str):
     src = CONTRACTS / rel_path
     out_hex = Path("/tmp/audit_tmp.hex")
     proc = subprocess.run(
-        [str(TOOL), str(src), str(out_hex)],
+        [str(_tool()), str(src), str(out_hex)],
         capture_output=True, text=True, timeout=300)
     if proc.returncode != 0:
         raise RuntimeError(f"compile KO {rel_path}: {proc.stderr[-400:]}")
@@ -115,7 +124,7 @@ def strip_comments(src: str) -> str:
 
 
 def resolve_receiver(var: str, func_src: str, file_src: str):
-    """Finds the contract targeted by a receiver variable."""
+    """Retrouve le contrat ciblé par une variable réceptrice."""
     if var in DYNAMIC_RECEIVERS:
         return None
     # 1. binding local: let VAR_hash = s.load(KEY) / get_miner_contract()
@@ -135,7 +144,7 @@ def resolve_receiver(var: str, func_src: str, file_src: str):
         hit = alias_lookup(rhs)
         if hit:
             return hit
-    # 2. getter defined in file: fn get_VAR...() -> Contract { s.load(KEY) }
+    # 2. getter défini dans le fichier: fn get_VAR...() -> Contract { s.load(KEY) }
     gm = re.search(rf"fn\s+get_{re.escape(var)}\w*\s*\(", file_src)
     if gm:
         tail = file_src[gm.start():gm.start() + 500]
@@ -156,7 +165,7 @@ def alias_lookup(text: str):
 
 
 def split_functions(src: str):
-    """Roughly splits the file into named blocks (fn/entry/hook)."""
+    """Découpe grossièrement le fichier en blocs nommés (fn/entry/hook)."""
     marks = [(m.start(), m.group(1)) for m in
              re.finditer(r"^(?:entry|pub fn|fn|hook)\s+(\w+)", src, re.MULTILINE)]
     blocks = []
@@ -167,7 +176,7 @@ def split_functions(src: str):
 
 
 def main():
-    print("== Compile and map accesses ==")
+    print("== Compilation et mapping des accès ==")
     access_maps = {}
     for name, rel in CORE:
         try:
@@ -177,9 +186,9 @@ def main():
                 kinds[k] = kinds.get(k, 0) + 1
             print(f"  {name:20} {len(access_maps[name]):3} chunks {kinds}")
         except Exception as e:
-            print(f"  {name:20} ERROR: {str(e)[:80]}")
+            print(f"  {name:20} ERREUR: {str(e)[:80]}")
 
-    print("\n== Audit call sites ==")
+    print("\n== Audit des sites d'appel ==")
     bugs, unknown, ok = [], [], 0
     for name, rel in CORE:
         path = CONTRACTS / rel
@@ -202,27 +211,27 @@ def main():
                 if acc == "all":
                     ok += 1
                 elif acc is None:
-                     bugs.append((rel, line_no, fname, var, cid, target,
-                                  f"chunk {cid} MISSING in {target}"))
+                    bugs.append((rel, line_no, fname, var, cid, target,
+                                 f"chunk {cid} INEXISTANT dans {target}"))
                 else:
                     bugs.append((rel, line_no, fname, var, cid, target,
-                                 f"access='{acc}' (requires 'all')"))
+                                 f"accès='{acc}' (exige 'all')"))
 
-    print(f"\nOK: {ok} | BUGS: {len(bugs)} | UNRESOLVED: {len(unknown)}")
+    print(f"\nOK: {ok} | BUGS: {len(bugs)} | NON RÉSOLUS: {len(unknown)}")
     if bugs:
-        print("\n--- BUGS (cross-contract call to non-'all' chunk) ---")
+        print("\n--- BUGS (appel cross-contract vers chunk non-'all') ---")
         for b in bugs:
             print(f"  {b[0]}:{b[1]} [{b[2]}] {b[3]}.call({b[4]}) -> {b[5]} : {b[6]}")
     if unknown:
-        print("\n--- Needs manual review ---")
+        print("\n--- À vérifier manuellement ---")
         for u in unknown:
             print(f"  {u[0]}:{u[1]} [{u[2]}] {u[3]}.call({u[4]}) : {u[5]}")
 
-    # export for later fix
+    # export pour fix ultérieur
     import json
     (REPO / "docs" / "cross_call_audit.json").write_text(json.dumps(
         {"bugs": bugs, "unknown": unknown, "ok": ok}, indent=1))
-    print("\nresults -> docs/cross_call_audit.json")
+    print("\nrésultats -> docs/cross_call_audit.json")
 
 
 if __name__ == "__main__":

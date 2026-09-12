@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""gen_chunk_map.py — Recompiles all core contracts and regenerates
+"""gen_chunk_map.py — Recompile tous les contrats core et régénère
 docs/entry_chunk_ids.json + /tmp/deploy_<Name>.hex.
 
-The map associates compiled chunk_id -> {name, kind, params}. Names come from
-source declaration order (1:1 with compiled chunk order), kinds
-and params from the compile tool stderr.
+La map associe chunk_id compilé -> {name, kind, params}. Les noms viennent de
+l'ordre de déclaration source (1:1 avec l'ordre des chunks compilés), les kinds
+et params du stderr du compile tool.
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -14,11 +15,12 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 CONTRACTS = REPO / "contracts"
-TOOL = "/Users/adrien/opencode/xelis-compile-tool/target/release/xelis_compile_tool"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from compile_tool import find_compile_tool
 OUT = REPO / "docs" / "entry_chunk_ids.json"
-HEXDIR = Path("/tmp")
+HEXDIR = Path(os.environ.get("XELIS_HEXDIR", "/tmp"))
 
-# (Name, relative path) — 34 core + AirdropClaim (mainnet, compiled for map)
+# (Nom, chemin relatif) — 34 core + AirdropClaim (mainnet, compilé pour la map)
 CORE = [
     ("ContractRegistry", "proxy/ContractRegistry.slx"),
     ("ComplianceModule", "compliance/ComplianceModule.slx"),
@@ -67,6 +69,7 @@ def main():
     only = sys.argv[1:] or None
     result = {}
     failures = []
+    TOOL = str(find_compile_tool())
     for name, rel in CORE:
         if only and name not in only:
             continue
@@ -84,7 +87,7 @@ def main():
         names = [m.group(1) for m in re.finditer(
             r"^(?:entry|pub fn|fn|hook)\s+(\w+)\s*[\(<]", clean, re.MULTILINE)]
 
-        # compiled chunks (stderr)
+        # chunks compilés (stderr)
         chunks = [(int(m.group(1)), m.group(2), m.group(3).strip())
                   for m in re.finditer(
                       r"chunk (\d+): ([A-Za-z]+)(?: \{ parameters: (.*) \} \()? ", "")
@@ -118,7 +121,7 @@ def main():
 
     OUT.write_text(json.dumps(result, indent=1, sort_keys=True))
     total = sum(len(v) for v in result.values())
-    print(f"\n{OUT} written: {len(result)} contracts, {total} Entry/All entries")
+    print(f"\n{OUT} écrit: {len(result)} contrats, {total} entrées Entry/All")
 
 
 if __name__ == "__main__":

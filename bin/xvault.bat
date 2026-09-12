@@ -1,2 +1,3 @@
 @echo off
-"C:\Users\Ael\.xelis-vault\venv\Scripts\python.exe" "C:\Users\Ael\.xelis-vault\src\scripts\xvault.py" %*
+set "INSTALL=%USERPROFILE%\.xelis-vault"
+"%INSTALL%\venv\Scripts\python.exe" "%INSTALL%\src\scripts\xvault.py" %*

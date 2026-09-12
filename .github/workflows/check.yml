@@ -1,0 +1,23 @@
+name: check
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Syntax
+        run: python3 -m py_compile scripts/*.py deploy/*.py tests/*.py
+      - name: Consistency
+        run: python3 scripts/check_consistency.py
+      - name: Mock integration
+        run: python3 tests/test_all_contracts.py --mock

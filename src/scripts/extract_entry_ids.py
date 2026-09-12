@@ -33,10 +33,13 @@ def extract_entries(file_path: Path):
     return entries
 
 def main():
-    out = ["# ENTRY IDs — XELIS Vault v11.3\n"]
+    out = ["# ENTRY IDs — XELIS Vault (source-order, NOT invoke ids)\n"]
     out.append("Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.\n")
-    out.append("Each `entry` function gets a sequential ID starting at 0 in declaration order.")
-    out.append("`pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.\n")
+    out.append("**DO NOT use these IDs as wallet `entry_id`.** Invokes use the")
+    out.append("**compiled chunk index** from `docs/entry_chunk_ids.json`")
+    out.append("(hooks + helpers occupy the first chunks).")
+    out.append("These numbers are source-order `entry` declarations only.\n")
+    out.append("`pub fn` and `fn` do NOT count in this table.\n")
     out.append("")
 
     all_contracts = sorted(CONTRACTS_DIR.rglob("*.slx"))

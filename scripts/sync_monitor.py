@@ -1,9 +1,9 @@
 import json, os, subprocess, time, requests
 
-L = "http://127.0.0.1:18081/json_rpc"
-O = "https://testnet-node.xelis.io/json_rpc"
-LOG = "/tmp/sync_monitor.log"
-DAEMON_DIR = "/Users/adrien/xelis"
+L = os.environ.get("XELIS_LOCAL_RPC", "http://127.0.0.1:18081/json_rpc")
+O = os.environ.get("XELIS_OFFICIAL_RPC", "https://testnet-node.xelis.io/json_rpc")
+LOG = os.environ.get("XELIS_SYNC_LOG", "/tmp/sync_monitor.log")
+DAEMON_DIR = os.environ.get("XELIS_DAEMON_DIR", os.path.expanduser("~/xelis"))
 
 def log(msg):
     line = f"[{time.strftime('%m-%d %H:%M:%S')}] {msg}"

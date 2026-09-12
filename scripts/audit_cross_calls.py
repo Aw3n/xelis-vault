@@ -18,7 +18,16 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 CONTRACTS = REPO / "contracts"
-TOOL = Path("/Users/adrien/opencode/xelis-compile-tool/target/release/xelis_compile_tool")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from compile_tool import find_compile_tool
+TOOL = None
+
+
+def _tool() -> Path:
+    global TOOL
+    if TOOL is None:
+        TOOL = find_compile_tool()
+    return TOOL
 
 CORE = [
     ("ContractRegistry", "proxy/ContractRegistry.slx"),
@@ -98,7 +107,7 @@ def compile_and_parse(rel_path: str):
     src = CONTRACTS / rel_path
     out_hex = Path("/tmp/audit_tmp.hex")
     proc = subprocess.run(
-        [str(TOOL), str(src), str(out_hex)],
+        [str(_tool()), str(src), str(out_hex)],
         capture_output=True, text=True, timeout=300)
     if proc.returncode != 0:
         raise RuntimeError(f"compile KO {rel_path}: {proc.stderr[-400:]}")

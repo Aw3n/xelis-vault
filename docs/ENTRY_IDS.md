@@ -1,11 +1,16 @@
-# ENTRY IDs — XELIS Vault v11.3
+# ENTRY IDs — XELIS Vault (source-order, NOT invoke ids)
 
 Auto-generated from `contracts/` by `scripts/extract_entry_ids.py`.
+
+**DO NOT use these IDs as wallet `entry_id`.** Invokes use the
+**compiled chunk index** from `docs/entry_chunk_ids.json`
+(hooks + helpers occupy the first chunks). These numbers are
+source-order `entry` declarations only.
 
 Each `entry` function gets a sequential ID starting at 0 in declaration order.
 **Total entry functions across 51 contracts:** 961
 
-`pub fn` and `fn` do NOT count for ID numbering — they are not callable via `Contract::call`.
+`pub fn` and `fn` do NOT count in this table.
 
 
 ## `airdrop/AirdropClaim.slx`

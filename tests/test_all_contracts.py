@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """
 ============================================================================
- XELIS Vault v5.0 — Integration Test Suite
+ XELIS Vault v12R — Integration Test Suite
 ============================================================================
 
-Exhaustive integration test for all 33 XELIS Vault v5.0 contracts.
+Exhaustive integration test for deployed XELIS Vault contracts.
 
 Two modes:
   1. LIVE testnet  (default): exercises real RPC reads against
      https://testnet-node.xelis.io and verifies the on-chain state of a
-     deployed XELIS Vault v5.0 instance (uses addresses from
-     ~/.xelis-vault/config/deployment.json).
-  2. MOCK mode (--mock): runs all tests against an in-memory simulation
-     that mirrors the v5.0 entry ID semantics. Useful for CI before a
-     testnet deployment exists.
+     deployed XELIS Vault v12R instance (uses addresses from
+     docs/deployment_state.json).
+  2. MOCK mode (--mock): runs all tests against an in-memory simulation.
+     Useful for CI before a testnet deployment exists.
 
 Each test prints PASS / FAIL with details. Exit code 0 if all pass,
 1 if any fail.
@@ -101,8 +100,8 @@ CR_ROLLBACK                    = 3
 # CONFIGURATION
 # ============================================================================
 DEFAULT_TESTNET_RPC = "https://testnet-node.xelis.io/json_rpc"
-DEFAULT_DEPLOYMENT_PATH = Path.home() / ".xelis-vault" / "config" / "deployment.json"
 REPO_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_DEPLOYMENT_PATH = REPO_DIR / "docs" / "deployment_state.json"
 CONTRACTS_DIR = REPO_DIR / "contracts"
 REPORT_FILE = REPO_DIR / "test_report.md"
 
@@ -1175,7 +1174,7 @@ def test_two_step_emergency(c: TestClient) -> None:
 def generate_report() -> None:
     print(f"\n{C.HEADER}{C.BOLD}=== REPORT GENERATION ==={C.END}")
     report = []
-    report.append("# XELIS Vault v5.0 — Test Report")
+    report.append("# XELIS Vault v12R — Test Report")
     report.append("")
     report.append(f"**Generated**: {results['start_time']}")
     report.append("")
@@ -1213,7 +1212,7 @@ def generate_report() -> None:
 # ============================================================================
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="XELIS Vault v5.0 integration test suite"
+        description="XELIS Vault integration test suite"
     )
     parser.add_argument("--rpc", default=DEFAULT_TESTNET_RPC,
                         help=f"XELIS RPC URL (default: {DEFAULT_TESTNET_RPC})")
@@ -1229,7 +1228,7 @@ def main() -> None:
 
     print(f"\n{C.HEADER}{C.BOLD}")
     print("=" * 70)
-    print("  XELIS Vault v5.0 — Integration Test Suite")
+    print("  XELIS Vault v12R — Integration Test Suite")
     print("=" * 70)
     print(f"{C.END}")
     print(f"  Mode:        {'MOCK' if args.mock else 'LIVE TESTNET'}")

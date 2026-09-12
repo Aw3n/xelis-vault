@@ -57,6 +57,49 @@ def load_bundle() -> dict:
     return {}
 
 
+_SNAKE_TO_CAMEL = {
+    "contract_registry": "ContractRegistry",
+    "compliance_module": "ComplianceModule",
+    "vlt_token": "VLTToken",
+    "xusd": "xUSD",
+    "faucet": "FaucetContract",
+    "miner": "XelisVaultMiner",
+    "staked_oracle": "StakedOracle",
+    "miner_pool": "MinerPool",
+    "interest_rate_model": "InterestRateModel",
+    "vault_engine": "VaultEngineV3",
+    "savings_rate": "SavingsRate",
+    "flash_loan": "FlashLoan",
+    "flash_callback": "FlashCallback",
+    "vault_swap": "VaultSwapV2",
+    "psm": "PSM",
+    "lending_market": "LendingMarket",
+    "peer_loan": "PeerLoan",
+    "syndicate_pool": "SyndicatePool",
+    "sealed_bid_auction": "SealedBidAuction",
+    "privacy_mixer": "PrivacyMixer",
+    "mixer": "PrivacyMixer",
+    "asset_vault": "AssetVault",
+    "treasury_vault": "TreasuryVault",
+    "revenue_share": "RevenueShare",
+    "payroll": "Payroll",
+    "governance_vault": "GovernanceVault",
+    "timelock": "Timelock",
+    "guardian_multisig": "GuardianMultisig",
+    "governor": "Governor",
+    "oracle_governance": "OracleGovernance",
+    "vault_chat": "VaultChat",
+    "foundervesting": "FounderVesting",
+    "founder_vesting_4y": "FounderVesting4y",
+    "founder_vesting_10y": "FounderVesting10y",
+    "fee_distributor": "FeeDistributor",
+    "miner_delegation": "MinerDelegation",
+    "airdrop_tracker": "AirdropTracker",
+    "airdrop": "AirdropTracker",
+    "registry": "ContractRegistry",
+}
+
+
 # Fallbacks (current testnet deployment) if the bundle file is missing.
 # Registry `cur_<Name>` is always preferred over these static tables.
 _FALLBACK = {
@@ -117,6 +160,26 @@ _REGISTRY_NAMES = {
     "asset_vault": "AssetVault",
     "faucet": "FaucetContract",
     "airdrop": "AirdropTracker",
+    "flash_loan": "FlashLoan",
+    "flash_callback": "FlashCallback",
+    "peer_loan": "PeerLoan",
+    "syndicate_pool": "SyndicatePool",
+    "sealed_bid_auction": "SealedBidAuction",
+    "governor": "Governor",
+    "governance_vault": "GovernanceVault",
+    "timelock": "Timelock",
+    "guardian_multisig": "GuardianMultisig",
+    "vault_chat": "VaultChat",
+    "miner_pool": "MinerPool",
+    "miner_delegation": "MinerDelegation",
+    "fee_distributor": "FeeDistributor",
+    "oracle_governance": "OracleGovernance",
+    "lending_market": "LendingMarket",
+    "interest_rate_model": "InterestRateModel",
+    "payroll": "Payroll",
+    "revenue_share": "RevenueShare",
+    "compliance_module": "ComplianceModule",
+    "foundervesting": "FounderVesting",
 }
 # ---------------------------------------------------------------------------
 # Compiled entry-chunk ids (source of truth: docs/entry_chunk_ids.json)
@@ -135,25 +198,25 @@ CHUNKS = {
     "XelisVaultMiner": {"register_miner": 15, "enable_service": 16, "increase_stake": 18,
                         "submit_heartbeat": 21},
     "GovernanceVault": {"stake": 4, "unstake": 5, "claim_rewards": 6,
-                         "get_total_staked": 9, "get_user_staked": 10,
+                         "get_total_staked": 25, "get_user_staked": 26,
                          "notify_reward_amount": 12, "set_reward_distributor": 13},
     "Governor":        {"propose": 3, "vote": 4, "queue": 5, "cancel": 6,
-                         "get_proposal_count": 7},
-    "FlashLoan":       {"flash_loan": 6, "get_fee_bps": 7, "get_total_earned": 8,
-                         "get_available_liquidity": 9, "set_fee_bps": 10,
+                         "get_proposals_count": 18},
+    "FlashLoan":       {"flash_loan": 6, "get_fee_bps_entry": 7, "get_total_earned_entry": 8,
+                         "get_available_liquidity_entry": 9, "set_fee_bps": 10,
                          "verify_callback": 23},
-    "FlashCallback":   {"on_flash_loan": 2, "set_flash_loan": 4, "claim_profit": 5},
+    "FlashCallback":   {"on_flash_loan": 2, "set_flash_loan": 4, "claim_profit": 3},
     "PeerLoan":        {"create_offer": 6, "cancel_offer": 7, "accept_offer": 8,
-                         "repay": 9, "claim_collateral": 10, "get_offer": 11,
-                         "get_offers_count": 12},
+                         "repay": 9, "claim_collateral": 10, "get_offer": 25,
+                         "get_offers_count": 26},
     "SyndicatePool":   {"create_pool": 8, "supply": 9, "withdraw_supply": 10,
                          "activate_pool": 11, "repay": 12, "claim": 13,
-                         "get_pool": 14, "get_lender_position": 15,
-                         "get_pools_count": 16},
+                         "get_pool": 29, "get_lender_position": 30,
+                         "get_pools_count": 31},
     "SealedBidAuction": {"create_auction": 13, "commit": 14, "reveal": 15,
                           "settle": 16, "declare_winner": 17, "refund_bid": 18,
                           "claim_asset": 19, "claim_proceeds": 20,
-                          "get_auction": 21, "get_auctions_count": 22},
+                          "get_auction": 34, "get_auctions_count": 35},
     "Timelock":         {"execute_proposal": 6, "cancel_proposal": 7,
                           "set_min_delay": 9, "set_governor": 11},
     "VaultChat":        {"register_session": 7, "create_group": 8,
@@ -163,10 +226,12 @@ CHUNKS = {
                           "claim_relayer_fees": 56, "stake_relayer_bond": 121,
                           "register_as_relayer": 66,
                           "update_relayer_endpoint": 119,
-                          "send_direct_message": 113, "get_session": 13,
-                          "get_group": 14, "is_active": 16,
-                          "get_last_anchor": 17, "get_groups_count": 18},
+                          "send_direct_message": 113, "get_session": 29,
+                          "get_group": 30, "is_session_active": 32,
+                          "get_last_anchor": 33, "get_groups_count": 34},
     "AirdropTracker":  {"record_mainnet_address": 22},
+    "FaucetContract":  {"distribute": 6, "refill_xel": 4, "refill_vlt": 5,
+                         "set_claim_amounts": 7},
 }
 
 # Airdrop categories (AirdropTracker.slx consts).
@@ -212,8 +277,21 @@ class Backend:
         self.cfg = cfg
         bundle = load_bundle() or _FALLBACK
         contracts = dict(_FALLBACK["contracts"])
-        contracts.update({k: v for k, v in bundle.get("contracts", {}).items() if v})
-        # accept both naming styles from older bundles
+        bundle_c = bundle.get("contracts") or {}
+        # CamelCase keys from the bundle are authoritative.
+        for k, v in bundle_c.items():
+            if v and k not in _SNAKE_TO_CAMEL:
+                contracts[k] = v
+        # snake_case keys only fill a camel hash that is still missing
+        for k, v in bundle_c.items():
+            if not v:
+                continue
+            camel = _SNAKE_TO_CAMEL.get(k)
+            if camel and camel not in contracts:
+                contracts[camel] = v
+        for snake, camel in _SNAKE_TO_CAMEL.items():
+            if camel in contracts:
+                contracts[snake] = contracts[camel]
         alias = {"oracle": "staked_oracle", "vault_engine_v3": "vault_engine",
                  "psm_contract": "psm"}
         for a, b in alias.items():
@@ -271,7 +349,13 @@ class Backend:
         return bool(self.wallet)
 
     def C(self, key: str) -> str:
-        return self.contracts.get(key, "")
+        v = self.contracts.get(key, "")
+        if v:
+            return v
+        camel = _SNAKE_TO_CAMEL.get(key)
+        if camel:
+            return self.contracts.get(camel, "")
+        return ""
 
     def topo(self) -> int:
         try:
@@ -506,7 +590,13 @@ class Backend:
     def _invoke(self, contract_key: str, fn: str, params=None, deposits=None,
                 max_gas: int = 10_000_000) -> OpResult:
         contract = self.C(contract_key)
-        chunk = CHUNKS.get(contract_key, {}).get(fn)
+        chunk_key = contract_key
+        chunk = CHUNKS.get(chunk_key, {}).get(fn)
+        if chunk is None:
+            alt = _SNAKE_TO_CAMEL.get(contract_key)
+            if alt:
+                chunk_key = alt
+                chunk = CHUNKS.get(chunk_key, {}).get(fn)
         if not contract or chunk is None:
             return OpResult(False, reason=f"{contract_key}.{fn} unavailable")
         if not self.wallet:
@@ -804,22 +894,11 @@ class Backend:
     # --- Faucet -------------------------------------------------------------------
 
     def faucet_distribute(self, addresses: list) -> OpResult:
-        fa = self.C("faucet")
-        chunk = 6  # distribute(Address[])
-        if not fa or not self.wallet:
-            return OpResult(False, reason="Faucet unavailable")
-        try:
-            tx = self.wallet.invoke(fa, chunk,
-                                    [{"type": "object", "value": [val_addr(a) for a in addresses]}],
-                                    deposits={}, max_gas=10_000_000)
-        except RPCError as e:
-            msg = str(e)
-            if "Module error: " in msg:
-                msg = msg.split("Module error: ", 1)[1].split(":")[0].strip()
-            return OpResult(False, reason=msg[:200])
-        except Exception as e:
-            return OpResult(False, reason=str(e)[:200])
-        return OpResult(True, tx=tx)
+        return self._invoke(
+            "FaucetContract", "distribute",
+            [{"type": "object", "value": [val_addr(a) for a in addresses]}],
+            max_gas=10_000_000,
+        )
 
     # --- Governance ----------------------------------------------------------
 

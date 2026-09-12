@@ -1,5 +1,5 @@
 # ============================================================================
-# .gitignore — XELIS Vault v7.0
+# .gitignore — XELIS Vault v12R-3
 # ============================================================================
 
 # Environment files (contain secrets)
@@ -54,14 +54,6 @@ desktop.ini
 # Logs
 *.log
 logs/
-
-# Wallet / node local data
-wallets/
-relayer/
-miner.pid
-
-# Local config with secrets
-config/config.json
 
 # XELIS daemon data
 .xelis/

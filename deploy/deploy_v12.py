@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-XELIS Vault v11.5 — Full clean redeployment orchestrator.
+XELIS Vault v12R — Full clean redeployment orchestrator.
 
 Follows docs/DEPLOYMENT_GUIDE.md phase order (Phase 9 Insurance SKIPPED).
 Resumable: state saved to docs/deployment_state.json after EVERY step.
@@ -569,14 +569,24 @@ PHASES = {1: phase1, 2: phase2, 3: phase3, 4: phase4, 5: phase5, 6: phase6,
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", type=int, required=True)
+    ap.add_argument("--phase", type=int, default=0,
+                    help="Run a single phase (1-13, skip 9). 0 = all remaining.")
+    ap.add_argument("--from-phase", type=int, default=1)
     args = ap.parse_args()
     global S
     S = STATE["contracts"]
     D = Deployer()
-    fn = PHASES[args.phase]
-    fn(D)
-    log(f"=== PHASE {args.phase} COMPLETE ===")
+    if args.phase:
+        fn = PHASES[args.phase]
+        fn(D)
+        log(f"=== PHASE {args.phase} COMPLETE ===")
+        return
+    for n in sorted(PHASES):
+        if n < args.from_phase:
+            continue
+        log(f"=== starting phase {n} ===")
+        PHASES[n](D)
+        log(f"=== PHASE {n} COMPLETE ===")
 
 
 if __name__ == "__main__":

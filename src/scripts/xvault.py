@@ -23,7 +23,6 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from config import Config
 from tui import (
     C, clear, hide_cursor, show_cursor, read_key, read_key_timeout, kbhit,
     menu, text_input, confirm, info_box, progress_bar, BANNER,
@@ -31,20 +30,10 @@ from tui import (
     render_ok, render_warn, render_error, render_status, render_hint,
 )
 from cli_backend import (
-    Backend, DECIMALS, OpResult, AIRDROP_CATEGORIES, ZERO_HASH,
+    Backend, DECIMALS, OpResult, AIRDROP_CATEGORIES,
 )
-from protocol import SERVICE_ORACLE, SERVICE_CHAT, MIN_STAKE_VLT
 
-VAULT_DIR = Path.home() / ".xelis-vault"
-
-MIN_LEND_DURATION_BLOCKS = 1440
-MAX_INTEREST_BPS = 5000
-MIN_AUCTION_DURATION_BLOCKS = 1440
-RELAYER_MAX_FREE_MESSAGES_PER_DAY = 1000
-RELAYER_MAX_FREE_WALLET_SLOTS = 10000
-RELAYER_DEFAULT_FEE_ATOMIC = 1_000_000  # 0.01 XEL/VLT per message
-MINER_HEARTBEAT_WARN_BLOCKS = 1000
-MIN_RELAYER_BOND_VLT = 50
+from config import Config, CONFIG_PATH, VAULT_DIR
 
 
 # ---------------------------------------------------------------------------
@@ -77,13 +66,13 @@ def show_result(res, action: str):
             f"Tx hash:",
             f"{C.DIM}{res.tx[:62]}{C.RESET}",
             *(            f"{C.DIM}{res.tx[i:i+62]}{C.RESET}" for i in range(62, len(res.tx), 62)),
-             *(["",
-                f"{C.GREEN}✔ Confirmed on-chain"
-                + (f" — block {str(getattr(res, 'topo'))[:12]}…" if getattr(res, 'topo') else "")
-                + f" in {getattr(res, 'secs', 0):.0f} s{C.RESET}"]
-               if getattr(res, "confirmed", None) else
-               ["", f"{C.YELLOW}⏳ Not yet visible in a block after "
-                    f"{getattr(res, 'secs', 0):.0f} s — check via 'History'.{C.RESET}"]),
+            *(["",
+               f"{C.GREEN}✔ Confirmée on-chain"
+               + (f" — bloc {str(getattr(res, 'topo'))[:12]}…" if getattr(res, 'topo') else "")
+               + f" en {getattr(res, 'secs', 0):.0f} s{C.RESET}"]
+              if getattr(res, "confirmed", None) else
+              ["", f"{C.YELLOW}⏳ Pas encore visible dans un bloc après "
+                   f"{getattr(res, 'secs', 0):.0f} s — vérifie via 'History'.{C.RESET}"]),
         ], color=C.GREEN)
     else:
         friendly = _friendly_error(res.reason or "")
@@ -105,16 +94,10 @@ def show_result(res, action: str):
 def ask_amount(b: Backend, asset: str, prompt_text: str, default: str = "1"):
     """text_input with the live balance always visible in the prompt."""
     try:
-        bal = b.balance(asset)
-        if bal is not None:
-            bal_s = b.fmt(bal)
-        else:
-            bal_s = "?"
+        bal = b.fmt(b.wallet.balance(asset))
     except Exception:
-        bal_s = "?"
-    addr = getattr(b, "address", "(unknown)")
-    asset_name = {ZERO_HASH: "XEL", b.vlt_asset: "VLT", b.xusd_asset: "xUSD"}.get(asset, asset[:16])
-    return text_input(f"{prompt_text}  [wallet: {short_addr(addr)} | {asset_name}: {bal_s}]", default=default)
+        bal = "?"
+    return text_input(f"{prompt_text}  [balance: {bal}]", default=default)
 
 
 def wait_confirm(b: Backend, tx: str, max_s: int = 90):
@@ -135,7 +118,8 @@ def run_tx(b: Backend, fn, action: str):
     """Pending indicator + confirmation feedback around a write op.
     Builds + broadcasts, waits for the block, then VERIFIES on-chain that the
     transaction actually committed (a revert means the storage was rolled back)."""
-    print(f"\n{C.DIM}⏳ Transaction in progress — sign → broadcast → wait for block (~5-15 s)…{C.RESET}", flush=True)
+    print(f"\n{C.DIM}⏳ Transaction en cours — signature → broadcast → attente du "
+          f"bloc (~5-15 s)…{C.RESET}", flush=True)
     t0 = time.time()
     try:
         res = fn()
@@ -191,55 +175,28 @@ def _record_tx(b: Backend, res, action: str):
 
 
 def _friendly_error(msg: str):
-    """Translate raw wallet/protocol errors into human text."""
-    low = msg.lower()
-    if "not enough funds" in low or "insufficient balance" in low:
-        m = re.search(r"required:\s*(\d+)[,\s]+available:\s*(\d+)", low)
+    """Translate raw wallet PROOF errors into human text (FR/EN mix kept short)."""
+    if "not enough funds" in msg:
+        m = re.search(r"required:\s*(\d+),\s*available:\s*(\d+)", msg)
         if m:
             req, av = int(m.group(1)), int(m.group(2))
             return (f"available {av / 10**DECIMALS:.6g}, "
                     f"required {req / 10**DECIMALS:.6g}")
         return "not enough funds for amount + fee"
-    if "stale" in low:
-        return "oracle price is stale — wait for refresh or check node sync"
-    if "revert" in low or "rejected" in low:
-        return "transaction reverted on-chain"
-    if "not found" in low and "contract" in low:
-        return "contract not found on this node — try a different RPC"
     return None
 
 
 def _check_balance(b: Backend, asset: str, atomic: int) -> bool:
     """True if the wallet can spend `atomic` of `asset`; offers max otherwise."""
-    asset_name = {ZERO_HASH: "XEL", b.vlt_asset: "VLT", b.xusd_asset: "xUSD"}.get(asset, asset[:16])
-    addr = getattr(b, "address", "(unknown)")
     try:
-        avail = b.balance(asset)
-    except Exception as e:
-        avail = None
-    if avail is None and b.wallet:
-        try:
-            avail = b.wallet.balance(asset)
-        except Exception:
-            pass
-    if avail is None:
-        info_box("Balance check failed", [
-            f"{C.RED}Could not read wallet balance.{C.RESET}",
-            "",
-            f"Wallet: {addr}",
-            f"Asset: {asset_name} ({asset[:16]}...)",
-            f"Error: {str(e)[:80]}",
-            "",
-            f"{C.GRAY}Check that the wallet is running and the RPC is reachable.{C.RESET}",
-        ], color=C.RED)
-        return False
+        avail = b.wallet.balance(asset)
+    except Exception:
+        return True                      # cannot check — let the chain decide
     if atomic <= avail:
         return True
     info_box("Insufficient balance", [
         f"{C.RED}Not enough funds in this wallet.{C.RESET}",
         "",
-        f"Wallet: {addr}",
-        f"Asset: {asset_name}",
         f"Available: {C.BOLD}{b.fmt(avail)}{C.RESET}",
         f"Requested: {b.fmt(atomic)}",
         "",
@@ -522,7 +479,7 @@ def screen_swap(b: Backend):
         elif choice == "redeem":
             avail = 0
             try:
-                avail = b.balance(b.xusd_asset) or 0
+                avail = b.wallet.balance(b.xusd_asset)
             except Exception:
                 pass
             default = "1" if avail >= 10**DECIMALS else f"{avail / 10**DECIMALS:.6f}".rstrip("0").rstrip(".")
@@ -541,9 +498,6 @@ def screen_swap(b: Backend):
                 ("XEL → xUSD", (b.xel_asset, b.xusd_asset)),
                 ("xUSD → XEL", (b.xusd_asset, b.xel_asset)),
                 ("XEL → VLT", (b.xel_asset, b.vlt_asset)),
-                ("VLT → XEL", (b.vlt_asset, b.xel_asset)),
-                ("xUSD → VLT", (b.xusd_asset, b.vlt_asset)),
-                ("VLT → xUSD", (b.vlt_asset, b.xusd_asset)),
                 ("Back", None)])
             if not pick:
                 continue
@@ -804,7 +758,7 @@ def screen_faucet(b: Backend):
             # Catch-22: a wallet with no XEL can't pay the network tx fee, so the
             # faucet (which credits XEL) can't be claimed the very first time.
             try:
-                xel_bal = b.balance(b.xel_asset) or 0
+                xel_bal = b.wallet.balance(b.xel_asset)
                 fee_need = 10_000_000  # 0.1 XEL INVOKE_FEE
                 if xel_bal < fee_need:
                     if not confirm(
@@ -859,9 +813,6 @@ def screen_governance(b: Backend):
             if atomic is None:
                 continue
             days = text_input("Lock period in days (default 7):").strip() or "7"
-            if not days.isdigit() or int(days) <= 0:
-                info_box("Invalid input", [render_error("Lock period must be a positive number.")], color=C.RED)
-                continue
             if confirm(f"Stake {amt} VLT for {days} days?"):
                 run_tx(b, lambda a=atomic, d=int(days): b.gov_stake(a, d),
                        "Governance stake")
@@ -1045,24 +996,14 @@ def screen_peerloan(b: Backend):
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
-            ibps = text_input(f"Interest bps (max {MAX_INTEREST_BPS}, e.g. 500 = 5%):").strip() or "500"
-            dur = text_input(f"Duration in blocks (min {MIN_LEND_DURATION_BLOCKS}):").strip() or f"{MIN_LEND_DURATION_BLOCKS}"
-            if not ibps.isdigit() or not dur.isdigit():
-                info_box("Invalid input", [render_error("Interest bps and duration must be numbers.")], color=C.RED)
-                continue
-            ibps_i, dur_i = int(ibps), int(dur)
-            if not (0 < ibps_i <= MAX_INTEREST_BPS):
-                info_box("Invalid input", [render_error(f"Interest bps must be between 1 and {MAX_INTEREST_BPS}.")], color=C.RED)
-                continue
-            if dur_i < MIN_LEND_DURATION_BLOCKS:
-                info_box("Invalid input", [render_error(f"Duration must be at least {MIN_LEND_DURATION_BLOCKS} blocks.")], color=C.RED)
-                continue
+            ibps = text_input("Interest bps (max 5000, e.g. 500 = 5%):").strip() or "500"
+            dur = text_input("Duration in blocks (min 1440):").strip() or "1440"
             coll_amt = ask_amount(b, b.vlt_asset, "Collateral required (VLT):", "100")
             catom = parse_amount(coll_amt)
             if catom is None:
                 continue
             if confirm(f"Lend {amt} XEL @ {ibps}bps for {dur} blocks?"):
-                run_tx(b, lambda a=atomic, i=ibps_i, d=dur_i, ca=catom:
+                run_tx(b, lambda a=atomic, i=int(ibps), d=int(dur), ca=catom:
                        b.pl_create_offer(b.xel_asset, a, i, d, b.vlt_asset, ca),
                        "Create loan offer")
         elif choice == "accept":
@@ -1115,24 +1056,14 @@ def screen_syndicate(b: Backend):
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
-            ibps = text_input(f"Interest bps (max {MAX_INTEREST_BPS}):").strip() or "500"
-            dur = text_input(f"Duration in blocks (min {MIN_LEND_DURATION_BLOCKS}):").strip() or f"{MIN_LEND_DURATION_BLOCKS}"
-            if not ibps.isdigit() or not dur.isdigit():
-                info_box("Invalid input", [render_error("Interest bps and duration must be numbers.")], color=C.RED)
-                continue
-            ibps_i, dur_i = int(ibps), int(dur)
-            if not (0 < ibps_i <= MAX_INTEREST_BPS):
-                info_box("Invalid input", [render_error(f"Interest bps must be between 1 and {MAX_INTEREST_BPS}.")], color=C.RED)
-                continue
-            if dur_i < MIN_LEND_DURATION_BLOCKS:
-                info_box("Invalid input", [render_error(f"Duration must be at least {MIN_LEND_DURATION_BLOCKS} blocks.")], color=C.RED)
-                continue
+            ibps = text_input("Interest bps (max 5000):").strip() or "500"
+            dur = text_input("Duration in blocks (min 1440):").strip() or "1440"
             coll = ask_amount(b, b.vlt_asset, "Collateral required (VLT):", "100")
             catom = parse_amount(coll)
             if catom is None:
                 continue
             if confirm(f"Create syndicate pool: {amt} XEL @ {ibps}bps, {coll} VLT collateral?"):
-                run_tx(b, lambda a=atomic, i=ibps_i, d=dur_i, ca=catom:
+                run_tx(b, lambda a=atomic, i=int(ibps), d=int(dur), ca=catom:
                        b.sp_create_pool(b.xel_asset, a, i, d, b.vlt_asset, ca),
                        "Create syndicate pool")
         elif choice == "supply":
@@ -1197,17 +1128,10 @@ def screen_auctions(b: Backend):
             minb_atomic = parse_amount(minb)
             if minb_atomic is None:
                 continue
-            cdur = text_input(f"Commit duration blocks (min {MIN_AUCTION_DURATION_BLOCKS}):").strip() or f"{MIN_AUCTION_DURATION_BLOCKS}"
-            rdur = text_input(f"Reveal duration blocks (min {MIN_AUCTION_DURATION_BLOCKS}):").strip() or f"{MIN_AUCTION_DURATION_BLOCKS}"
-            if not cdur.isdigit() or not rdur.isdigit():
-                info_box("Invalid input", [render_error("Durations must be numbers.")], color=C.RED)
-                continue
-            cdur_i, rdur_i = int(cdur), int(rdur)
-            if cdur_i < MIN_AUCTION_DURATION_BLOCKS or rdur_i < MIN_AUCTION_DURATION_BLOCKS:
-                info_box("Invalid input", [render_error(f"Durations must be at least {MIN_AUCTION_DURATION_BLOCKS} blocks.")], color=C.RED)
-                continue
+            cdur = text_input("Commit duration blocks (min 1440):").strip() or "1440"
+            rdur = text_input("Reveal duration blocks (min 1440):").strip() or "1440"
             if confirm(f"Auction {amt} VLT, min bid {minb} XEL?"):
-                run_tx(b, lambda a=atomic, m=minb_atomic, c=cdur_i, r=rdur_i:
+                run_tx(b, lambda a=atomic, m=minb_atomic, c=int(cdur), r=int(rdur):
                        b.au_create(b.vlt_asset, a, b.xel_asset, m, c, r),
                        "Create auction")
         elif choice == "commit":
@@ -1230,9 +1154,6 @@ def screen_auctions(b: Backend):
             if atomic is None:
                 continue
             nonce = text_input("Nonce (integer used in hash):").strip() or "0"
-            if not nonce.isdigit():
-                info_box("Invalid input", [render_error("Nonce must be a number.")], color=C.RED)
-                continue
             if confirm(f"Reveal bid {amt} XEL on auction #{aid}?"):
                 run_tx(b, lambda i=int(aid), a=atomic, n=int(nonce):
                        b.au_reveal(i, a, n),
@@ -1249,9 +1170,6 @@ def screen_auctions(b: Backend):
             if not aid:
                 continue
             c = text_input("Claim what? (asset/proceeds):").strip().lower()
-            if c not in ("asset", "proceeds"):
-                info_box("Invalid choice", [render_error("Type 'asset' or 'proceeds'.")], color=C.RED)
-                continue
             if c == "asset":
                 run_tx(b, lambda i=int(aid): b.au_claim_asset(i),
                        "Claim auction asset")
@@ -1280,7 +1198,6 @@ def screen_chat(b: Backend):
                 ("Relayer: bond + register", "relayer"),
                 ("Relayer: set fee", "fee"),
                 ("Relayer: claim fees", "claim"),
-                ("Expose publicly (tunnel + endpoint update)", "public"),
                 ("Back", None)]
         choice = menu("Encrypted Chat (VaultChat)", opts, subtitle=sub)
         if choice is None:
@@ -1369,14 +1286,11 @@ def screen_chat(b: Backend):
                 info_box("Invalid", ["Need 64-char hex root."], color=C.RED)
                 continue
             count = text_input("Message count:").strip() or "1"
-            if not count.isdigit():
-                info_box("Invalid input", [render_error("Message count must be a number.")], color=C.RED)
-                continue
             if confirm(f"Anchor {count} messages?"):
                 run_tx(b, lambda r=root, c=int(count): b.chat_anchor(r, c),
                        "Anchor messages")
         elif choice == "relayer":
-            amt = ask_amount(b, b.vlt_asset, f"VLT bond (min {MIN_RELAYER_BOND_VLT}):", str(MIN_RELAYER_BOND_VLT))
+            amt = ask_amount(b, b.vlt_asset, "VLT bond (min 50):", "50")
             atomic = parse_amount(amt)
             if atomic is None:
                 continue
@@ -1384,18 +1298,12 @@ def screen_chat(b: Backend):
             if confirm(f"Bond {amt} VLT + register as relayer?"):
                 run_tx(b, lambda a=atomic: b.chat_stake_bond(a), "Stake bond")
                 time.sleep(4)
-                run_tx(b, lambda: b.chat_register_relayer(ep, RELAYER_DEFAULT_FEE_ATOMIC, 100),
+                run_tx(b, lambda: b.chat_register_relayer(ep, 1000000, 100),
                        "Register relayer")
         elif choice == "fee":
             tok = text_input("Token (0=XEL, 1=VLT):").strip() or "0"
-            if tok not in ("0", "1"):
-                info_box("Invalid input", [render_error("Token must be 0 (XEL) or 1 (VLT).")], color=C.RED)
-                continue
             fee = text_input("Fee in atomic units (e.g. 1000000 = 0.01):").strip()
             if not fee:
-                continue
-            if not fee.isdigit():
-                info_box("Invalid input", [render_error("Fee must be a number.")], color=C.RED)
                 continue
             if confirm(f"Set relayer fee: {fee} for token {tok}?"):
                 run_tx(b, lambda t=int(tok), f=int(fee): b.chat_set_fee(t, f),
@@ -1441,32 +1349,32 @@ def _relayer_server_status(cfg) -> list:
 
 def _relayer_guide():
     info_box("Relayer — guide (read me)", [
-        f"{C.BOLD}What is a VaultChat relayer?{C.RESET}",
-        "An account (with a 50 VLT bond) authorized to relay encrypted messages",
-        "and anchor batches on-chain to earn VLT. It also exposes a server that",
-        "clients query (inbox/groups).",
+        f"{C.BOLD}Qu'est-ce qu'un relayer VaultChat ?{C.RESET}",
+        "Un compte (avec un bond de 50 VLT) autorisé à relayer les messages",
+        "chiffrés et à ancrer les lots sur la chaîne pour gagner du VLT. Il",
+        "expose aussi un serveur que les clients interrogent (inbox/groupes).",
         "",
-        f"{C.BOLD}Steps to become a relayer (in order) :{C.RESET}",
-        f"  1. {C.CYAN}Stake relayer bond{C.RESET}  — deposit min 50 VLT as collateral.",
-        f"  2. {C.CYAN}Whitelist self{C.RESET}     — admin marks your address as relayer.",
-        f"  3. {C.CYAN}Register relayer{C.RESET}   — announce endpoint + free quotas.",
-        f"  4. {C.CYAN}Set relayer fee{C.RESET}    — fees beyond the free tier.",
-        f"  5. {C.CYAN}Install & launch relayer{C.RESET} — start the real local server.",
+        f"{C.BOLD}Étapes pour devenir relayer (dans l'ordre) :{C.RESET}",
+        f"  1. {C.CYAN}Stake relayer bond{C.RESET}  — déposer min 50 VLT en garantie.",
+        f"  2. {C.CYAN}Whitelist self{C.RESET}     — admin marque l'adresse comme relayer.",
+        f"  3. {C.CYAN}Register relayer{C.RESET}   — annonce endpoint + quotas gratuits.",
+        f"  4. {C.CYAN}Set relayer fee{C.RESET}    — frais au-delà du quota gratuit.",
+        f"  5. {C.CYAN}Install & launch relayer{C.RESET} — démarre le vrai serveur local.",
         "",
-        f"{C.BOLD}'Register relayer' fields :{C.RESET}",
-        "  Endpoint url  — the public address of your relay server. For a",
-        "                 local server: http://127.0.0.1:18444 (what this CLI",
-        "                 launches). A real domain if you expose it.",
-        "  Free msg/day  — free messages per day per user (<={RELAYER_MAX_FREE_MESSAGES_PER_DAY}).",
-        "  Free slots    — number of wallets served free (<={RELAYER_MAX_FREE_WALLET_SLOTS}).",
+        f"{C.BOLD}Champs de 'Register relayer' :{C.RESET}",
+        "  Endpoint url  — l'adresse publique du serveur de relais. Pour un",
+        "                 serveur local: http://127.0.0.1:18444 (ce que lance",
+        "                 ce CLI). Un vrai nom de domaine si tu l'exposes.",
+        "  Free msg/day  — messages gratuits par jour et par utilisateur (<=1000).",
+        "  Free slots    — nombre de wallets servis gratuitement (<=10000).",
         f"  Fee token     — 0 = XEL, 1 = VLT.",
-        f"  Fee (atomic)  — fee per message beyond free tier. Ex: 100000="
+        f"  Fee (atomic)  — frais par message au-delà du gratuit. Ex: 100000="
         f"{C.DIM}0.001{C.RESET}, 100000000=1.",
-        f"Bond {MIN_RELAYER_BOND_VLT} VLT = {MIN_RELAYER_BOND_VLT * 10 ** DECIMALS} atomic (VLT has {DECIMALS} decimals).",
+        f"Bond 50 VLT = 5000000000 atomiques (VLT a {DECIMALS} décimales).",
         "",
-        f"{C.GRAY}The relayer daemon (relayer_server.py) handles on-chain sync,",
-        f"responds on the HTTP endpoint and anchors message batches to earn",
-        f"rewards. PID/logs: ~/.xelis-vault/relayer/ + logs/relayer.log.{C.RESET}",
+        f"{C.GRAY}Le daemon relayer (relayer_server.py) fait la synchro on-chain,",
+        f"répond sur l'endpoint HTTP et ancré les messages en lot pour gagner",
+        f"les récompenses. PID/logs: ~/.xelis-vault/relayer/ + logs/relayer.log.{C.RESET}",
     ], color=C.CYAN)
 
 
@@ -1512,10 +1420,13 @@ def screen_relayer(b: Backend):
         d = r["registered"]
         reg_txt = (f"{render_badge(d.get('endpoint', ''), C.CYAN)}"
                    f" {C.DIM}free {d.get('free_daily_limit','0')} msg/day · {d.get('free_wallet_slots','0')} slots{C.RESET}")
+    fee_txt = f"{r.get('fee', 1000000)/10**DECIMALS:g} {token_name}/msg"
     lines = [
         f"{status}",
-        f"{render_metrics([('Bond', b.fmt(r.get('bond', 0), 'VLT')),
-                            ('Fee', f"{r.get('fee', RELAYER_DEFAULT_FEE_ATOMIC)/10**DECIMALS:g} {token_name}/msg")])}",
+        render_metrics([
+            ("Bond", b.fmt(r.get("bond", 0), "VLT")),
+            ("Fee", fee_txt),
+        ]),
         f"  {C.DIM}Registration:{C.RESET}  {reg_txt}",
     ]
     print()
@@ -1544,7 +1455,7 @@ def screen_relayer(b: Backend):
         ok, msg = onboarding.start_relayer(cfg.data)
         info_box("Relayer server", [("✅ " if ok else "⚠️ ") + msg], color=(C.GREEN if ok else C.YELLOW))
     elif choice == "public":
-        if confirm("Start the free Cloudflare tunnel and register the "
+        if confirm("Start the free Cloudflare tunnel to this Mac and register the "
                    "public URL on-chain (quick * .trycloudflare.com — changes on each restart)?"):
             ok, msg = onboarding.start_relayer_public(cfg.data)
             info_box("Public relayer", [("✅ " if ok else "⚠️ ") + msg],
@@ -1565,9 +1476,7 @@ def screen_relayer(b: Backend):
         atomic = parse_amount(amt)
         if atomic is None:
             return
-        if not _check_balance(b, b.vlt_asset, atomic):
-            return
-        if confirm(f"Stake {amt} VLT as relayer bond (min {MIN_RELAYER_BOND_VLT} = {MIN_RELAYER_BOND_VLT * 10 ** DECIMALS} atomic)?"):
+        if confirm(f"Stake {amt} VLT as relayer bond (min 50 = 5,000,000,000 atomic)?"):
             run_tx(b, lambda a=atomic: b.chat_stake_bond(a), "Stake relayer bond")
     elif choice == "whitelist":
         if confirm("Whitelist this address as a relayer (requires admin)?"):
@@ -1576,8 +1485,8 @@ def screen_relayer(b: Backend):
     elif choice == "register":
         ep = text_input("Relayer endpoint url (public address of your relay "
                         "server; local example: http://127.0.0.1:18444):").strip() or "http://127.0.0.1:18444"
-        lim = text_input(f"Free messages / day / user (1-{RELAYER_MAX_FREE_MESSAGES_PER_DAY}):").strip() or "100"
-        slots = text_input(f"Free wallet slots (1-{RELAYER_MAX_FREE_WALLET_SLOTS}):").strip() or "1000"
+        lim = text_input("Free messages / day / user (1-1000):").strip() or "100"
+        slots = text_input("Free wallet slots (1-10000):").strip() or "1000"
         try:
             lim, slots = int(lim), int(slots)
         except ValueError:
@@ -1603,11 +1512,6 @@ def screen_relayer(b: Backend):
     elif choice == "claim":
         if confirm("Claim accumulated relayer fees to this wallet?"):
             run_tx(b, b.chat_claim_fees, "Claim relayer fees")
-    elif choice == "public":
-        from onboarding import start_relayer_public
-        ok, msg = start_relayer_public(b.cfg if hasattr(b, "cfg") else {})
-        info_box("Expose publicly", [render_ok(msg) if ok else render_error(msg)],
-                 color=C.GREEN if ok else C.RED)
 
 
 # --- Activity screen (transaction export for manual analysis) ----------------
@@ -1624,9 +1528,11 @@ def screen_activity(b: Backend):
     count = st.get("count", 0)
     lines = [
         f"  Wallet:  {short_addr(b.address) if b.address else st.get('wallet','—')}",
-        f"  {render_metrics([('Recorded txs', count),
-                            ('First', st.get('first_ts') or '—'),
-                            ('Last', st.get('last_ts') or '—')])}",
+        "  " + render_metrics([
+            ("Recorded txs", count),
+            ("First", st.get("first_ts") or "—"),
+            ("Last", st.get("last_ts") or "—"),
+        ]),
         "  " + (f"{C.DIM}Every transaction you execute from this CLI is logged here "
                 f"automatically.{C.RESET}"),
     ]
@@ -1741,11 +1647,6 @@ def _clipboard_copy(text: str) -> bool:
                                input=text.encode(), capture_output=True,
                                timeout=5)
             return p.returncode == 0
-        if os.name == "nt":                 # Windows
-            p = subprocess.run(["powershell", "-Command",
-                                "Set-Clipboard", "-Value", text],
-                               capture_output=True, timeout=5)
-            return p.returncode == 0
     except Exception:
         pass
     return False
@@ -1754,122 +1655,96 @@ def _clipboard_copy(text: str) -> bool:
 # --- Miner tools screen -----------------------------------------------------
 
 def screen_miner_tools(b: Backend):
-    while True:
-        m = b.my_miner()
-        stats = b.miner_stats()
-        topo = b.topo()
+    m = b.my_miner()
+    stats = b.miner_stats()
+    topo = b.topo()
 
-        # ── Miner status panel ───────────────────────────────────────────
-        if m and isinstance(m, list) and len(m) >= 15:
-            stake = m[3]
-            mask = m[4]
-            hb_topo = m[6]
-            rewards = m[7]
-            rep = m[9]
-            active = bool(m[14])
-            age = max(0, topo - hb_topo) if hb_topo else -1
-            srvc = []
-            if mask & 1:
-                srvc.append(render_badge("Oracle", C.CYAN))
-            if (mask >> 1) & 1:
-                srvc.append(render_badge("Chat relay", C.MAGENTA))
-            svc_txt = " ".join(srvc) if srvc else f"{C.DIM}none{C.RESET}"
-            status = render_ok("REGISTERED") if active else render_warn("INACTIVE")
-            hb_txt = (f"{render_ok(f'{age} blocks ago')}" if age >= 0 and age < MINER_HEARTBEAT_WARN_BLOCKS
-                      else (render_warn(f"{age} blocks ago") if age >= 0
-                            else f"{C.DIM}never{C.RESET}"))
-            lines = [
-                f"{status}   {render_badge(f'Reputation {rep}', C.YELLOW)}",
-                f"{render_metrics([('Stake', b.fmt(stake, 'VLT')),
-                                   ('Rewards earned', b.fmt(rewards, 'VLT'))])}",
-                f"{render_metrics([('Services', svc_txt),
-                                   ('Last heartbeat', hb_txt)])}",
-            ]
-        else:
-            lines = [
-                f"{render_warn('Not registered')}",
-                f"{C.DIM}No miner profile on-chain for {short_addr(b.address)}.{C.RESET}",
-                f"{C.DIM}Use the options below to register & start earning.{C.RESET}",
-            ]
-        if stats.get("total_staked") is not None:
-            lines.append(f"  {C.DIM}Network total staked:{C.RESET} "
-                         f"{b.fmt(stats['total_staked'], 'VLT')}")
-        print()
-        print(render_panel("  MINER  STATUS", lines, border_color=C.CYAN, width=64))
-
-        # ── Actions ──────────────────────────────────────────────────────
-        import onboarding
-        miner_pid = onboarding.miner_running()
-        mopts = []
-        if miner_pid:
-            mopts.append((f"Stop built-in miner (pid {miner_pid})", "stop"))
-        else:
-            if not (m and isinstance(m, list) and len(m) >= 15 and bool(m[14])):
-                mopts.append(("Register miner on-chain", "reg"))
-            mopts.append(("Start built-in PoW miner", "start"))
-            threads = cfg_miner_threads()
-            mopts.append((f"Set thread count (currently {threads})", "threads"))
-        mopts += [
-            ("Send heartbeat now", "hb"),
-            ("Increase miner stake", "stake"),
-            ("Back", None),
+    # ── Miner status panel ───────────────────────────────────────────
+    if m and isinstance(m, list) and len(m) >= 15:
+        stake = m[3]
+        mask = m[4]
+        hb_topo = m[6]
+        rewards = m[7]
+        rep = m[9]
+        active = bool(m[14])
+        age = max(0, topo - hb_topo) if hb_topo else -1
+        srvc = []
+        if mask & 1:
+            srvc.append(render_badge("Oracle", C.CYAN))
+        if (mask >> 1) & 1:
+            srvc.append(render_badge("Chat relay", C.MAGENTA))
+        svc_txt = " ".join(srvc) if srvc else f"{C.DIM}none{C.RESET}"
+        status = render_ok("REGISTERED") if active else render_warn("INACTIVE")
+        hb_txt = (f"{render_ok(f'{age} blocks ago')}" if age >= 0 and age < 1000
+                  else (render_warn(f"{age} blocks ago") if age >= 0
+                        else f"{C.DIM}never{C.RESET}"))
+        lines = [
+            f"{status}   {render_badge(f'Reputation {rep}', C.YELLOW)}",
+            render_metrics([
+                ("Stake", b.fmt(stake, "VLT")),
+                ("Rewards earned", b.fmt(rewards, "VLT")),
+            ]),
+            render_metrics([
+                ("Services", svc_txt),
+                ("Last heartbeat", hb_txt),
+            ]),
         ]
-        choice = menu("Miner tools", mopts)
-        if choice is None:
+    else:
+        lines = [
+            f"{render_warn('Not registered')}",
+            f"{C.DIM}This address has no miner profile on-chain.{C.RESET}",
+            f"{C.DIM}Use the options below to register & start earning.{C.RESET}",
+        ]
+    if stats.get("total_staked") is not None:
+        lines.append(f"  {C.DIM}Network total staked:{C.RESET} "
+                     f"{b.fmt(stats['total_staked'], 'VLT')}")
+    print()
+    print(render_panel("  MINER  STATUS", lines, border_color=C.CYAN, width=64))
+
+    # ── Actions ──────────────────────────────────────────────────────
+    import onboarding
+    miner_pid = onboarding.miner_running()
+    mopts = []
+    if miner_pid:
+        mopts.append((f"Stop built-in miner (pid {miner_pid})", "stop"))
+    else:
+        if not (m and isinstance(m, list) and len(m) >= 15 and bool(m[14])):
+            mopts.append(("Register as miner (auto-configured)", "start"))
+        else:
+            mopts.append(("Start built-in miner (auto-configured)", "start"))
+        threads = cfg_miner_threads()
+        mopts.append((f"Set thread count (currently {threads})", "threads"))
+    mopts += [
+        ("Send heartbeat now", "hb"),
+        ("Increase miner stake", "stake"),
+        ("Back", None),
+    ]
+    choice = menu("Miner tools", mopts)
+    if choice == "hb":
+        run_tx(b, lambda: b.miner_heartbeat(), "Heartbeat")
+    elif choice == "stake":
+        amt = ask_amount(b, b.vlt_asset, "VLT amount to add to miner stake:", "100")
+        atomic = parse_amount(amt)
+        if atomic is None:
             return
-        if choice == "hb":
-            if not b.has_wallet:
-                info_box("Heartbeat failed", [
-                    render_error("No wallet RPC configured."),
-                    "Run setup first, or set wallet_url in config.",
-                ], color=C.RED)
-            elif not b.ping_wallet():
-                info_box("Heartbeat failed", [
-                    render_error("Wallet RPC is configured but unreachable."),
-                    "Make sure the wallet is running and the URL is correct.",
-                    "Current URL: " + (cfg.get("wallet_url") or "(empty)"),
-                ], color=C.RED)
-            else:
-                run_tx(b, lambda: b.miner_heartbeat(), "Heartbeat")
-        elif choice == "stake":
-            if not b.has_wallet:
-                info_box("Increase stake", [
-                    render_error("No wallet RPC configured."),
-                    "Run setup first, or set wallet_url in config.",
-                ], color=C.RED)
-            elif not b.ping_wallet():
-                info_box("Increase stake", [
-                    render_error("Wallet RPC is configured but unreachable."),
-                    "Make sure the wallet is running and the URL is correct.",
-                    "Current URL: " + (cfg.get("wallet_url") or "(empty)"),
-                ], color=C.RED)
-            else:
-                amt = ask_amount(b, b.vlt_asset, "VLT amount to add to miner stake:", "100")
-                atomic = parse_amount(amt)
-                if atomic is None:
-                    continue
-                if not _check_balance(b, b.vlt_asset, atomic):
-                    continue
-                if confirm(f"Stake {amt} VLT more?"):
-                    run_tx(b, lambda: b.miner_increase_stake(atomic), "Stake increase")
-        elif choice == "reg":
-            action_register_miner(b, cfg)
-        elif choice == "start":
-            cfg_obj = _load_cfg()
-            ok, msg = onboarding.start_miner(cfg_obj)
-            info_box("Miner", [msg], color=C.GREEN if ok else C.RED)
-        elif choice == "stop":
-            ok, msg = onboarding.stop_miner()
-            info_box("Miner", [msg], color=C.GREEN if ok else C.RED)
-        elif choice == "threads":
-            cfg_obj = _load_cfg()
-            t = text_input("Number of mining threads:",
-                           default=str(cfg_obj.get("miner_threads") or 4))
-            if t.isdigit() and 1 <= int(t) <= 64:
-                cfg_obj.data["miner_threads"] = t
-                cfg_obj.save()
-                info_box("Saved", [f"{t} thread(s) — applies at next start."],
-                         color=C.GREEN)
+        if confirm(f"Stake {amt} VLT more?"):
+            run_tx(b, lambda: b.miner_increase_stake(atomic), "Stake increase")
+    elif choice == "start":
+        cfg_obj = _load_cfg()
+        ok, msg = onboarding.start_miner(cfg_obj)
+        info_box("Miner", [msg], color=C.GREEN if ok else C.RED)
+    elif choice == "stop":
+        ok, msg = onboarding.stop_miner()
+        info_box("Miner", [msg], color=C.GREEN if ok else C.RED)
+    elif choice == "threads":
+        cfg_obj = _load_cfg()
+        t = text_input("Number of mining threads:",
+                       default=str(cfg_obj.get("miner_threads") or 4))
+        if t.isdigit() and 1 <= int(t) <= 64:
+            cfg_obj.data["miner_threads"] = t
+            cfg_obj.save()
+            info_box("Saved", [f"{t} thread(s) — applies at next start."],
+                     color=C.GREEN)
 
 
 def _load_cfg():
@@ -1883,81 +1758,6 @@ def cfg_miner_threads() -> str:
             "miner_threads") or (max(1, (__import__("os").cpu_count() or 2) - 1)))
     except Exception:
         return "?"
-
-
-def action_register_miner(b: Backend, cfg: Config):
-    """Register the configured wallet as a miner on-chain via XelisVaultMiner."""
-    addr = cfg.get("miner_address")
-    if not addr:
-        info_box("Register miner", [
-            render_error("No wallet address configured."),
-            "Run setup first, or use 'xvault' to configure one.",
-        ], color=C.RED)
-        return
-    if not b.has_wallet:
-        info_box("Register miner", [
-            render_error("No wallet RPC configured."),
-            "Set wallet_url in config or run setup.",
-        ], color=C.RED)
-        return
-    if not b.ping_wallet():
-        info_box("Register miner", [
-            render_error("Wallet RPC is configured but unreachable."),
-            "Make sure the wallet is running and the URL is correct.",
-            "Current URL: " + (cfg.get("wallet_url") or "(empty)"),
-        ], color=C.RED)
-        return
-    m = b.my_miner()
-    if m and isinstance(m, list) and len(m) >= 15 and bool(m[14]):
-        info_box("Already registered", [
-            render_ok("This address already has a miner profile."), "",
-            "Use 'Increase miner stake' or 'Send heartbeat now' instead.",
-        ], color=C.GREEN)
-        return
-
-    endpoint = cfg.get("miner_endpoint")
-    if not endpoint:
-        info_box("Register miner", [
-            render_error("No public endpoint configured."),
-            "Set your endpoint in Settings — it is advertised on-chain.",
-        ], color=C.RED)
-        return
-
-    svc = cfg.get("services", "both")
-    mask = {"both": SERVICE_ORACLE | SERVICE_CHAT,
-            "oracle": SERVICE_ORACLE, "chat": SERVICE_CHAT}.get(svc, 3)
-
-    min_atomic = b.miner_stake_min() or MIN_STAKE_VLT
-    amt = ask_amount(b, b.vlt_asset,
-                     "VLT stake to deposit (minimum required by contract):",
-                     default=f"{min_atomic / 10 ** DECIMALS:g}")
-    atomic = parse_amount(amt)
-    if atomic is None:
-        info_box("Invalid amount", [render_error("Please enter a valid number.")],
-                 color=C.RED)
-        return
-    if atomic <= 0:
-        info_box("Invalid amount", [render_error("Amount must be greater than zero.")],
-                 color=C.RED)
-        return
-    if not _check_balance(b, b.vlt_asset, atomic):
-        return
-
-    if not confirm(f"Register this address as a miner (services mask {mask}, "
-                   f"endpoint {endpoint}, stake {amt} VLT)?"):
-        return
-
-    res = b.miner_register(endpoint, mask, atomic)
-    if res.ok:
-        info_box("Registered", [
-            render_ok("Miner profile created on-chain ✓"), "",
-            f"Tx: {res.tx[:62]}…",
-            "Next: enable services & send a heartbeat from this menu.",
-        ], color=C.GREEN)
-    else:
-        info_box("Registration rejected", [
-            render_error(f"Reason: {res.reason}")
-        ], color=C.RED)
 
 
 # ---------------------------------------------------------------------------
@@ -2061,8 +1861,22 @@ def ensure_wallet_alive(cfg: Config) -> bool:
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="XELIS Vault community CLI")
+    parser.add_argument("--balance", action="store_true", help="Print balances and exit")
+    parser.add_argument("--rpc", help="Daemon JSON-RPC URL")
+    args = parser.parse_args()
+
     cfg = Config()
+    if args.rpc:
+        cfg.data["rpc_url"] = args.rpc
     first_run = not CONFIG_PATH.exists()
+    if args.balance:
+        b = Backend(cfg.data)
+        bals = b.balances()
+        for k, v in bals.items():
+            print(f"{k}: {b.fmt(v)}")
+        return
 
     while True:
         # transparently bring the managed wallet back before building Backend
@@ -2074,7 +1888,7 @@ def main():
         wallet_ok = bool(b.wallet)
         if wallet_ok:
             try:
-                b.balance()
+                b.wallet.balance()
             except Exception:
                 wallet_ok = False
 

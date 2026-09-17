@@ -69,7 +69,7 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex -Args "--uninstal
 If the one-line installer fails:
 
 ```bash
-git clone https://github.com/XelisVault/xelis-vault.git ~/.xelis-vault/src
+git clone https://github.com/Aw3n/xelis-vault.git ~/.xelis-vault/src
 cd ~/.xelis-vault/src
 python3 -m venv venv
 source venv/bin/activate  # Linux/macOS
@@ -158,7 +158,7 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex -Args "--uninstal
 Si l'installateur échoue :
 
 ```bash
-git clone https://github.com/XelisVault/xelis-vault.git ~/.xelis-vault/src
+git clone https://github.com/Aw3n/xelis-vault.git ~/.xelis-vault/src
 cd ~/.xelis-vault/src
 python3 -m venv venv
 source venv/bin/activate  # Linux/macOS
@@ -247,7 +247,7 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex -Args "--uninstal
 如果一键安装失败：
 
 ```bash
-git clone https://github.com/XelisVault/xelis-vault.git ~/.xelis-vault/src
+git clone https://github.com/Aw3n/xelis-vault.git ~/.xelis-vault/src
 cd ~/.xelis-vault/src
 python3 -m venv venv
 source venv/bin/activate  # Linux/macOS
@@ -336,7 +336,7 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex -Args "--uninstal
 ワンラインインストールが失敗した場合：
 
 ```bash
-git clone https://github.com/XelisVault/xelis-vault.git ~/.xelis-vault/src
+git clone https://github.com/Aw3n/xelis-vault.git ~/.xelis-vault/src
 cd ~/.xelis-vault/src
 python3 -m venv venv
 source venv/bin/activate  # Linux/macOS
@@ -425,7 +425,7 @@ irm https://xelisvault.github.io/xelis-vault/install.ps1 | iex -Args "--uninstal
 إذا فشل المثبت التلقائي:
 
 ```bash
-git clone https://github.com/XelisVault/xelis-vault.git ~/.xelis-vault/src
+git clone https://github.com/Aw3n/xelis-vault.git ~/.xelis-vault/src
 cd ~/.xelis-vault/src
 python3 -m venv venv
 source venv/bin/activate  # Linux/macOS

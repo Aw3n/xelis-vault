@@ -15,7 +15,7 @@ Avant de commencer, vous devez avoir :
 
 1. **Le compilateur Silex officiel** (xelis-vm) installé
 2. **Un wallet XELIS** (Genesix ou CLI) avec assez de XEL pour les gas
-3. **Le code source** : `git clone https://github.com/XelisVault/xelis-vault.git`
+3. **Le code source** : `git clone https://github.com/Aw3n/xelis-vault.git`
 4. **Le script de déploiement** : `python3 deploy/deploy_testnet.py --help`
 5. **14 adresses prêtes** : admin, founder, guardian×5 (multisig), emergency, treasury, etc.
 

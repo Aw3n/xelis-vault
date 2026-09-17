@@ -10,7 +10,7 @@
 | Auditor | Super Z (Z.ai) |
 | Smart contracts | 33 Silex contracts (13,220 lines, 630 entry functions) |
 | Layer 1 | XELIS BlockDAG (homomorphic-encrypted balances, native confidential assets) |
-| Documentation | https://github.com/XelisVault/xelis-vault |
+| Documentation | https://github.com/Aw3n/xelis-vault |
 
 ---
 
@@ -461,7 +461,7 @@ The protocol's economic design is deliberately conservative: a fixed-supply gove
 
 - **XELIS documentation** — https://docs.xelis.io
 - **Silex playground** — https://playground.xelis.io
-- **Source repository** — https://github.com/XelisVault/xelis-vault
+- **Source repository** — https://github.com/Aw3n/xelis-vault
 - **Audit report (v5.0 remediation)** — `docs/AUDIT_v5.0_REMEDIATION.md`
 - **Entry IDs (auto-generated)** — `docs/ENTRY_IDS.md`
 - **Reward & reputation system** — `docs/REWARD_SYSTEM.md`

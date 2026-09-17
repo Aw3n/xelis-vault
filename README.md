@@ -452,7 +452,7 @@ Full CLI guide: [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md)
 
 - **Discord:** https://discord.gg/vyXTVRNSyu
 - **Twitter:** https://x.com/xelisvault
-- **GitHub:** https://github.com/XelisVault/xelis-vault
+- **GitHub:** https://github.com/Aw3n/xelis-vault
 - **Testnet Explorer:** https://testnet-explorer.xelis.io/
 - **XELIS Blockchain:** https://xelis.io
 

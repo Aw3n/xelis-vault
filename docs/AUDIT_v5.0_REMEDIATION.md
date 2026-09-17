@@ -223,4 +223,4 @@ L'architecture v5.0 est désormais **conforme aux APIs Silex réellement disponi
 
 ---
 
-*Audit et remédiation réalisés par Super Z (Z.ai) le 24 juin 2026 sur la base du dépôt `github.com/XelisVault/xelis-vault` (commit v4.3) corrigé en v5.0. Périmètre : 33 contrats Silex + scripts Python + documentation. Méthodologie : revue manuelle de logique, analyse statique, cross-check des entry IDs (générés automatiquement via `extract_entry_ids.py`), vérification des contrôles d'accès, validation des APIs contre `lib.rs` (wrapper Silex playground) et la documentation officielle.*
+*Audit et remédiation réalisés par Super Z (Z.ai) le 24 juin 2026 sur la base du dépôt `github.com/Aw3n/xelis-vault` (commit v4.3) corrigé en v5.0. Périmètre : 33 contrats Silex + scripts Python + documentation. Méthodologie : revue manuelle de logique, analyse statique, cross-check des entry IDs (générés automatiquement via `extract_entry_ids.py`), vérification des contrôles d'accès, validation des APIs contre `lib.rs` (wrapper Silex playground) et la documentation officielle.*

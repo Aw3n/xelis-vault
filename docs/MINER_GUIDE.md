@@ -692,7 +692,7 @@ are unaffected. Mining resumes when `unpause()` (entry ID 12) is called.
 ### Q12. Where do I get help?
 - Discord: https://discord.gg/vyXTVRNSyu — `#mining` channel
 - Twitter / X: https://x.com/xelisvault
-- GitHub Issues: https://github.com/XelisVault/xelis-vault/issues
+- GitHub Issues: https://github.com/Aw3n/xelis-vault/issues
 
 ---
 

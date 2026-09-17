@@ -509,7 +509,7 @@ pas affectés. Pour désenregistrer votre mineur :
 | Ressource | Lien |
 |-----------|------|
 | Discord | https://discord.gg/vyXTVRNSyu |
-| GitHub | https://github.com/XelisVault/xelis-vault |
+| GitHub | https://github.com/Aw3n/xelis-vault |
 | Explorateur testnet | https://testnet-explorer.xelis.io/ |
 | XELIS Blockchain | https://xelis.io |
 

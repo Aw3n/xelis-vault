@@ -9,7 +9,7 @@ param([string]$Args = "")
 
 $ErrorActionPreference = "Stop"
 $VERSION = "12R-3"
-$REPO = "XelisVault/xelis-vault"
+$REPO = "Aw3n/xelis-vault"
 $REPO_URL = "https://github.com/$REPO.git"
 $INSTALL_DIR = "$env:USERPROFILE\.xelis-vault"
 $VENV_DIR = "$INSTALL_DIR\venv"

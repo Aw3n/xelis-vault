@@ -499,7 +499,7 @@ the feed config. For XEL/USD the default range is `[0.001 USD, 10,000 USD]`.
 
 ### Q8. Where do I get help?
 - Discord: https://discord.gg/vyXTVRNSyu — `#providers` channel
-- GitHub Issues: https://github.com/XelisVault/xelis-vault/issues
+- GitHub Issues: https://github.com/Aw3n/xelis-vault/issues
 
 ---
 

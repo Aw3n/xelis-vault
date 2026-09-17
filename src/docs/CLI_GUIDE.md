@@ -149,7 +149,7 @@ Download `install.bat` and double-click it.
 
 ### Manual
 ```bash
-git clone https://github.com/XelisVault/xelis-vault.git ~/.xelis-vault/src
+git clone https://github.com/Aw3n/xelis-vault.git ~/.xelis-vault/src
 cd ~/.xelis-vault/src
 python3 -m venv ~/.xelis-vault/venv
 ~/.xelis-vault/venv/bin/pip install requests python-dotenv

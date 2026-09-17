@@ -621,7 +621,7 @@ consult a tax professional.
 
 ### Q11. Where do I get help?
 - Discord: https://discord.gg/vyXTVRNSyu — `#support` channel
-- GitHub Issues: https://github.com/XelisVault/xelis-vault/issues
+- GitHub Issues: https://github.com/Aw3n/xelis-vault/issues
 - Documentation: [docs/](.)
 
 ---

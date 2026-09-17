@@ -249,7 +249,7 @@ Scale the protocol to multi-chain, expand product surface, and become the defaul
 ### Channels
 - **Discord** (primary): https://discord.gg/vyXTVRNSyu — real-time support, governance discussions, miner coordination
 - **Twitter**: https://x.com/xelisvault — announcements, milestones, educational content
-- **GitHub**: https://github.com/XelisVault/xelis-vault — source code, issues, PRs
+- **GitHub**: https://github.com/Aw3n/xelis-vault — source code, issues, PRs
 - **Blog**: Medium publication (launching Q3 2026) — deep-dive articles, technical analyses
 - **Newsletter**: monthly summary of progress, governance proposals, ecosystem updates
 

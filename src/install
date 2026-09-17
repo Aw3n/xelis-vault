@@ -33,7 +33,7 @@ warn()    { printf "${YELLOW}!${RESET}  %s\n" "$*"; }
 error()   { printf "${RED}x${RESET}  %s\n" "$*" >&2; }
 step()    { printf "\n${MAGENTA}${BOLD}> %s${RESET}\n" "$*"; }
 
-REPO="XelisVault/xelis-vault"
+REPO="Aw3n/xelis-vault"
 REPO_URL="https://github.com/${REPO}.git"
 INSTALL_DIR="${HOME}/.xelis-vault"
 BIN_DIR="${HOME}/.local/bin"

@@ -92,7 +92,7 @@ def svc_badges(mask):
 def fetch_live(b: Backend) -> dict:
     live = {"connected": False, "topo": 0, "balances": {},
             "miner": {}, "miner_loaded": False, "stats": {}, "feeds": [],
-            "relayer": None, "error": ""}
+            "relayer": None, "error": "", "endpoint_updatable": None}
     try:
         topo = b.daemon.topoheight()
         live["topo"] = topo
@@ -117,6 +117,7 @@ def fetch_live(b: Backend) -> dict:
                 "total_submissions": int(m[M_TSUB]),
                 "active": bool(m[M_ACTIVE]),
             }
+            live["endpoint_updatable"] = b.miner_supports_update_endpoint()
         live["miner_loaded"] = True
         live["stats"] = b.miner_stats()
         p = b.price()
@@ -197,8 +198,17 @@ def render_dashboard(cfg, live, hint=""):
         ]
         desired = cfg.get("miner_endpoint")
         if desired and desired != m.get("endpoint"):
-            m_lines += [f"  Configured endpoint: {desired}",
-                        render_warn("Not synchronized — Actions > Update endpoint")]
+            support = live.get("endpoint_updatable")
+            m_lines += [f"  Configured endpoint: {desired}"]
+            if support is True:
+                m_lines.append(render_warn("Not synchronized — Actions > Update endpoint"))
+            elif support is False:
+                m_lines.append(render_error("Not synchronized — contract cannot change it yet"))
+                m_lines.append(f"  {C.DIM}update_endpoint (chunk 88) not deployed:{C.RESET}")
+                m_lines.append(f"  {C.DIM}a developer upgrade of XelisVaultMiner is needed.{C.RESET}")
+            else:
+                m_lines.append(render_warn("Not synchronized — contract capability unknown"))
+                m_lines.append(f"  {C.DIM}Refresh once the node answers.{C.RESET}")
         print()
         print(render_panel("  MINER  STATUS", m_lines, border_color=C.CYAN, width=58))
     else:
@@ -350,7 +360,8 @@ def interactive_setup(cfg):
         "Contract addresses load automatically from the network bundle.",
     ]
     msg_lines += ["Saved locally only; existing on-chain settings are unchanged.",
-                  "Use Actions > Update endpoint to request an on-chain change."]
+                  "Use Actions > Update endpoint to request an on-chain change, once the",
+                  "deployed miner contract exposes that entry (see the miner status panel)."]
     info_box("Setup Complete", msg_lines, color=C.GREEN)
 
 

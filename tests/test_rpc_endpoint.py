@@ -490,6 +490,44 @@ class RpcEndpointCases:
         backend.daemon._call.assert_not_called()
         self.clock.sleep.assert_not_called()
 
+    def test_capability_probe_reports_deployed_contract_support(self):
+        supported = self.backend()
+        self.assertIs(supported.miner_supports_update_endpoint(), True)
+        supported.daemon._call.assert_called_once_with("get_contract_module",
+                                                      {"contract": CONTRACT})
+
+        missing = self.backend()
+        metadata = deployed_module()
+        metadata["data"]["module"]["chunks"].pop()
+        missing.daemon._call.return_value = metadata
+        self.assertIs(missing.miner_supports_update_endpoint(), False)
+
+        wrong_shape = self.backend()
+        metadata = deployed_module()
+        metadata["data"]["module"]["chunks"][88]["value"]["parameters"] = []
+        wrong_shape.daemon._call.return_value = metadata
+        self.assertIs(wrong_shape.miner_supports_update_endpoint(), False)
+
+        unreachable = self.backend()
+        unreachable.daemon._call.side_effect = self.p.RPCError("node down")
+        self.assertIsNone(unreachable.miner_supports_update_endpoint())
+
+        malformed = self.backend()
+        malformed.daemon._call.return_value = {"data": None}
+        self.assertIsNone(malformed.miner_supports_update_endpoint())
+
+    def test_capability_probe_reads_the_module_once_per_contract_hash(self):
+        backend = self.backend()
+        for _ in range(3):
+            self.assertIs(backend.miner_supports_update_endpoint(), True)
+        backend.daemon._call.assert_called_once()
+        upgraded = "c" * 64
+        backend.contracts = {"miner": upgraded, "XelisVaultMiner": upgraded}
+        self.assertIs(backend.miner_supports_update_endpoint(), True)
+        self.assertEqual(backend.daemon._call.call_args_list,
+                         [call("get_contract_module", {"contract": CONTRACT}),
+                          call("get_contract_module", {"contract": upgraded})])
+
     def test_endpoint_old_88_chunk_module_requires_migration_without_write(self):
         backend = self.backend()
         metadata = deployed_module()

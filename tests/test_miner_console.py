@@ -169,6 +169,7 @@ class MinerConsoleCases:
             "heartbeat_interval": 900, "heartbeat_timeout": 4000,
         }
         b.price.return_value = (20_000_000, 1200, False)
+        b.miner_supports_update_endpoint.return_value = True
         b.chat_relayer_status.return_value = {
             "active": True, "bond": 50 * ATOMIC,
             "registered": {"endpoint": "https://relay.invalid", "free_daily_limit": 100,
@@ -344,6 +345,23 @@ class MinerConsoleCases:
         self.assertGreaterEqual(
             len(re.findall(r"(?m)^[╭┌+][-─]{20,}", text)), 5,
             "expected five panel top borders in the rendered dashboard")
+
+    def test_endpoint_mismatch_advice_follows_deployed_capability(self):
+        cases = (
+            (True, "Actions > Update endpoint", None),
+            (False, "developer upgrade", "Actions > Update endpoint"),
+            (None, "capability unknown", "Actions > Update endpoint"),
+        )
+        for support, expected, forbidden in cases:
+            with self.subTest(support=support):
+                self.b.miner_supports_update_endpoint.return_value = support
+                self.reset_output()
+                self.m.render_dashboard(self.cfg, self.m.fetch_live(self.b))
+                text = self.output()
+                self.assertIn("Not synchronized", text)
+                self.assertIn(expected, text)
+                if forbidden:
+                    self.assertNotIn(forbidden, text)
 
     def test_dashboard_matching_endpoint_does_not_claim_unsynchronized(self):
         self.cfg.data["miner_endpoint"] = OLD_ENDPOINT

@@ -881,6 +881,26 @@ class Backend:
             [val_str(endpoint_url), val_hash(pubkey), val_u8(services_mask & 0xFF)],
             deposits=dep, max_gas=25_000_000)
 
+    def miner_supports_update_endpoint(self) -> Optional[bool]:
+        """True when the deployed miner contract exposes entry 88, None if unreadable."""
+        contract = self.C("miner")
+        cached = getattr(self, "_endpoint_support", None)
+        if cached and cached[0] == contract:
+            return cached[1]
+        try:
+            result = self.daemon._call("get_contract_module", {"contract": contract})
+            chunks = result["data"]["module"]["chunks"]
+        except (RPCError, KeyError, TypeError, IndexError):
+            return None
+        index = CHUNKS["XelisVaultMiner"]["update_endpoint"]
+        supported = (isinstance(chunks, list) and len(chunks) > index
+                     and isinstance(chunks[index], dict)
+                     and chunks[index].get("type") == "entry"
+                     and isinstance(chunks[index].get("value"), dict)
+                     and chunks[index]["value"].get("parameters") == [{"type": "string"}])
+        self._endpoint_support = (contract, supported)
+        return supported
+
     def miner_update_endpoint(self, new_endpoint: str) -> OpResult:
         new_endpoint = new_endpoint.strip()
         if not new_endpoint:
@@ -895,15 +915,10 @@ class Backend:
                 return OpResult(False, reason="Miner is not registered")
             if miner[1] == new_endpoint:
                 return OpResult(True)
-            contract = self.C("miner")
-            result = self.daemon._call("get_contract_module", {"contract": contract})
-            chunks = result["data"]["module"]["chunks"]
-            index = CHUNKS["XelisVaultMiner"]["update_endpoint"]
-            if (not isinstance(chunks, list) or len(chunks) <= index
-                    or not isinstance(chunks[index], dict)
-                    or chunks[index].get("type") != "entry"
-                    or not isinstance(chunks[index].get("value"), dict)
-                    or chunks[index]["value"].get("parameters") != [{"type": "string"}]):
+            supported = self.miner_supports_update_endpoint()
+            if supported is None:
+                return OpResult(False, reason="Cannot verify deployed miner contract")
+            if not supported:
                 return OpResult(False, reason="Deployed miner contract does not support update_endpoint; developer deployment/migration required")
         except (RPCError, KeyError, TypeError, IndexError) as e:
             return OpResult(False, reason=f"Cannot verify deployed miner: {e}")

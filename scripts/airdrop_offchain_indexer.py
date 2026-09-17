@@ -1,32 +1,32 @@
 #!/usr/bin/env python3
 """
-airdrop_offchain_indexer.py — Indexer off-chain rétroactif pour l'airdrop testnet.
+airdrop_offchain_indexer.py — Retroactive off-chain indexer for testnet airdrop.
 
-Scanne les blocs du testnet XELIS, identifie les transactions `invoke_contract`
-vers les contrats du protocole, déduit l'action (via le hash du contrat + l'entry_id
-= chunk compilé), crédite des points par adresse wallet, et écrit un fichier de
-classement (adresse -> points par catégorie + total).
+Scans XELIS testnet blocks, identifies `invoke_contract` transactions
+to protocol contracts, deduces the action (via contract hash + entry_id
+= compiled chunk), credits points by wallet address, and writes a leaderboard
+file (address -> points by category + total).
 
-Stratégie :
-  - Rétroactif : scanne les derniers `--window` blocs (défaut 50000) jusqu'au topo actuel.
-  - Reprise (resumable) : un checkpoint (JSON) enregistre `last_topo_scanned` + les
-    txs déjà traitées ; relancer reprend là où on s'est arrêté (pas de double comptage).
-  - Source : nœud public `testnet-node.xelis.io` (User-Agent requis, rate-limit Cloudflare
-    géré par retries/exponential backoff + petites rafales concurrency). Le daemon local
-    non pruné peut servir la partie récente via `--rpc http://127.0.0.1:18081/json_rpc`.
+Strategy:
+  - Retroactive: scans the last `--window` blocks (default 50000) up to current topo.
+  - Resumable: a checkpoint (JSON) records `last_topo_scanned` + already
+    processed txs; rerunning picks up where it left off (no double counting).
+  - Source: public node `testnet-node.xelis.io` (User-Agent required, Cloudflare
+    rate-limit handled by retries/exponential backoff + small concurrent bursts).
+    The local non-pruned daemon can serve the recent part via `--rpc http://127.0.0.1:18081/json_rpc`.
 
-Points (docs/AIRDROP_PLAN.md v10.4) :
-  - MINING       : 1 pt prix valide soumis (StakedOracle.submit_price=16) ;
-                   1 bloc PoW miné -> 1 pt au miner (header `miner`) ; heartbeat 50 pts.
-  - RELAYER      : 10 pts/anchor (VaultChat.anchor_messages=11) ; 50 pts enregistrement relayer.
+Points (docs/AIRDROP_PLAN.md v10.4):
+  - MINING       : 1 pt valid price submitted (StakedOracle.submit_price=16) ;
+                    1 PoW block mined -> 1 pt to miner (header `miner`) ; heartbeat 50 pts.
+  - RELAYER      : 10 pts/anchor (VaultChat.anchor_messages=11) ; 50 pts relayer registration.
   - CHAT         : 1 pt/message (send_direct_message=113, store_message=38,
-                   store_group_message=48, store_ephemeral_message) cap 100/jour ;
-                   100 pts/groupe créé (create_group=8).
-  - GOVERNANCE   : 50 pts/vote (Governor.vote=4) ; 500 pts/proposition (Governor.propose=3).
-  - LIQUIDITY    : 10 pts par XEL déposé (VaultEngineV3.deposit=17, PSM.mint=8,
-                   VaultSwap.add_liquidity=17, SavingsRate.deposit=8, PrivacyMixer.deposit=6).
+                    store_group_message=48, store_ephemeral_message) cap 100/day ;
+                    100 pts/group created (create_group=8).
+  - GOVERNANCE   : 50 pts/vote (Governor.vote=4) ; 500 pts/proposal (Governor.propose=3).
+  - LIQUIDITY    : 10 pts per XEL deposited (VaultEngineV3.deposit=17, PSM.mint=8,
+                    VaultSwap.add_liquidity=17, SavingsRate.deposit=8, PrivacyMixer.deposit=6).
 
-Usage :
+Usage:
     python3 scripts/airdrop_offchain_indexer.py --window 50000
     python3 scripts/airdrop_offchain_indexer.py --resume --out /tmp/airdrop.csv
 """
@@ -48,10 +48,43 @@ LOCAL_NODE = "http://127.0.0.1:18081/json_rpc"
 
 XEL_DECIMALS = 8
 
-# Adresses EXCLUES du scoring (n'accumulent AUCUN point airdrop).
-# L'admin (déployeur/opérateur) ne compte pas : "ça ne compte pas pour lui".
-ADMIN_ADDRESS = "xet:czr9q8k5xlzqdptq7n2vapyjfduldts6tw3e6apl99vknzvmu4zsq8z9j8v"
-EXCLUDE_ADDRS = {ADMIN_ADDRESS}
+# Addresses EXCLUDED from scoring (earn NO airdrop points).
+# The admin (deployer/operator) does not count: "it doesn't count for him".
+# Left as an optional override; a placeholder value is treated as "not set".
+ADMIN_ADDRESS = "xet:YOUR_ADMIN_ADDRESS_HERE"
+PLACEHOLDER_ADDRESS = "YOUR_ADMIN_ADDRESS"
+OPERATOR_CONFIG_KEYS = ("miner_address", "address")
+
+
+def configured_operator_addresses() -> list:
+    """Operator addresses recorded in this install's own config.
+
+    Only public address fields are read, and never the file itself: it also
+    holds wallet credentials.
+    """
+    path = Path.home() / ".xelis-vault" / "config" / "config.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    return [str(data[key]).strip() for key in OPERATOR_CONFIG_KEYS
+            if isinstance(data.get(key), str) and str(data[key]).strip()]
+
+
+def resolve_exclusions(extra=None) -> set:
+    """Addresses kept out of the leaderboard: CLI flags, env, config, override."""
+    candidates = list(extra or [])
+    candidates += [a.strip() for a in os.environ.get("AIRDROP_EXCLUDE_ADDRESS", "").split(",")
+                   if a.strip()]
+    candidates += configured_operator_addresses()
+    if ADMIN_ADDRESS and PLACEHOLDER_ADDRESS not in ADMIN_ADDRESS:
+        candidates.append(ADMIN_ADDRESS)
+    return {a for a in candidates if a.startswith("xet:")}
+
+
+EXCLUDE_ADDRS = resolve_exclusions()
 
 # ---------------------------------------------------------------------------
 # Contrats du protocole -> hash actif (deployment_state.json / protocol.py)
@@ -90,7 +123,7 @@ CONTRACT_HASHES = {
     "xUSD": "4836190ca2f2278cfc3e8ad8c7e05bbd0070de253c64615f6eea2c19885063a1",
 }
 
-# Vieilles instances (hash antérieurs encore présents dans certains blocs) -> contract
+# Old instances (earlier hashes still present in some blocks) -> contract
 LEGACY_HASHES = {
     "844cab735a8156f55c3055c2ff56a6824ad6d55b32f7dfb866655bde2bfa2054": "VaultEngineV3",
     "52cb2f100984319c7f41bbec03fb3e7679279eafdd4abb44ff5d8fdd7631cf97": "GovernanceVault",
@@ -110,8 +143,8 @@ _HASH_TO_NAME.update(LEGACY_HASHES)
 
 
 # ---------------------------------------------------------------------------
-# Grille de points : (catégorie, points, description, mode)
-#   mode: "fixed" -> points fixes ; "xel" -> pointeurs calculés à partir d'un param
+# Points grid: (category, points, description, mode)
+#   mode: "fixed" -> fixed points ; "xel" -> pointers calculated from a param
 # ---------------------------------------------------------------------------
 CATS = {
     "MINING":   {"id": 1},
@@ -152,12 +185,12 @@ SCORE_MAP = {
         15: ("MINING", 10, "register_miner"),
     },
     "VaultEngineV3": {
-        # param[0] = montant XEL déposé (deposit prend l'adresse + amount)
+        # param[0] = XEL amount deposited (deposit takes address + amount)
         17: ("LIQUIDITY", "xel_param0", "deposit"),
-        18: ("LIQUIDITY", 0, "borrow"),   # borrow = pas de nouveau XEL provisionné
+        18: ("LIQUIDITY", 0, "borrow"),   # borrow = no new XEL provisioned
     },
     "PSM": {
-        # param[0] = montant XEL -> xUSD
+        # param[0] = XEL amount -> xUSD
         8: ("LIQUIDITY", "xel_param0", "mint"),
     },
     "VaultSwapV2": {
@@ -167,7 +200,7 @@ SCORE_MAP = {
         8: ("LIQUIDITY", "xel_param0", "deposit"),
     },
     "PrivacyMixer": {
-        6: ("LIQUIDITY", "xel_param1", "deposit"),  # deposit(asset, amount) -> amount en param[1]
+        6: ("LIQUIDITY", "xel_param1", "deposit"),  # deposit(asset, amount) -> amount in param[1]
     },
 }
 
@@ -240,11 +273,11 @@ def parse_param(cell) -> object:
 # ---------------------------------------------------------------------------
 class PointsBook:
     def __init__(self):
-        # addr -> { cat -> points }, et objets de suivi pour la reprise
+        # addr -> { cat -> points }, and tracking objects for resume
         self.by_addr = defaultdict(lambda: defaultdict(int))
         self.days_active = defaultdict(set)
-        self.activity = []          # list of dicts (détail, pour audit)
-        self.tx_seen = set()        # hash de tx déjà traitées (reprise)
+        self.activity = []          # list of dicts (detail, for audit)
+        self.tx_seen = set()        # hash of txs already processed (resume)
         self.last_topo = 0
 
     def add(self, addr: str, cat: str, pts: float, desc: str, topo: int, tx: str):
@@ -279,10 +312,10 @@ def score_block(book: PointsBook, url: str, block: dict, _tmp_tx_cache: dict = N
     txs = block.get("txs_hashes") or []
     miner = block.get("miner")
     topo = block.get("topoheight")
-    # MINING : bloc PoW miné -> le miner gagne 1 pt
+    # MINING: PoW block mined -> miner gets 1 pt
     if miner:
         book.add(miner, "MINING", 1, "block_mined", topo, block.get("hash", "")[:16])
-    # fetch les txs (concurrent si on passe un thread pool via le cache en mode batch)
+    # fetch txs (concurrent if a thread pool is passed via cache in batch mode)
     for tx_hash in txs:
         if tx_hash in book.tx_seen:
             continue
@@ -332,19 +365,19 @@ def _score_tx(book: PointsBook, tx: dict, topo: int, tx_hash: str):
 def scan_range(book: PointsBook, url: str, start: int, end: int,
                workers: int = 8, sleep: float = 0.0,
                on_progress=None):
-    """Scanne [start..end] de façon concurrente pour les blocs, batchant les txs."""
+    """Scans [start..end] concurrently for blocks, batching txs."""
     done = start - 1
     total = end - start + 1
     t0 = time.time()
 
     def fetch_block(t):
-        # retries avec backoff gérés par rpc(); sur échec définitif on retourne un marker
+        # retries handled by rpc(); on permanent failure we return a marker
         try:
             return t, get_block(url, t)
         except Exception:
             return t, None
 
-    # on traite par lots pour garder un progress lisible et un checkpoint régulier
+    # process in batches for readable progress and regular checkpointing
     BATCH = workers * 4
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
         for batch_start in range(start, end + 1, BATCH):
@@ -356,7 +389,7 @@ def scan_range(book: PointsBook, url: str, start: int, end: int,
                     batch_blocks.append(fut.result())
                 except Exception:
                     batch_blocks.append((futures[fut], None))
-            # réessayer les blocs échoués en séquentiel (pause si rate-limit)
+            # retry failed blocks sequentially (pause on rate-limit)
             failed = [t for t, b in batch_blocks if b is None]
             for t in failed:
                 for attempt in range(4):
@@ -368,10 +401,10 @@ def scan_range(book: PointsBook, url: str, start: int, end: int,
                     except Exception:
                         time.sleep(5 * (attempt + 1))
                 if not any(bb for bb in batch_blocks if bb[0] == t and bb[1] is not None):
-                    print(f"[warn] topo {t} injoignable après retries — ignoré")
+                    print(f"[warn] topo {t} unreachable after retries — skipped")
             batch_blocks = [bb for bb in batch_blocks if bb[0] not in failed or
                             (bb[0] in failed and bb[1] is not None)]
-            # collecter toutes les txs du lot pour les fetch en concurrence
+            # collect all txs in the batch for concurrent fetch
             new_tx = {}
             present = {t: b for t, b in batch_blocks if b is not None}
             for t, blk in present.items():
@@ -456,9 +489,9 @@ def write_leaderboard(book: PointsBook, out_json: Path, out_csv: Path):
                "days_active": len(book.days_active[addr])}
         rows.append(row)
     rows.sort(key=lambda r: -r["total"])
-    # classement + total général
+    # ranking + grand total
     total_all = round(sum(r["total"] for r in rows), 4)
-    # qualification (plan) : >=1000 pts & >=7 jours actifs
+    # qualification (plan): >=1000 pts & >=7 active days
     for i, r in enumerate(rows, 1):
         r["rank"] = i
         r["qualified"] = bool(r["total"] >= 1000 and r["days_active"] >= 7)
@@ -492,45 +525,45 @@ def write_leaderboard(book: PointsBook, out_json: Path, out_csv: Path):
 
 
 # ---------------------------------------------------------------------------
-# Daemon continu (lit en permanence les nouveaux blocs)
+# Continuous daemon (continuously reads new blocks)
 # ---------------------------------------------------------------------------
 def run_daemon(book: PointsBook, args, ck_path: Path, out_json: Path, out_csv):
-    """Boucle infinie : scanne les nouveaux blocs en continu, ré-écrit
-    régulièrement le leaderboard (admin exclu), checkpoint après chaque scan."""
-    print(f"[daemon] démarre (workers={args.workers}, poll={args.poll_interval}s)")
-    print(f"[daemon] adresses exclues du scoring: {sorted(EXCLUDE_ADDRS)}")
+    """Infinite loop: scans new blocks continuously, rewrites
+    the leaderboard periodically (admin excluded), checkpoint after each scan."""
+    print(f"[daemon] starting (workers={args.workers}, poll={args.poll_interval}s)")
+    print(f"[daemon] addresses excluded from scoring: {sorted(EXCLUDE_ADDRS)}")
     last_write = 0.0
     while True:
         try:
             topo = get_topoheight(args.rpc)
             if topo > book.last_topo:
                 start = book.last_topo + 1
-                print(f"[daemon] nouveaux blocs: scan {start}..{topo} "
-                      f"({topo - start + 1} blocs)")
+                print(f"[daemon] new blocks: scan {start}..{topo} "
+                      f"({topo - start + 1} blocks)")
                 def on_progress(done, total, t, elapsed):
                     nonlocal last_write
                     if time.time() - last_write > 20:
                         save_checkpoint(ck_path, book)
                     if done % 500 == 0 or done == total:
-                        print(f"[daemon] {t}/{topo} · {len(book.by_addr)} adresses, "
+                        print(f"[daemon] {t}/{topo} · {len(book.by_addr)} addresses, "
                               f"{len(book.tx_seen)} txs")
                 scan_range(book, args.rpc, start, topo, workers=args.workers,
                            sleep=args.sleep, on_progress=on_progress)
-            # ré-écrire le leaderboard périodiquement (même sans nouveaux blocs)
+            # rewrite leaderboard periodically (even without new blocks)
             if time.time() - last_write > args.write_interval or topo <= book.last_topo:
                 save_checkpoint(ck_path, book)
                 out = write_leaderboard(book, out_json, out_csv)
-                print(f"[daemon] leaderboard écrit: {out['users']} users, "
-                      f"{out['qualified_users']} qualifiés, "
+                print(f"[daemon] leaderboard written: {out['users']} users, "
+                      f"{out['qualified_users']} qualified, "
                       f"total={out['total_points_all_users']} (topo {book.last_topo})")
                 last_write = time.time()
         except KeyboardInterrupt:
             save_checkpoint(ck_path, book)
             write_leaderboard(book, out_json, out_csv)
-            print("[daemon] arrêt")
+            print("[daemon] stopped")
             break
         except Exception as e:
-            print(f"[daemon] erreur: {e}; retry dans {args.poll_interval}s")
+            print(f"[daemon] error: {e}; retry in {args.poll_interval}s")
         time.sleep(args.poll_interval)
 
 
@@ -538,38 +571,49 @@ def run_daemon(book: PointsBook, args, ck_path: Path, out_json: Path, out_csv):
 # Main
 # ---------------------------------------------------------------------------
 def main():
-    ap = argparse.ArgumentParser(description="Indexer airdrop off-chain (scan rétroactif)")
+    ap = argparse.ArgumentParser(description="Airdrop off-chain indexer (retroactive scan)")
     ap.add_argument("--rpc", default=PUBLIC_NODE,
-                    help="Endpoint JSON-RPC du daemon (défaut: nœud public)")
+                    help="Daemon JSON-RPC endpoint (default: public node)")
     ap.add_argument("--window", type=int, default=50000,
-                    help="Nombre de blocs rétroactifs à scanner (défaut 50000)")
+                    help="Number of retroactive blocks to scan (default 50000)")
     ap.add_argument("--checkpoint", default=str(
         Path.home() / ".xelis-vault" / "airdrop_index_ckpt.json"))
     ap.add_argument("--out-json", default=str(
         Path.home() / ".xelis-vault" / "airdrop_leaderboard.json"))
     ap.add_argument("--out-csv", default="")
     ap.add_argument("--resume", action="store_true",
-                    help="Reprendre depuis le checkpoint (sinon repart de zéro)")
+                    help="Resume from checkpoint (otherwise start from scratch)")
     ap.add_argument("--sleep", type=float, default=0.0,
-                    help="Pause secondes entre lots (anti rate-limit)")
+                    help="Seconds pause between batches (anti rate-limit)")
     ap.add_argument("--workers", type=int, default=8,
-                    help="Concurrence pour les requêtes RPC (défaut 8)")
+                    help="Concurrency for RPC requests (default 8)")
     ap.add_argument("--daemon", action="store_true",
-                    help="Mode continu : lit en boucle les nouveaux blocs (s'arrête jamais)")
+                    help="Continuous mode: continuously reads new blocks (never stops)")
     ap.add_argument("--poll-interval", type=float, default=15.0,
-                    help="Poll des nouveaux blocs en secondes (mode daemon, défaut 15)")
+                    help="Poll new blocks every N seconds (daemon mode, default 15)")
     ap.add_argument("--write-interval", type=float, default=300.0,
-                    help="Ré-écrire le leaderboard toutes les N secondes (mode daemon, défaut 300)")
+                    help="Rewrite leaderboard every N seconds (daemon mode, default 300)")
+    ap.add_argument("--exclude-address", action="append", default=[],
+                    metavar="xet:...", help="Address kept out of scoring (repeatable)")
     args = ap.parse_args()
+
+    global EXCLUDE_ADDRS
+    EXCLUDE_ADDRS = resolve_exclusions(args.exclude_address)
+    if EXCLUDE_ADDRS:
+        print(f"[indexer] excluded from scoring: {sorted(EXCLUDE_ADDRS)}")
+    else:
+        print("[indexer] WARNING: no operator address excluded — the deployer's own "
+              "activity will earn points (pass --exclude-address or set "
+              "AIRDROP_EXCLUDE_ADDRESS).", file=sys.stderr)
 
     ck_path = Path(args.checkpoint)
     if args.resume and ck_path.exists():
         ck = load_checkpoint(ck_path)
         book = book_from_checkpoint(ck)
-        print(f"[resume] repris au topo {book.last_topo} ({len(book.tx_seen)} txs déjà vues)")
+        print(f"[resume] resumed at topo {book.last_topo} ({len(book.tx_seen)} txs already seen)")
     else:
         book = PointsBook()
-        print("[fresh] nouveau scan")
+        print("[fresh] new scan")
 
     if args.daemon:
         run_daemon(book, args, ck_path, Path(args.out_json), args.out_csv)
@@ -578,9 +622,9 @@ def main():
     topo = get_topoheight(args.rpc)
     start = max(1, topo - args.window)
     if book.last_topo < start:
-        book.last_topo = start - 1  # on va scanner à partir de start
+        book.last_topo = start - 1  # scanning will start from start
 
-    print(f"topo actuel: {topo} | fenêtre: {args.window} | scan {start}..{topo} "
+    print(f"current topo: {topo} | window: {args.window} | scan {start}..{topo} "
           f"(workers={args.workers})")
     last_save = time.time()
 
@@ -592,8 +636,8 @@ def main():
         if done % 200 == 0 or done == total:
             rate = done / elapsed if elapsed > 0 else 0
             eta = (total - done) / rate / 3600 if rate > 0 else 0
-            print(f"[{t}/{topo}] {done}/{total} blocs, "
-                  f"{len(book.by_addr)} adresses, {len(book.tx_seen)} txs, "
+            print(f"[{t}/{topo}] {done}/{total} blocks, "
+                  f"{len(book.by_addr)} addresses, {len(book.tx_seen)} txs, "
                   f"{rate:.1f} blk/s, ETA {eta:.1f}h")
 
     scan_range(book, args.rpc, start, topo, workers=args.workers,
@@ -601,10 +645,10 @@ def main():
 
     save_checkpoint(ck_path, book)
     out = write_leaderboard(book, Path(args.out_json), args.out_csv)
-    print("\n=== RÉSULTAT ===")
+    print("\n=== RESULT ===")
     print(f"users: {out['users']} | total points: {out['total_points_all_users']} | "
-          f"qualifiés: {out['qualified_users']}")
-    print(f"catégories: {out['category_totals']}")
+          f"qualified: {out['qualified_users']}")
+    print(f"categories: {out['category_totals']}")
     print(f"JSON: {args.out_json}")
     if args.out_csv:
         print(f"CSV : {args.out_csv}")

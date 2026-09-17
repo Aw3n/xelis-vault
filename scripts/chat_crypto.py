@@ -87,13 +87,13 @@ def save_identity(private_key_pem: str, public_key_pem: str, address: str):
     identity_file = KEYS_DIR / "identity.json"
     identity_file.write_text(json.dumps(identity, indent=2))
     try: os.chmod(identity_file, 0o600)
-    except: pass
+    except Exception: pass
 
 def load_identity() -> Optional[dict]:
     identity_file = KEYS_DIR / "identity.json"
     if not identity_file.exists(): return None
     try: return json.loads(identity_file.read_text())
-    except: return None
+    except Exception: return None
 
 def get_public_key_hex(public_key_pem: str) -> str:
     return hashlib.sha256(public_key_pem.encode()).hexdigest()
@@ -135,7 +135,7 @@ def decrypt_message(encrypted: dict, recipient_private_key_pem: str, sender_publ
             pt = bytearray()
             for i, b in enumerate(ciphertext): pt.append(b ^ key_stream[i % len(key_stream)])
             return pt.decode('utf-8')
-    except: return None
+    except Exception: return None
 
 def save_received_message(sender_address: str, encrypted: dict, plaintext: str):
     ensure_dirs()
@@ -143,7 +143,7 @@ def save_received_message(sender_address: str, encrypted: dict, plaintext: str):
     messages = []
     if msg_file.exists():
         try: messages = json.loads(msg_file.read_text())
-        except: pass
+        except Exception: pass
     messages.append({"from": sender_address, "text": plaintext, "timestamp": encrypted.get("timestamp", time.time()), "decrypted_at": time.time(), "msg_id": encrypted.get("msg_id", len(messages))})
     msg_file.write_text(json.dumps(messages, indent=2))
 
@@ -153,7 +153,7 @@ def save_sent_message(recipient_address: str, encrypted: dict, plaintext: str):
     messages = []
     if msg_file.exists():
         try: messages = json.loads(msg_file.read_text())
-        except: pass
+        except Exception: pass
     messages.append({"to": recipient_address, "text": plaintext, "timestamp": encrypted.get("timestamp", time.time()), "sent_at": time.time(), "msg_id": encrypted.get("msg_id", len(messages))})
     msg_file.write_text(json.dumps(messages, indent=2))
 
@@ -162,11 +162,11 @@ def get_conversation(address: str) -> list:
     inbox_file = INBOX_DIR / f"{address}.json"
     if inbox_file.exists():
         try: received = json.loads(inbox_file.read_text())
-        except: pass
+        except Exception: pass
     sent_file = SENT_DIR / f"{address}.json"
     if sent_file.exists():
         try: sent = json.loads(sent_file.read_text())
-        except: pass
+        except Exception: pass
     all_msgs = []
     for m in received: m["direction"] = "in"; all_msgs.append(m)
     for m in sent: m["direction"] = "out"; all_msgs.append(m)
@@ -188,7 +188,7 @@ def delete_local_message(address: str, msg_id: int):
                 messages = json.loads(msg_file.read_text())
                 messages = [m for m in messages if m.get("msg_id") != msg_id]
                 msg_file.write_text(json.dumps(messages, indent=2))
-            except: pass
+            except Exception: pass
 
 def delete_local_conversation(address: str):
     """Delete all local messages with a specific address."""
@@ -202,7 +202,7 @@ def save_contact(address: str, public_key_pem: str):
     contacts = {}
     if CONTACTS_FILE.exists():
         try: contacts = json.loads(CONTACTS_FILE.read_text())
-        except: pass
+        except Exception: pass
     contacts[address] = {"public_key": public_key_pem, "added_at": time.time()}
     CONTACTS_FILE.write_text(json.dumps(contacts, indent=2))
 
@@ -211,12 +211,12 @@ def get_contact(address: str) -> Optional[str]:
     try:
         contacts = json.loads(CONTACTS_FILE.read_text())
         return contacts.get(address, {}).get("public_key")
-    except: return None
+    except Exception: return None
 
 def get_all_contacts() -> dict:
     if not CONTACTS_FILE.exists(): return {}
     try: return json.loads(CONTACTS_FILE.read_text())
-    except: return {}
+    except Exception: return {}
 
 def queue_for_relay(encrypted: dict, recipient_address: str):
     ensure_dirs()
@@ -229,7 +229,7 @@ def get_pending_messages() -> list:
     pending = []
     for f in PENDING_DIR.glob("*.json"):
         try: pending.append(json.loads(f.read_text()))
-        except: pass
+        except Exception: pass
     return pending
 
 def clear_pending():
@@ -254,7 +254,7 @@ def get_message_count_today() -> int:
     try:
         data = json.loads(count_file.read_text())
         return data.get("count", 0) if data.get("date") == today else 0
-    except: return 0
+    except Exception: return 0
 
 def increment_message_count():
     count_file = CHAT_DIR / "daily_count.json"
@@ -314,7 +314,7 @@ def get_relayer_peers() -> list:
     """Get list of known relayer peers for P2P sync."""
     if not RELAYER_PEERS_FILE.exists(): return []
     try: return json.loads(RELAYER_PEERS_FILE.read_text())
-    except: return []
+    except Exception: return []
 
 def add_relayer_peer(address: str, endpoint: str):
     """Add a relayer peer for sync."""
@@ -380,7 +380,7 @@ def mark_message_read_local(address: str, msg_id: int):
                         m["read"] = True
                         m["read_at"] = time.time()
                 msg_file.write_text(json.dumps(messages, indent=2))
-            except:
+            except Exception:
                 pass
 
 def get_unread_count(address: str) -> int:
@@ -390,7 +390,7 @@ def get_unread_count(address: str) -> int:
     try:
         messages = json.loads(inbox_file.read_text())
         return sum(1 for m in messages if not m.get("read", False))
-    except:
+    except Exception:
         return 0
 
 # ── Ephemeral Messages ──────────────────────────────────────────────────────

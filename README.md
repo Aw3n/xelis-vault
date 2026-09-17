@@ -113,11 +113,11 @@ Interactive dashboard that shows in real-time:
 
 Quick start with flags:
 ```bash
-xvault-miner --miner                          # Start mining immediately
+xvault-miner --miner                          # Open the miner actions menu
 xvault-miner --services oracle                # Oracle only
 xvault-miner --services chat                  # Chat only
 xvault-miner --services both                  # Both (default)
-xvault-miner --dry-run                        # Simulate without submitting
+xvault-miner --dry-run                        # Read-only dashboard, no transactions
 ```
 
 #### For Community Members

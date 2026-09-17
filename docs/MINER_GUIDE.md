@@ -89,6 +89,18 @@ blocks so the 6,000,000 VLT reward pool always lasts ~10 years.
 - Static IP or a stable DNS hostname. The `endpoint_url` you register is
   public and used by other miners / relayers.
 
+> **Changing a registered endpoint.** `miner_endpoint` in
+> `~/.xelis-vault/config/config.json` only records what *your* console will
+> send; what other operators see is the value stored on-chain. `xvault-miner`
+> shows both and flags a mismatch. The on-chain change runs through
+> `update_endpoint` (chunk 88 of `XelisVaultMiner`), which only works once the
+> *deployed* contract carries that entry — the v12R testnet instance
+> (`6c70647e…`, chunks 0–87) does not, so the console reports *developer
+> deployment/migration required* rather than broadcasting a doomed transaction.
+> `register_miner` is not a workaround: it reverts with `already` for an
+> address that already has a profile. Changing an endpoint on an old instance
+> therefore requires the contract redeploy/upgrade.
+
 ---
 
 ## 3. Step 1 — Get VLT tokens

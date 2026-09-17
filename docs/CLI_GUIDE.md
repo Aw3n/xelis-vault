@@ -57,7 +57,7 @@ Interactive setup will ask for:
 - Services (oracle, chat, or both)
 - Contract addresses
 
-### Start mining
+### Open the miner actions menu
 ```bash
 xvault-miner --miner
 ```
@@ -69,7 +69,7 @@ xvault-miner --services chat      # Chat only
 xvault-miner --services both      # Both (default)
 ```
 
-### Dry run (no transactions)
+### Read-only dashboard (no transactions)
 ```bash
 xvault-miner --dry-run
 ```

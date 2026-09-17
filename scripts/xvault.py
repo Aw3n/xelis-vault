@@ -30,7 +30,7 @@ from tui import (
     render_ok, render_warn, render_error, render_status, render_hint,
 )
 from cli_backend import (
-    Backend, DECIMALS, OpResult, AIRDROP_CATEGORIES,
+    Backend, DECIMALS, OpResult, RPCError, AIRDROP_CATEGORIES,
 )
 
 from config import Config, CONFIG_PATH, VAULT_DIR
@@ -174,6 +174,11 @@ def _record_tx(b: Backend, res, action: str):
         pass
 
 
+def short_err(msg: str, limit: int = 60) -> str:
+    """One compact line for a panel; full detail stays in the logs."""
+    return " ".join(str(msg).split())[:limit]
+
+
 def _friendly_error(msg: str):
     """Translate raw wallet PROOF errors into human text (FR/EN mix kept short)."""
     if "not enough funds" in msg:
@@ -236,6 +241,12 @@ def screen_dashboard(b: Backend):
             return True
         return False
 
+    def _optional_read(fn):
+        try:
+            return fn(), ""
+        except Exception as e:
+            return None, str(e)
+
     try:
         while True:
             if _pressed():
@@ -244,13 +255,14 @@ def screen_dashboard(b: Backend):
             topo = b.topo()
             if _pressed():
                 return
-            price_info = b.price()
+            price_info, price_err = _optional_read(b.price)
             if _pressed():
                 return
             bal = b.balances()
             if _pressed():
                 return
-            ms = b.miner_stats()
+            ms, stats_err = _optional_read(b.miner_stats)
+            ms = ms or {}
             if _pressed():
                 return
             psm = b.psm_reserves()
@@ -282,6 +294,8 @@ def screen_dashboard(b: Backend):
                 mark = f"{C.RED}STALE (age {age} blk){C.RESET}" if stale \
                        else f"{C.GREEN}fresh (age {age} blk){C.RESET}"
                 wal_rows.append(("  XEL/USD", f"{C.BOLD}${raw / 10**DECIMALS:,.4f}{C.RESET}  {mark}"))
+            elif price_err:
+                wal_rows.append(("  XEL/USD", f"{C.YELLOW}unavailable ({short_err(price_err)}){C.RESET}"))
             print()
             body_wal = [" ".join(f"{k:<16}{v}" for k, v in wal_rows[:2]),
                         " ".join(f"{k:<16}{v}" for k, v in wal_rows[2:4])]
@@ -303,6 +317,8 @@ def screen_dashboard(b: Backend):
                 pct = dist * 100 // budget if budget else 0
                 bar = render_bar(dist / budget if budget else 0, 24)
                 pro_rows.append(("Rewards budget", f"{bar} {dist//10**DECIMALS:g}/{budget//10**DECIMALS:g} VLT ({pct}%)"))
+            elif stats_err:
+                pro_rows.append(("Miner stats", f"{C.YELLOW}unavailable ({short_err(stats_err)}){C.RESET}"))
             if pro_rows:
                 print()
                 body_pro = [" ".join(f"{k:<18}{v}" for k, v in pro_rows[i:i+2])
@@ -1655,9 +1671,15 @@ def _clipboard_copy(text: str) -> bool:
 # --- Miner tools screen -----------------------------------------------------
 
 def screen_miner_tools(b: Backend):
-    m = b.my_miner()
-    stats = b.miner_stats()
-    topo = b.topo()
+    try:
+        m = b.my_miner()
+        stats = b.miner_stats()
+        topo = b.topo()
+    except RPCError as e:
+        info_box("Miner tools", [render_error(f"Cannot read miner status: {short_err(e, 120)}"),
+                                 f"{C.DIM}Check the daemon/wallet connection and retry.{C.RESET}"],
+                 color=C.RED)
+        return
 
     # ── Miner status panel ───────────────────────────────────────────
     if m and isinstance(m, list) and len(m) >= 15:
@@ -1675,9 +1697,18 @@ def screen_miner_tools(b: Backend):
             srvc.append(render_badge("Chat relay", C.MAGENTA))
         svc_txt = " ".join(srvc) if srvc else f"{C.DIM}none{C.RESET}"
         status = render_ok("REGISTERED") if active else render_warn("INACTIVE")
-        hb_txt = (f"{render_ok(f'{age} blocks ago')}" if age >= 0 and age < 1000
-                  else (render_warn(f"{age} blocks ago") if age >= 0
-                        else f"{C.DIM}never{C.RESET}"))
+        interval = stats.get("heartbeat_interval")
+        timeout = stats.get("heartbeat_timeout")
+        if age < 0:
+            hb_txt = f"{C.DIM}never{C.RESET}"
+        elif timeout and age > timeout:
+            hb_txt = render_error(f"{age} blocks ago — timeout exceeded")
+        elif interval and age >= interval:
+            hb_txt = render_warn(f"{age} blocks ago — due")
+        elif interval and timeout:
+            hb_txt = render_ok(f"{age} blocks ago")
+        else:
+            hb_txt = render_warn(f"{age} blocks ago — schedule unknown")
         lines = [
             f"{status}   {render_badge(f'Reputation {rep}', C.YELLOW)}",
             render_metrics([

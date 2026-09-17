@@ -32,23 +32,35 @@ class C:
 
 _UNICODE = True
 
+def _harden_streams():
+    # An interactive Windows console speaks UTF-8, but a piped or redirected
+    # stdout falls back to the ANSI code page (cp1252), which cannot encode box
+    # glyphs — a bare print() there would abort the whole screen.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+def _stdout_can_encode(sample: str) -> bool:
+    encoding = (getattr(sys.stdout, "encoding", None) or "").strip()
+    if not encoding:
+        import locale
+        encoding = locale.getpreferredencoding(False) or "ascii"
+    try:
+        sample.encode(encoding)
+        return True
+    except (LookupError, UnicodeEncodeError):
+        return False
+
 def _detect_unicode_support():
     global _UNICODE
     try:
-        encoding = (getattr(sys.stdout, "encoding", None) or "").lower()
-        if encoding and ("utf" in encoding or "utf" in (sys.getdefaultencoding() or "")):
-            _UNICODE = True
-            return
-        if os.name == "nt":
-            import locale
-            loc = (locale.getpreferredencoding() or "").lower()
-            if loc.startswith(("cp", "ascii")):
-                _UNICODE = False
-                return
-        _UNICODE = True
+        _UNICODE = _stdout_can_encode("╭─░")
     except Exception:
         _UNICODE = False
 
+_harden_streams()
 _detect_unicode_support()
 
 if not _UNICODE:
@@ -282,13 +294,16 @@ def read_key_timeout(timeout_sec=1.0):
         return None
 
 
-BANNER = f"""{C.CYAN}{C.BOLD}
+_BANNER_ART = """
  ██████  ██      ██   ██ ██ ███████  ██████ ████████ ██  ██████  ███    ██
 ██    ██ ██      ██  ██  ██ ██      ██         ██    ██ ██    ██ ████   ██
 ██    ██ ██      █████   ██ █████   ██         ██    ██ ██    ██ ██ ██  ██
 ██    ██ ██      ██  ██  ██ ██      ██         ██    ██ ██    ██ ██  ██ ██
  ██████  ███████ ██   ██ ██ ███████  ██████    ██    ██  ██████  ██   ████
-{C.RESET}{C.DIM}              Privacy-First DeFi on XELIS BlockDAG{C.RESET}"""
+"""
+
+BANNER = (f"{C.CYAN}{C.BOLD}" + _BANNER_ART.replace("█", _BLOCK_FULL)
+          + f"{C.RESET}{C.DIM}              Privacy-First DeFi on XELIS BlockDAG{C.RESET}")
 
 
 # ============================================================================

@@ -3,8 +3,8 @@
 ============================================================================
  XELIS Vault v10.6 — Contract interactions module
 ============================================================================
-Implémente les vraies interactions avec les contrats déployés.
-Toutes les fonctions sont wrappées avec gestion d'erreur et affichage clair.
+Implements real interactions with deployed contracts.
+All functions are wrapped with error handling and clear output.
 ============================================================================
 """
 from __future__ import annotations

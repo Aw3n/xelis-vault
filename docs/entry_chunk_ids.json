@@ -5175,6 +5175,11 @@
    "kind": "All",
    "name": "set_min_stake_cross",
    "params": "Some(Some([Number(U64)]) } (63 instr)"
+  },
+  "88": {
+   "kind": "Entry",
+   "name": "update_endpoint",
+   "params": "new_endpoint: string"
   }
  },
  "xUSD": {

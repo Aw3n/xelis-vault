@@ -1223,6 +1223,12 @@ constamment à jour, et retire les points à l'admin (ça ne compte pas pour lui
   un checkpoint historique → repartir du scan 50k avec `--resume` retire
   immédiatement les 182k pts de l'admin accumulés précédemment.
 - `write_leaderboard()` ne reçoit donc jamais l'admin.
+- ⚠️ **MAJ v12R-20** : dans le code publié `ADMIN_ADDRESS` n'est plus qu'un PLACEHOLDER
+  (`xet:YOUR_ADMIN_ADDRESS_HERE`). L'adresse réellement exclue vient de
+  `resolve_exclusions()` : drapeau `--exclude-address` (append) → env
+  `AIRDROP_EXCLUDE_ADDRESS` → champs PUBLICS `miner_address`/`address` du config local
+  (le fichier n'est jamais lu au-delà de ces clés, il contient des credentials).
+  Aucune adresse résolue → warning stderr, plus jamais d'exclusion silencieuse.
 
 ## 2. Mode daemon continu (`--daemon`)
 - `run_daemon()` : boucle infinie qui (1) charge/reprend le checkpoint,
@@ -1331,3 +1337,92 @@ y est indexé par chunk→{name} (pas {fn→chunk}) → passer les chunk ids en 
 - State injection `~/.xelis-vault/airdrop/airdrop_inject_state.json`.
 - `git status` montre aussi `scripts/cli_backend.py` (M) + `scripts/chat_roster.py`
   (??) — travaux en cours séparés (screen_chat), NON inclus dans ce commit.
+# ✅ v12R-20 — Passe de cohérence repo↔runtime + lecture d'état sans effet de bord (2026-09-17)
+
+Périmètre demandé : « vérifie et corrige toutes les incohérences », **sans déploiement ni
+transaction** (statut : tout est local ; le redéploiement miner reste la main du dev, §7).
+
+## 1. Dérive repo↔runtime résorbée dans les deux sens
+- `check_consistency.py::check_runtime_copies()` est devenue **générique** : elle compare
+  maintenant `scripts/*.py` → `src/scripts/*.py` (avant : liste curatée, `onboarding.py`
+  avait dérivé sans être signalée). Garde `src/{contracts,docs}` conservée.
+- **Runtime → repo adoptés** (sécurité / justesse) : garde path-traversal zip+tar avant
+  `extractall`, mot de passe wallet réellement transmis (`wait_for_wallet(url,
+  ("wallet", password))`, `wallet_pass`, au lieu de `"testpass"` codé en dur),
+  `tunnel_url()` regex ancrée + `rstrip("/")`, `tunnel_healthy()` / `_tunnel_error_snippet()`
+  / `watchdog_tunnel()`, et `start_relayer_public` refuse d'écrire l'endpoint on-chain si
+  l'URL publique ne répond pas.
+- **Repo → runtime backappés** (désormais byte-identiques) : `relayer_server.py` (HTTP/1.1
+  + en-têtes CORS + `do_OPTIONS`), `relayer_daemon.py` (chunks `store_message`=38,
+  `anchor_messages`=11), `xelis_vault_miner.py` (`MIN_STAKE_VLT = 100_000_000_000` = 1000 VLT,
+  la valeur on-chain), `test_flows.py` (`xet:REPLACE_WITH_TEST_MINER_ADDRESS` au lieu d'une
+  vraie adresse), `admin_panel.py`, `airdrop_cli.py`, `chat_crypto.py`, `contract_ops.py`,
+  `test_chat.py`, `airdrop_onchain_injector.py`.
+- `tests/` reste en copie unique à la racine ; `src/tests/` ne contient que la suite mock.
+
+## 2. Sonde de vie = LECTURE SEULE (plus de `os.kill(pid, 0)` ni signal maison)
+- Nouveau `onboarding.process_alive(pid)` : POSIX `os.kill(pid,0)` (`ProcessLookupError`→
+  False, `PermissionError`→True) ; Windows `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)`
+  + `GetExitCodeProcess` (259 = encore vivant) et `False` sur pid réservé / accès refusé.
+  `terminate_process(pid)` renvoie un booléen au lieu de lever (`os.kill` Windows lève
+  `SystemError` sur les pids réservés).
+- Appliqué aux 6 sites `miner_running` / `relayer_running` / `tunnel_running` + les 3
+  `stop_*`, et à `keeper_running()` / `stop_keeper()` de `xvault-miner.py` : un simple
+  rafraîchissement de dashboard ne peut plus tuer un processus, et le fichier `.pid` n'est
+  supprimé qu'**après** arrêt confirmé (sinon le message dit "Could not stop pid N").
+- `xvault-miner.action_update_endpoint` : garde `isinstance(m, list) and len(m) >= 15` avant
+  d'indexer (crash `IndexError` réel sur enregistrement miner malformé).
+- `xvault.screen_miner_tools` : `my_miner()` + `miner_stats()` + `topo()` lus dans le MÊME
+  `try` → un nœud distant injoignable affiche une erreur propre au lieu de remonter.
+
+## 3. Fallback ASCII du terminal : rétabli (`tui.py`, les deux arbres)
+- `_detect_unicode_support()` testait `sys.getdefaultencoding()`, qui vaut **toujours**
+  `"utf-8"` en Python 3 → `_UNICODE` restait True, la branche ANSI « portable partout »
+  était **inatteignable**, et `print("╭"/"─"/"█")` levait `UnicodeEncodeError` dès que
+  stdout est un pipe/fichier en page de code (Windows `xvault > log`, `| tee`).
+- Remplacé par `_stdout_can_encode(sample)` qui sonde l'**encoding de `sys.stdout`**
+  (repli `locale.getpreferredencoding(False)` — `str.encode(None)` n'est PAS valable et
+  levait `TypeError`, trouvé par le nouveau test).
+- `_harden_streams()` (appelé avant le probe) : `reconfigure(errors="replace")` sur
+  stdout/stderr → un glyphe non encodable devient `?` au lieu de tuer l'écran.
+- `BANNER` dérive son encre de `_BLOCK_FULL` (`█` sinon `#`).
+- ⚠️ Non couvert volontairement (hors périmètre, surface trop large) : les littéraux des
+  écrans (`─` ×421 dans `xvault.py`, `▌ ● ○ ➤ → ⚠ ⏳`) ne passent pas par la table
+  `_UNICODE` ; en sortie durcie ils rendent `?`. Console interactive Windows = UTF-8
+  (PEP 528) → **comportement utilisateur inchangé**, seules les sorties redirigées changent.
+
+## 4. Docs alignées sur le bytecode compilé
+- `docs/MINER_GUIDE.md` §2.3 : endpoint configuré vs endpoint on-chain, et `update_endpoint`
+  = chunk **88** absent du miner live `6c70647e…` (chunks 0–87) ⇒ re-déploiement/upgrade côté
+  dev ; `register_miner` ne peut pas s'y substituer (`require(is_none(), "already")`).
+- `docs/PROVIDER_GUIDE.md` §7 réécrit : poke `aggregate_now` chunk 17 (deadlock `alreadysub`),
+  `ab`=5 blocs, `msb`=30, `hsb`=500, keeper `SUBMIT_EVERY = 200`, rappel de l'inondation
+  mempool du 2026-08-20, et « entry_id = index de chunk COMPILÉ, pas `ENTRY_IDS.md` ».
+  §7.1/§7.3 : commandes et flags réellement parsés (`oracle_keeper3.py --config/--rpc`,
+  `aggregation_keeper.py --daemon-rpc --wallet-rpc --auth --feed-ids --interval --verbose`)
+  — le flag `--rpc` n'existe pas sur l'aggregation keeper.
+- Les docs ne sont pas mirroirés dans `src/docs/` → pas de re-sync requis pour ces edits.
+
+## 5. Contrat miner (`contracts/miner/XelisVaultMiner.slx`, non déployé)
+- `update_endpoint` **déplacée en fin de fichier** pour ne pas décaler l'ABI : map des
+  chunks 0–87 inchangée, `88 = Entry update_endpoint(new_endpoint: string)` ajouté à
+  `docs/entry_chunk_ids.json`, et `return 0` (convention v12R-3 : entry mutante ⇒ 0).
+
+## 6. Validation (hors ligne, zéro tx, zéro déploiement)
+- 6 suites, **vertes en `PYTHONUTF8=1` ET `PYTHONUTF8=0`** : rpc_endpoint 72 · tx_ledger 6 ·
+  oracle_keeper 42 · tunnel 40 · process_status 16 · miner_console 96 (dont 6 nouveaux tests
+  d'encodage console, exécutés pour les deux arbres).
+- `check_consistency.py` : 0 erreur dans les deux arbres. `test_all_contracts.py --mock` :
+  26 passés / 0 échoué. `py_compile` OK partout.
+- ⚠️ `make check` ne passe pas sur ce poste : le `make` du PATH est « Inprise MAKE 5.2 »
+  qui avale `$(PYTHON) $(SCRIPTS)/…` — problème d'environnement, pas de dépôt. Équivalent :
+  `PYTHONUTF8=1 venv/Scripts/python.exe scripts/check_consistency.py`.
+
+## 7. Ce qui RESTE au développeur (on-chain, hors périmètre)
+- Redéployer/upgrader `XelisVaultMiner` pour que l'instance live porte `update_endpoint`
+  (chunk 88) : sans ça aucun changement d'endpoint on-chain n'est possible. L'entry est déjà
+  dans la source du dépôt (§5).
+- Migrer stake + endpoint si le hash du contrat ou du registry bouge (registry upgrade
+  entry 4, cooldown 720 blocs, `prev_<Name>` conservé).
+- `_miner_v2.slxc` (non suivi) **ne doit pas** être déployé ; ne pas toucher à
+  `seed_backup/`, `wallets/`, `config/config.json`.

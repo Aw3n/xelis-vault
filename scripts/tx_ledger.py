@@ -96,9 +96,10 @@ def record(wallet: str, tx_hash: str, *, screen: str = "", contract: str = "",
 
 def all_entries(wallet: str = "", limit: int | None = None) -> list:
     d = _load()
+    owner = d.get("wallet")
+    if wallet and owner and wallet != owner:
+        return []
     ents = d["entries"]
-    if wallet and d.get("wallet") and d["wallet"] != wallet:
-        ents = [e for e in ents if e.get("from") == wallet]
     if limit is not None:
         ents = ents[-limit:]
     return ents

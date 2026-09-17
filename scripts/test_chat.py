@@ -88,14 +88,14 @@ def main() -> None:
             pass
     time.sleep(2)
 
-    # -- préflight: p2 doit pouvoir payer le bond 50 VLT + le gaz XEL --
+    # -- preflight: p2 must be able to pay the 50 VLT bond + XEL gas --
     need_vlt = 60 * 10 ** 8
     bal2 = p2.wallet.balance(VLT_ASSET)
     if bal2 < need_vlt:
         top = need_vlt - bal2 + 10 ** 8          # marge 1 VLT
         tx = admin_p.wallet.transfer(addr2, top, VLT_ASSET)
         admin_p.confirm(tx, "")
-        print(f"  top-up p2: +{top / 10 ** 8:.0f} VLT (maturité ~70 blocs)…")
+        print(f"  top-up p2: +{top / 10 ** 8:.0f} VLT (maturity ~70 blocks)…")
         time.sleep(70 * 2.7)
     balx = p2.wallet.balance()
     if balx < 10 ** 7:                            # < 0.1 XEL

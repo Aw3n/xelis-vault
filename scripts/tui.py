@@ -14,7 +14,7 @@ import sys
 class C:
     RESET = "\033[0m"
     BOLD = "\033[1m"
-    BRIGHT = "\033[1m"          # alias of bold (colorama "bright" = bold)
+    BRIGHT = "\033[1m"
     DIM = "\033[2m"
     RED = "\033[31m"
     GREEN = "\033[32m"
@@ -29,6 +29,62 @@ class C:
     BRIGHT_CYAN = "\033[96m"
     GRAY = "\033[90m"
     BG_CYAN = "\033[46m"
+
+_UNICODE = True
+
+def _harden_streams():
+    # An interactive Windows console speaks UTF-8, but a piped or redirected
+    # stdout falls back to the ANSI code page (cp1252), which cannot encode box
+    # glyphs — a bare print() there would abort the whole screen.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+def _stdout_can_encode(sample: str) -> bool:
+    encoding = (getattr(sys.stdout, "encoding", None) or "").strip()
+    if not encoding:
+        import locale
+        encoding = locale.getpreferredencoding(False) or "ascii"
+    try:
+        sample.encode(encoding)
+        return True
+    except (LookupError, UnicodeEncodeError):
+        return False
+
+def _detect_unicode_support():
+    global _UNICODE
+    try:
+        _UNICODE = _stdout_can_encode("╭─░")
+    except Exception:
+        _UNICODE = False
+
+_harden_streams()
+_detect_unicode_support()
+
+if not _UNICODE:
+    _BOX_TL = "+"
+    _BOX_TR = "+"
+    _BOX_BL = "+"
+    _BOX_BR = "+"
+    _BOX_H = "-"
+    _BOX_V = "|"
+    _BLOCK_FULL = "#"
+    _BLOCK_EMPTY = "."
+    _PILL_LEFT = "["
+    _PILL_RIGHT = "]"
+else:
+    _BOX_TL = "╭"
+    _BOX_TR = "╮"
+    _BOX_BL = "╰"
+    _BOX_BR = "╯"
+    _BOX_H = "─"
+    _BOX_V = "│"
+    _BLOCK_FULL = "█"
+    _BLOCK_EMPTY = "░"
+    _PILL_LEFT = "["
+    _PILL_RIGHT = "]"
 
 def clear():
     os.system("cls" if os.name == "nt" else "clear")
@@ -67,9 +123,15 @@ def _read_key_unix():
 
 def _read_key_windows():
     import msvcrt
-    ch = msvcrt.getch()
+    try:
+        ch = msvcrt.getch()
+    except Exception:
+        return "UNKNOWN"
     if ch == b"\xe0" or ch == b"\x00":
-        ch2 = msvcrt.getch()
+        try:
+            ch2 = msvcrt.getch()
+        except Exception:
+            return "UNKNOWN"
         if ch2 == b"H": return "UP"
         if ch2 == b"P": return "DOWN"
         if ch2 == b"M": return "RIGHT"
@@ -77,10 +139,12 @@ def _read_key_windows():
         return "SPECIAL"
     if ch == b"\r": return "ENTER"
     if ch == b"\x03": return "CTRL_C"
+    if ch == b"\x04": return "CTRL_D"
+    if ch == b"\x1b": return "ESC"
     if ch == b"q": return "Q"
     try:
         return ch.decode("ascii", errors="ignore")
-    except:
+    except Exception:
         return "UNKNOWN"
 
 def read_key():
@@ -116,7 +180,7 @@ def menu(title, options, subtitle=""):
                     print(f"  {C.DIM}   {label}{C.RESET}")
             print()
             print(f"{C.GRAY}{'─' * 60}{C.RESET}")
-            print(f"{C.DIM}  ↑/↓ Navigate   ↵ Enter Select   q Back{C.RESET}")
+            print(f"{C.DIM}  ↑/↓ Navigate   ↵ Enter Select   q/Esc Back{C.RESET}")
             key = read_key()
             if key == "UP":
                 selected = (selected - 1) % total
@@ -173,18 +237,21 @@ def confirm(prompt_text, default_yes=True):
                 selected = (selected + 1) % 2
             elif key == "ENTER":
                 return selected == 0
-            elif key in ("Q", "ESC", "CTRL_C"):
+            elif key in ("Q", "ESC", "CTRL_C", "CTRL_D"):
                 return False
     finally:
         show_cursor()
 
 def info_box(title, lines, color=C.CYAN):
-    clear()
-    body = render_panel(title, list(lines), border_color=color)
-    print(body)
-    print()
-    print(f"{C.DIM}  Press Enter to continue...{C.RESET}")
-    read_key()
+    try:
+        clear()
+        body = render_panel(title, list(lines), border_color=color)
+        print(body)
+        print()
+        print(f"{C.DIM}  Press Enter to continue...{C.RESET}")
+        read_key()
+    finally:
+        show_cursor()
 
 def progress_bar(current, maximum, width=30):
     if maximum == 0:
@@ -212,8 +279,11 @@ def read_key_timeout(timeout_sec=1.0):
         import time
         start = time.time()
         while time.time() - start < timeout_sec:
-            if msvcrt.kbhit():
-                return read_key()
+            try:
+                if msvcrt.kbhit():
+                    return read_key()
+            except Exception:
+                return None
             time.sleep(0.05)
         return None
     else:
@@ -224,13 +294,16 @@ def read_key_timeout(timeout_sec=1.0):
         return None
 
 
-BANNER = f"""{C.CYAN}{C.BOLD}
+_BANNER_ART = """
  ██████  ██      ██   ██ ██ ███████  ██████ ████████ ██  ██████  ███    ██
 ██    ██ ██      ██  ██  ██ ██      ██         ██    ██ ██    ██ ████   ██
 ██    ██ ██      █████   ██ █████   ██         ██    ██ ██    ██ ██ ██  ██
 ██    ██ ██      ██  ██  ██ ██      ██         ██    ██ ██    ██ ██  ██ ██
  ██████  ███████ ██   ██ ██ ███████  ██████    ██    ██  ██████  ██   ████
-{C.RESET}{C.DIM}              Privacy-First DeFi on XELIS BlockDAG{C.RESET}"""
+"""
+
+BANNER = (f"{C.CYAN}{C.BOLD}" + _BANNER_ART.replace("█", _BLOCK_FULL)
+          + f"{C.RESET}{C.DIM}              Privacy-First DeFi on XELIS BlockDAG{C.RESET}")
 
 
 # ============================================================================
@@ -285,8 +358,8 @@ def render_bar(frac: float, width: int = 22,
     c = C.GREEN if frac >= good[0] else (C.YELLOW if frac >= good[1] else C.RED)
     b = ""
     b += f"{C.DIM}[{C.RESET}"
-    b += f"{c}{'█' * filled}{C.RESET}"
-    b += f"{C.DIM}{'░' * (width - filled)}{C.RESET}"
+    b += f"{c}{_BLOCK_FULL * filled}{C.RESET}"
+    b += f"{C.DIM}{_BLOCK_EMPTY * (width - filled)}{C.RESET}"
     b += f"{C.DIM}]{C.RESET}"
     return b
 
@@ -296,7 +369,7 @@ def render_badge(text: str, color: str = C.CYAN, filled: bool = False) -> str:
     t = f" {text.strip()} "
     if filled:
         return f"{color}{C.BOLD}▌{color} {t} {C.RESET}"
-    return f"{color}{C.BOLD}[{C.RESET}{color}{t}{C.RESET}{color}{C.BOLD}]{C.RESET}"
+    return f"{color}{C.BOLD}{_PILL_LEFT}{C.RESET}{color}{t}{C.RESET}{color}{C.BOLD}{_PILL_RIGHT}{C.RESET}"
 
 
 def render_panel(title: str, lines, border_color: str = C.CYAN,
@@ -327,16 +400,16 @@ def render_panel(title: str, lines, border_color: str = C.CYAN,
     inner = width - 4
     bp = border_color
     s = []
-    s.append(f"{bp}╭{'─' * (width - 2)}╮{C.RESET}")
-    s.append(f"{bp}│ {title:<{inner}} │{C.RESET}")
-    s.append(f"{bp}├{'─' * (width - 2)}┤{C.RESET}")
+    s.append(f"{bp}{_BOX_TL}{_BOX_H * (width - 2)}{_BOX_TR}{C.RESET}")
+    s.append(f"{bp}{_BOX_V} {title:<{inner}} {_BOX_V}{C.RESET}")
+    s.append(f"{bp}{_BOX_V}{_BOX_H * (width - 2)}{_BOX_V}{C.RESET}")
     for ln in lines:
         show = _strip_rich(str(ln))
         if len(show) > inner:
             show = show[:inner - 1] + "…"
         pad = inner - len(show)
-        s.append(f"{bp}│ {C.RESET}{show}{' ' * pad}{bp} │{C.RESET}")
-    s.append(f"{bp}╰{'─' * (width - 2)}╯{C.RESET}")
+        s.append(f"{bp}{_BOX_V} {C.RESET}{show}{' ' * pad}{bp} {_BOX_V}{C.RESET}")
+    s.append(f"{bp}{_BOX_BL}{_BOX_H * (width - 2)}{_BOX_BR}{C.RESET}")
     return "\n".join(s)
 
 

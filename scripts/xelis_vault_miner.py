@@ -36,7 +36,7 @@ ENTRY_MINER_ACTIVE     = 19
 ENTRY_MINER_REPUTATION = 21
 
 SERVICE_ORACLE     = 1
-MIN_STAKE_VLT      = 100_00000000  # 100 VLT (8 decimals)
+MIN_STAKE_VLT      = 100_000_000_000  # 1000 VLT (8 decimals, v10.7 anti-Sybil)
 HEARTBEAT_INTERVAL = 100
 PRICE_UPDATE_INT   = 100
 ORACLE_TIMELOCK    = 3
@@ -266,7 +266,7 @@ class PriceDaemon:
         self.pending_topo: int = 0
         for sig in (signal.SIGINT, signal.SIGTERM):
             try: signal.signal(sig, lambda *_: setattr(self, "running", False))
-            except: pass
+            except Exception: pass
 
     def _read_price(self) -> Optional[int]:
         try:
@@ -276,7 +276,7 @@ class PriceDaemon:
             if r.get("data"):
                 return int(r["data"]["value"]["value"])
             return None
-        except: return None
+        except Exception: return None
 
     def _read_pending(self) -> int:
         try:
@@ -286,7 +286,7 @@ class PriceDaemon:
             if r.get("data"):
                 return int(r["data"]["value"]["value"])
             return 0
-        except: return 0
+        except Exception: return 0
 
     def _read_pending_topo(self) -> int:
         try:
@@ -296,7 +296,7 @@ class PriceDaemon:
             if r.get("data"):
                 return int(r["data"]["value"]["value"])
             return 0
-        except: return 0
+        except Exception: return 0
 
     def _propose(self, p: int) -> bool:
         if self.dry: return True
@@ -361,7 +361,7 @@ class MinerDaemon:
                 "type": "primitive", "value": {"type": "string", "value": f"miner_{self.cfg.miner_address}"}
             })
             return bool(r.get("data"))
-        except: return False
+        except Exception: return False
 
     def register(self) -> bool:
         if self.dry: return True
@@ -390,7 +390,7 @@ class MinerDaemon:
             if r.get("data"):
                 return int(r["data"]["value"]["value"])
             return 0
-        except: return 0
+        except Exception: return 0
 
     def run(self, topo: int) -> None:
         if not self.cfg.enable_miner: return

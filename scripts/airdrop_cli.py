@@ -3,13 +3,13 @@
 ============================================================================
  XELIS Vault v10.4 — Airdrop CLI module
 ============================================================================
-Module interactif pour interagir avec l'AirdropTracker.
-Permet aux utilisateurs de :
-  - Voir leurs points et distribution estimée
-  - Voir le leaderboard
-  - Enregistrer leur adresse mainnet
-  - Voir les stats globales
-  - Voir les détails par catégorie
+Interactive module to interact with the AirdropTracker.
+Allows users to:
+  - View their points and estimated distribution
+  - View the leaderboard
+  - Register their mainnet address
+  - View global stats
+  - View category details
 ============================================================================
 """
 from __future__ import annotations
@@ -92,7 +92,7 @@ class AirdropClient:
                 params or [],
             ])
             return r
-        except:
+        except Exception:
             return None
 
     def call_getter(self, fn_name: str, params: list = None) -> Any:
@@ -106,7 +106,7 @@ class AirdropClient:
                 params or [],
             ])
             return r
-        except:
+        except Exception:
             return None
 
     def submit_tx(self, entry_id: int, params: list = None, fee: int = 100000) -> str:
@@ -121,7 +121,7 @@ class AirdropClient:
                 fee,
             ])
             return r or ""
-        except:
+        except Exception:
             return ""
 
     # === Read functions ===

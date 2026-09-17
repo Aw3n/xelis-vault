@@ -25,6 +25,7 @@ import json
 import os
 import platform
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -73,6 +74,58 @@ def _detached_kwargs() -> dict:
         import subprocess as _sp
         return {"creationflags": _sp.DETACHED_PROCESS | _sp.CREATE_NEW_PROCESS_GROUP}
     return {"start_new_session": True}
+
+
+# Windows only reports exit code 259 while a process is still running; a process
+# that legitimately exits with 259 reads as alive, which is harmless here because
+# every caller re-probes on the next refresh.
+_WIN_QUERY_LIMITED_INFORMATION = 0x1000
+_WIN_ERROR_ACCESS_DENIED = 5
+_WIN_STILL_ACTIVE = 259
+
+
+def process_alive(pid) -> bool:
+    """Read-only liveness probe for a pid coming from a pid file."""
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    if os.name != "nt":
+        try:
+            os.kill(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        except OSError:
+            return False
+    import ctypes
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.OpenProcess(_WIN_QUERY_LIMITED_INFORMATION, False, pid)
+    if not handle:
+        # A live process of another account denies the query right.
+        return ctypes.GetLastError() == _WIN_ERROR_ACCESS_DENIED
+    try:
+        exit_code = ctypes.c_ulong()
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return False
+        return exit_code.value == _WIN_STILL_ACTIVE
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def terminate_process(pid) -> bool:
+    """Ask a process to stop; returns False instead of raising on Windows."""
+    if not process_alive(pid):
+        return False
+    try:
+        os.kill(int(pid), signal.SIGTERM)
+    except (OSError, SystemError, ValueError):
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -219,9 +272,17 @@ def download_wallet_binary() -> Optional[str]:
         print()
         if dest.suffix == ".zip":
             with zipfile.ZipFile(dest) as z:
+                for member in z.infolist():
+                    target = BIN_DIR / member.filename
+                    if not str(target).startswith(str(BIN_DIR)):
+                        raise ValueError(f"unsafe zip member: {member.filename}")
                 z.extractall(BIN_DIR)
         else:
             with tarfile.open(dest) as t:
+                for member in t.getmembers():
+                    target = BIN_DIR / member.name
+                    if not str(target).startswith(str(BIN_DIR)):
+                        raise ValueError(f"unsafe tar member: {member.name}")
                 t.extractall(BIN_DIR)
         dest.unlink(missing_ok=True)
         exe = BIN_DIR / ("xelis_wallet.exe" if system == "Windows" else "xelis_wallet")
@@ -413,13 +474,13 @@ def ensure_wallet(cfg) -> bool:
     launch_wallet(binary, network, daemon_url, password, wdir, rpc_port, seed=seed)
 
     url = f"http://127.0.0.1:{rpc_port}"
-    addr = wait_for_wallet(url, ("wallet", "testpass"), timeout_s=120)
+    addr = wait_for_wallet(url, ("wallet", password), timeout_s=120)
     if not addr:
         print(f"  {C.RED}Wallet did not answer on {url}. Logs: ~/.xelis-vault/logs/wallet.log{C.RESET}")
         return False
 
     cfg.data.update({
-        "wallet_url": url, "wallet_user": "wallet", "wallet_pass": "testpass",
+        "wallet_url": url, "wallet_user": "wallet", "wallet_pass": password,
         "wallet_binary": binary, "wallet_network": network,
         "wallet_password": password, "wallet_path": str(wdir),
         "wallet_rpc_port": rpc_port, "miner_address": addr,
@@ -574,9 +635,17 @@ def download_miner_binary() -> Optional[str]:
                     f.write(chunk)
         if dest.suffix == ".zip":
             with zipfile.ZipFile(dest) as z:
+                for member in z.infolist():
+                    target = BIN_DIR / member.filename
+                    if not str(target).startswith(str(BIN_DIR)):
+                        raise ValueError(f"unsafe zip member: {member.filename}")
                 z.extractall(BIN_DIR)
         else:
             with tarfile.open(dest) as t:
+                for member in t.getmembers():
+                    target = BIN_DIR / member.name
+                    if not str(target).startswith(str(BIN_DIR)):
+                        raise ValueError(f"unsafe tar member: {member.name}")
                 t.extractall(BIN_DIR)
         dest.unlink(missing_ok=True)
         exe = BIN_DIR / ("xelis_miner.exe" if system == "Windows" else "xelis_miner")
@@ -600,12 +669,10 @@ def miner_running() -> Optional[int]:
         pid = int(MINER_PID_FILE.read_text().strip())
     except Exception:
         return None
-    try:
-        os.kill(pid, 0)
+    if process_alive(pid):
         return pid
-    except OSError:
-        MINER_PID_FILE.unlink(missing_ok=True)
-        return None
+    MINER_PID_FILE.unlink(missing_ok=True)
+    return None
 
 
 def start_miner(cfg) -> tuple[bool, str]:
@@ -650,13 +717,11 @@ def stop_miner() -> tuple[bool, str]:
     pid = miner_running()
     if not pid:
         return False, "miner is not running"
-    try:
-        os.kill(pid, 15)
-        time.sleep(2)
-        MINER_PID_FILE.unlink(missing_ok=True)
-        return True, f"miner stopped (pid {pid})"
-    except OSError as e:
-        return False, f"could not stop pid {pid}: {e}"
+    if not terminate_process(pid):
+        return False, f"could not stop pid {pid}"
+    time.sleep(2)
+    MINER_PID_FILE.unlink(missing_ok=True)
+    return True, f"miner stopped (pid {pid})"
 
 
 def ensure_miner_configured(cfg) -> None:
@@ -684,12 +749,10 @@ def relayer_running() -> Optional[int]:
         pid = int(RELAYER_PID_FILE.read_text().strip())
     except Exception:
         return None
-    try:
-        os.kill(pid, 0)
+    if process_alive(pid):
         return pid
-    except OSError:
-        RELAYER_PID_FILE.unlink(missing_ok=True)
-        return None
+    RELAYER_PID_FILE.unlink(missing_ok=True)
+    return None
 
 
 def relayer_health(cfg, port: Optional[int] = None) -> bool:
@@ -725,7 +788,7 @@ def start_relayer(cfg) -> tuple[bool, str]:
     log_file = open(LOG_DIR / "relayer.log", "ab")
     cmd = [sys.executable, str(RELAYER_SCRIPT),
            "--daemon-url", daemon,
-           "--wallet-url", cfg["wallet_url"],
+           "--wallet-url", cfg.get("wallet_url", ""),
            "--wallet-user", wallet_user,
            "--wallet-pass", wallet_pass,
            "--host", host,
@@ -750,13 +813,11 @@ def stop_relayer() -> tuple[bool, str]:
     pid = relayer_running()
     if not pid:
         return False, "relayer is not running"
-    try:
-        os.kill(pid, 15)
-        time.sleep(2)
-        RELAYER_PID_FILE.unlink(missing_ok=True)
-        return True, f"relayer stopped (pid {pid})"
-    except OSError as e:
-        return False, f"could not stop pid {pid}: {e}"
+    if not terminate_process(pid):
+        return False, f"could not stop pid {pid}"
+    time.sleep(2)
+    RELAYER_PID_FILE.unlink(missing_ok=True)
+    return True, f"relayer stopped (pid {pid})"
 
 
 # ---------------------------------------------------------------------------
@@ -849,26 +910,48 @@ def tunnel_running() -> Optional[int]:
         pid = int(TUNNEL_PID_FILE.read_text().strip())
     except Exception:
         return None
-    try:
-        os.kill(pid, 0)
+    if process_alive(pid):
         return pid
-    except OSError:
-        TUNNEL_PID_FILE.unlink(missing_ok=True)
-        return None
+    TUNNEL_PID_FILE.unlink(missing_ok=True)
+    return None
 
 
 def tunnel_url() -> str:
-    """Return the LAST public URL from the tunnel log (trycloudflare.com).
-    The log is append-only across restarts, so the current URL is the last match."""
+    """Return the last public URL from the current tunnel session's log."""
     try:
         txt = TUNNEL_LOG.read_text(errors="replace")
         import re
-        matches = re.findall(r"https://[a-z0-9-]+\.trycloudflare\.com", txt)
+        matches = re.findall(r"https?://[a-z0-9-]+\.trycloudflare\.com/?", txt)
         if matches:
-            return matches[-1]
+            return matches[-1].rstrip("/")
     except Exception:
         pass
     return ""
+
+
+def tunnel_healthy(url: str, timeout: float = 5.0) -> bool:
+    """Quick HTTP HEAD/GET check that the public tunnel URL is reachable."""
+    if not url:
+        return False
+    try:
+        r = requests.head(url, timeout=timeout, allow_redirects=True)
+        if r.status_code < 400:
+            return True
+        r = requests.get(url, timeout=timeout, allow_redirects=True, stream=True)
+        r.close()
+        return r.status_code < 400
+    except Exception:
+        return False
+
+
+def _tunnel_error_snippet(max_lines: int = 20) -> str:
+    """Return the last lines of the tunnel log for diagnostics."""
+    try:
+        lines = TUNNEL_LOG.read_text(errors="replace").splitlines()
+        tail = lines[-max_lines:] if lines else []
+        return "\n".join(tail)
+    except Exception:
+        return "(no log)"
 
 
 def start_tunnel(cfg) -> tuple[bool, str]:
@@ -876,7 +959,13 @@ def start_tunnel(cfg) -> tuple[bool, str]:
     pid = tunnel_running()
     if pid:
         url = tunnel_url()
-        return True, f"tunnel already running (pid {pid}){(' — ' + url) if url else ''}"
+        if not url:
+            return False, f"tunnel running (pid {pid}) — URL not ready yet"
+        healthy = tunnel_healthy(url)
+        status = f"tunnel already running (pid {pid}) — {url}"
+        if not healthy:
+            status += " (unreachable)"
+        return healthy, status
     binary, note = ensure_tunnel_binary()
     if not binary:
         return False, note
@@ -884,21 +973,37 @@ def start_tunnel(cfg) -> tuple[bool, str]:
     host = cfg.get("relayer_host") or "127.0.0.1"
     RELAYER_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_file = open(TUNNEL_LOG, "ab")
-    proc = subprocess.Popen(
-        [binary, "tunnel", "--no-autoupdate", "--url",
-         f"http://{host}:{port}"],
-        stdout=log_file, stderr=log_file, **_detached_kwargs())
+    try:
+        # Only a new process gets a fresh log; live sessions keep their URL.
+        with open(TUNNEL_LOG, "wb") as log_file:
+            proc = subprocess.Popen(
+                [binary, "tunnel", "--no-autoupdate", "--url",
+                 f"http://{host}:{port}"],
+                stdout=log_file, stderr=log_file, **_detached_kwargs())
+    except Exception as e:
+        return False, f"failed to start cloudflared: {e}"
     TUNNEL_PID_FILE.write_text(str(proc.pid))
     # poll for the public URL (up to ~25s)
     for _ in range(25):
         time.sleep(1)
         url = tunnel_url()
+        healthy = tunnel_healthy(url) if url else False
+        exit_code = proc.poll()
+        if exit_code is not None:
+            TUNNEL_PID_FILE.unlink(missing_ok=True)
+            return False, (f"cloudflared exited (code {exit_code}) before tunnel was ready; "
+                           f"see {TUNNEL_LOG}")
         if url:
             cfg_relayer_port(cfg, port)
-            return True, (f"tunnel started (pid {proc.pid}) -> {url}")
-    return True, (f"tunnel started (pid {proc.pid}) — URL not ready yet; "
-                  f"see ~/.xelis-vault/logs/relayer-tunnel.log")
+            if healthy:
+                return True, (f"tunnel started (pid {proc.pid}) -> {url}")
+            return False, (f"tunnel started (pid {proc.pid}) -> {url} "
+                           f"(URL found but not yet reachable, may need a few more seconds)")
+    # URL not found — show last log lines for diagnostics
+    tail = _tunnel_error_snippet()
+    return False, (f"tunnel started (pid {proc.pid}) — URL not ready yet; "
+                   f"see ~/.xelis-vault/logs/relayer-tunnel.log\n"
+                   f"Last log lines:\n{tail}")
 
 
 def cfg_relayer_port(cfg, port: int) -> None:
@@ -913,13 +1018,11 @@ def stop_tunnel() -> tuple[bool, str]:
     pid = tunnel_running()
     if not pid:
         return False, "tunnel is not running"
-    try:
-        os.kill(pid, 15)
-        time.sleep(2)
-        TUNNEL_PID_FILE.unlink(missing_ok=True)
-        return True, f"tunnel stopped (pid {pid})"
-    except OSError as e:
-        return False, f"could not stop pid {pid}: {e}"
+    if not terminate_process(pid):
+        return False, f"could not stop pid {pid}"
+    time.sleep(2)
+    TUNNEL_PID_FILE.unlink(missing_ok=True)
+    return True, f"tunnel stopped (pid {pid})"
 
 
 def relayer_tunnel_status(cfg) -> dict:
@@ -935,6 +1038,76 @@ def relayer_tunnel_status(cfg) -> dict:
     }
 
 
+def watchdog_tunnel(cfg, poll_interval: float = 60.0) -> dict:
+    """Watchdog for tunnel + relayer + on-chain endpoint.
+
+    Loop:
+      1. ensure relayer + tunnel are running
+      2. if tunnel URL changed -> update endpoint on-chain
+      3. health check public URL
+      4. sleep and repeat
+
+    Returns last status dict.
+    """
+    last_url = ""
+    last_status = {"ok": False, "message": "not started"}
+    while True:
+        try:
+            status = relayer_tunnel_status(cfg)
+            tpid = status.get("tunnel_pid")
+            url = status.get("url") or ""
+            # 1) restart tunnel if dead
+            if not tpid or not url:
+                ok, msg = start_tunnel(cfg)
+                status = relayer_tunnel_status(cfg)
+                tpid = status.get("tunnel_pid")
+                url = status.get("url") or ""
+                last_status = {"ok": bool(ok and tpid and url), "message": msg, "url": url}
+            else:
+                last_status = {"ok": True, "message": f"tunnel alive {url}", "url": url}
+            # 2) auto-update on-chain if URL changed; remember only confirmed URLs
+            if last_status["ok"] and url != last_url:
+                synced, endpoint = _sync_relayer_endpoint(cfg, url)
+                last_status["ok"] = synced
+                last_status["endpoint"] = endpoint
+                if synced:
+                    last_url = url
+            # 3) health check public URL
+            if tpid and url:
+                healthy = tunnel_healthy(url)
+                last_status["healthy"] = healthy
+                if not healthy:
+                    last_status["ok"] = False
+                    last_status["message"] += " (public URL unreachable)"
+        except Exception as e:
+            last_status = {"ok": False, "message": f"watchdog error: {e}", "url": last_url}
+        time.sleep(max(5, float(poll_interval)))
+
+
+def _sync_relayer_endpoint(cfg, url: str) -> tuple[bool, str]:
+    """Only report endpoint sync success after observing the URL on-chain."""
+    try:
+        sys.path.insert(0, str(Path(__file__).parent))
+        from cli_backend import Backend
+        b = Backend(cfg.data)
+        status = b.chat_relayer_status() or {}
+        if (status.get("registered") or {}).get("endpoint") == url:
+            return True, "already matches"
+        res = b.chat_update_endpoint(url)
+    except Exception as e:
+        return False, f"update failed: {e}"
+    tx = res.tx or "unknown"
+    if not res.ok:
+        return False, f"update failed: {res.reason} (tx {tx})"
+    try:
+        status = b.chat_relayer_status() or {}
+        if (status.get("registered") or {}).get("endpoint") == url:
+            return True, f"updated (tx {tx})"
+    except Exception as e:
+        return False, f"pending/unknown (tx {tx}): read-back failed: {e}"
+    return False, f"pending/unknown (tx {tx}): endpoint read-back does not match {url}"
+
+
 def start_relayer_public(cfg) -> tuple[bool, str]:
     """One-shot: ensure relayer daemon + tunnel run, then sync the public URL
     on-chain via update_relayer_endpoint."""
@@ -942,32 +1115,17 @@ def start_relayer_public(cfg) -> tuple[bool, str]:
     if not ok:
         return False, msg
     ok2, msg2 = start_tunnel(cfg)
+    if not ok2:
+        return False, f"relayer running, tunnel not ready: {msg2}"
+    if not tunnel_running():
+        return False, "relayer running, tunnel exited before endpoint update"
     url = tunnel_url()
-    if ok2:
-        if not url:
-            # wait a little more
-            for _ in range(15):
-                time.sleep(1)
-                url = tunnel_url()
-                if url:
-                    break
-        if url:
-            try:
-                sys.path.insert(0, str(Path(__file__).parent))
-                from cli_backend import Backend
-                b = Backend({
-                    "rpc_url": cfg.get("rpc_url") or PUBLIC_NODE,
-                    "wallet_url": cfg.get("wallet_url"),
-                    "wallet_user": cfg.get("wallet_user") or "wallet",
-                    "wallet_pass": cfg.get("wallet_pass") or "testpass",
-                })
-                res = b.chat_update_endpoint(url)
-                return True, (f"relayer public: {url} "
-                              f"(endpoint on-chain {'updated ✓' if res.ok else 'update failed: ' + res.reason})")
-            except Exception as e:
-                return True, f"relayer public: {url} (endpoint update skipped: {e})"
-        return True, f"relayer running, tunnel URL not ready yet: {msg2}"
-    return True, f"relayer running, tunnel failed: {msg2}"
+    if not url:
+        return False, f"relayer running, tunnel URL not ready yet: {msg2}"
+    if not tunnel_healthy(url):
+        return False, f"relayer tunnel: {url} (unreachable; endpoint update skipped)"
+    synced, status = _sync_relayer_endpoint(cfg, url)
+    return synced, f"relayer tunnel: {url} (endpoint on-chain {status})"
 
 
 

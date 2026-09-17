@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
 """
-airdrop_onchain_injector.py — Injecte les points du classement off-chain dans le
-contrat AirdropTracker ON-CHAIN (testnet), puis surveille l'activité pour
-force-qualifier les users dès qu'ils cumulent 7 jours d'activité on-chain.
+airdrop_onchain_injector.py — Injects off-chain leaderboard points into the
+AirdropTracker contract ON-CHAIN (testnet), then monitors activity to
+force-qualify users as soon as they accumulate 7 days of on-chain activity.
 
-Le contrat AirdropTracker (testnet) ne reçoit aucune activité des contrats core
-(les record_* ne sont pas câblés). Pour rendre l'airdrop "live", on écrit nous-mêmes
-les points du leaderboard off-chain (produit par airdrop_offchain_indexer.py) dans
-le contrat via record_manual_attribution (entry 21, admin-only).
+The AirdropTracker contract (testnet) does not receive activity from core contracts
+(the record_* hooks are not wired). To make the airdrop "live", we write the
+off-chain leaderboard points (produced by airdrop_offchain_indexer.py) into
+the contract via record_manual_attribution (entry 21, admin-only).
 
-Deux phases :
-  1. INJECTION initiale : injecte les points actuels du leaderboard par user/catégorie.
-  2. DAEMON de surveillance : relit le leaderboard, injecte les DELTAS de points
-     (nouveaux points non encore injectés) à chaque cycle, et quand un user atteint
-     `days_active >= 7` ON-CHAIN (via l'activité réinjectée sur des jours distincts),
-     appelle force_qualify_user (entry 58).
+Two phases:
+  1. INITIAL injection: injects current leaderboard points per user/category.
+  2. Monitoring daemon: re-reads the leaderboard, injects point DELTAS
+     (new points not yet injected) each cycle, and when a user reaches
+     `days_active >= 7` ON-CHAIN (via activity re-injected on distinct days),
+     calls force_qualify_user (entry 58).
 
-Le `days_active` du contrat est calculé par update_day_activity() avec le topo ACTUEL
-(get_day = topo // BLOCKS_PER_DAY) : il ne PEUT PAS être rétroactif. Le seul moyen de
-le faire monter est d'injecter des points sur des jours distincts. C'est pourquoi on
-ré-injecte les nouveaux points à chaque cycle — chaque jour où un user a de l'activité,
-son days_active on-chain augmente de 1. Dès qu'il atteint 7, on force-qualifie.
+The contract's `days_active` is computed by update_day_activity() using the CURRENT
+topo (get_day = topo // BLOCKS_PER_DAY): it CANNOT be retroactive. The only way to
+increase it is to inject points on distinct days. That's why we
+re-inject new points each cycle — each day a user has activity,
+their on-chain days_active increases by 1. Once it reaches 7, we force-qualify.
 
-Catégories (AirdropTracker.slx) : 1=MINING 2=RELAYER 3=GOVERNANCE 4=CHAT
-                                   5=LIQUIDITY 6=BOUNTY 7=COMMUNITY
+Categories (AirdropTracker.slx): 1=MINING 2=RELAYER 3=GOVERNANCE 4=CHAT
+                                    5=LIQUIDITY 6=BOUNTY 7=COMMUNITY
 
-Usage :
+Usage:
     python3 scripts/airdrop_onchain_injector.py --inject
     python3 scripts/airdrop_onchain_injector.py --inject --dry-run
     python3 scripts/airdrop_onchain_injector.py --daemon
@@ -42,17 +42,17 @@ import protocol  # noqa: E402
 
 TRACKER = protocol.CONTRACT_HASHES["AirdropTracker"]
 
-# Chunk indexes compilés (source: docs/entry_chunk_ids.json -> AirdropTracker)
+# Compiled chunk indexes (source: docs/entry_chunk_ids.json -> AirdropTracker)
 CH_RECORD_MANUAL = 21        # record_manual_attribution(user, cat:u8, pts:u64, reason)
 CH_RECORD_BATCH = 54         # record_manual_attribution_batch(users[], cat, pts, reason)
 CH_FORCE_QUALIFY = 58        # force_qualify_user(user, reason)
 CH_RECORD_MAINNET = 22       # record_mainnet_address(addr)
 
-# Catégories (consts AirdropTracker.slx)
+# Categories (consts AirdropTracker.slx)
 CAT = {"MINING": 1, "RELAYER": 2, "GOVERNANCE": 3, "CHAT": 4,
        "LIQUIDITY": 5, "BOUNTY": 6, "COMMUNITY": 7}
 
-# Index du struct UserPoints (source .slx lignes 177-192)
+# UserPoints struct index (source .slx lines 177-192)
 UP_DAYS_ACTIVE = 9
 UP_QUALIFIED = 12
 
@@ -96,8 +96,8 @@ class Injector:
 
     # ------------------------------------------------------------- on-chain
     def user_points_struct(self, addr: str):
-        """Lit le struct UserPoints on-chain (clé user_<addr>). Retourne tuple/list
-        ou None si le user n'existe pas encore on-chain."""
+        """Reads the UserPoints struct on-chain (key user_<addr>). Returns tuple/list
+        or None if the user does not exist on-chain yet."""
         raw = self.p.daemon.read_key(self.tracker, "user_" + addr)
         return raw
 
@@ -139,8 +139,8 @@ class Injector:
         print(f"  + {addr[:14]}… cat={cat} pts={pts} tx={tx[:16]}")
 
     def deliver_delta(self, addr: str, row: dict, dry_run: bool, verbose: bool = True) -> int:
-        """Injecte les points NON encore injectés pour chaque catégorie de `row`.
-        Retourne le nombre d'appels faits."""
+        """Injects points NOT yet injected for each category in `row`.
+        Returns the number of calls made."""
         injected = self.state["injected"].setdefault(addr, {})
         calls = 0
         cats = row.get("categories") or {}
@@ -159,7 +159,7 @@ class Injector:
             if verbose:
                 print(f"  [{cat_name}] delta {delta} (already {already}/{pts_i})")
             if not dry_run:
-                # cap sécurité : record_manual_attribution exige pts <= mcap (50000)
+                # safety cap: record_manual_attribution requires pts <= mcap (50000)
                 while delta > 0:
                     chunk = min(delta, 48000)
                     self.inject_one(addr, CAT[cat_name], chunk, REASON)
@@ -174,8 +174,8 @@ class Injector:
 
     # ------------------------------------------------------------- qualify
     def maybe_force_qualify(self, addr: str, threshold: int, dry_run: bool, verbose: bool = True) -> bool:
-        """Si le user a >= threshold jours d'activité on-chain (et points >= 1000)
-        mais n'est pas (encore) force-qualifié, appelle force_qualify_user."""
+        """If the user has >= threshold days of on-chain activity (and points >= 1000)
+        but is not yet force-qualified, calls force_qualify_user."""
         if self.qualified_onchain(addr):
             return False
         if self.is_force_qualified(addr):
@@ -196,8 +196,8 @@ class Injector:
 
     # ------------------------------------------------------------- flows
     def sync_once(self, dry_run: bool = False, threshold: int = 7, verbose: bool = True):
-        """Une passe : injecte les deltas de tous les users du leaderboard, puis
-        force-qualifie ceux qui ont >= threshold jours d'activité on-chain."""
+        """One pass: injects deltas for all leaderboard users, then
+        force-qualifies those with >= threshold days of on-chain activity."""
         data = self.load_leaderboard()
         rows = self._addr_row(data)
         if verbose:
@@ -217,19 +217,19 @@ class Injector:
                 continue
             self.maybe_force_qualify(addr, threshold, dry_run, verbose)
         if verbose:
-            print("[sync] terminé")
+            print("[sync] done")
         return total_calls
 
     def run_daemon(self, threshold: int = 7, poll: float = 60, dry_run: bool = False):
-        print(f"[daemon] surveillance AirdropTracker on-chain (poll={poll}s, "
-              f"force_qualify à {threshold} jours)")
+        print(f"[daemon] monitoring AirdropTracker on-chain (poll={poll}s, "
+              f"force_qualify at {threshold} days)")
         while True:
             t0 = time.time()
             try:
                 self.sync_once(dry_run=dry_run, threshold=threshold, verbose=False)
             except Exception as e:
-                print(f"[daemon] erreur: {e}")
-            # affichage périodique condensé
+                print(f"[daemon] error: {e}")
+            # compact periodic display
             self._print_status()
             elapsed = time.time() - t0
             time.sleep(max(1, poll - elapsed))
@@ -250,12 +250,12 @@ def main():
     ap = argparse.ArgumentParser(description="Injecte les points airdrop off-chain "
                                              "dans AirdropTracker on-chain")
     ap.add_argument("--inject", action="store_true", help="Injection initiale + deltas (une passe)")
-    ap.add_argument("--daemon", action="store_true", help="Mode continu (deltas + force_qualify)")
-    ap.add_argument("--dry-run", action="store_true", help="Affiche sans envoyer de txs")
+    ap.add_argument("--daemon", action="store_true", help="Continuous mode (deltas + force_qualify)")
+    ap.add_argument("--dry-run", action="store_true", help="Show actions without sending txs")
     ap.add_argument("--leaderboard", default=str(DEFAULT_LEADERBOARD))
     ap.add_argument("--state", default=str(DEFAULT_STATE))
-    ap.add_argument("--threshold", type=int, default=7, help="Jours d'activité requis "
-                                                             "(défaut 7)")
+    ap.add_argument("--threshold", type=int, default=7, help="Days of activity required "
+                                                             "(default 7)")
     ap.add_argument("--poll-interval", type=float, default=60.0)
     args = ap.parse_args()
 

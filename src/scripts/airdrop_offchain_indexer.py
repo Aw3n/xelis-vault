@@ -50,8 +50,41 @@ XEL_DECIMALS = 8
 
 # Addresses EXCLUDED from scoring (earn NO airdrop points).
 # The admin (deployer/operator) does not count: "it doesn't count for him".
+# Left as an optional override; a placeholder value is treated as "not set".
 ADMIN_ADDRESS = "xet:YOUR_ADMIN_ADDRESS_HERE"
-EXCLUDE_ADDRS = {ADMIN_ADDRESS}
+PLACEHOLDER_ADDRESS = "YOUR_ADMIN_ADDRESS"
+OPERATOR_CONFIG_KEYS = ("miner_address", "address")
+
+
+def configured_operator_addresses() -> list:
+    """Operator addresses recorded in this install's own config.
+
+    Only public address fields are read, and never the file itself: it also
+    holds wallet credentials.
+    """
+    path = Path.home() / ".xelis-vault" / "config" / "config.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    return [str(data[key]).strip() for key in OPERATOR_CONFIG_KEYS
+            if isinstance(data.get(key), str) and str(data[key]).strip()]
+
+
+def resolve_exclusions(extra=None) -> set:
+    """Addresses kept out of the leaderboard: CLI flags, env, config, override."""
+    candidates = list(extra or [])
+    candidates += [a.strip() for a in os.environ.get("AIRDROP_EXCLUDE_ADDRESS", "").split(",")
+                   if a.strip()]
+    candidates += configured_operator_addresses()
+    if ADMIN_ADDRESS and PLACEHOLDER_ADDRESS not in ADMIN_ADDRESS:
+        candidates.append(ADMIN_ADDRESS)
+    return {a for a in candidates if a.startswith("xet:")}
+
+
+EXCLUDE_ADDRS = resolve_exclusions()
 
 # ---------------------------------------------------------------------------
 # Contrats du protocole -> hash actif (deployment_state.json / protocol.py)
@@ -560,7 +593,18 @@ def main():
                     help="Poll new blocks every N seconds (daemon mode, default 15)")
     ap.add_argument("--write-interval", type=float, default=300.0,
                     help="Rewrite leaderboard every N seconds (daemon mode, default 300)")
+    ap.add_argument("--exclude-address", action="append", default=[],
+                    metavar="xet:...", help="Address kept out of scoring (repeatable)")
     args = ap.parse_args()
+
+    global EXCLUDE_ADDRS
+    EXCLUDE_ADDRS = resolve_exclusions(args.exclude_address)
+    if EXCLUDE_ADDRS:
+        print(f"[indexer] excluded from scoring: {sorted(EXCLUDE_ADDRS)}")
+    else:
+        print("[indexer] WARNING: no operator address excluded — the deployer's own "
+              "activity will earn points (pass --exclude-address or set "
+              "AIRDROP_EXCLUDE_ADDRESS).", file=sys.stderr)
 
     ck_path = Path(args.checkpoint)
     if args.resume and ck_path.exists():

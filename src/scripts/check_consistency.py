@@ -245,9 +245,26 @@ def check_entry_ids_header() -> None:
         warn("docs/ENTRY_IDS.md header does not warn that IDs are source-order, not invoke ids")
 
 
+def check_runtime_copies() -> None:
+    runtime = REPO / "src"
+    if not runtime.is_dir():
+        return
+    for source in sorted((REPO / "scripts").glob("*.py")):
+        target = runtime / "scripts" / source.name
+        if not target.is_file():
+            err(f"runtime copy missing: src/scripts/{source.name}")
+        elif source.read_bytes() != target.read_bytes():
+            err(f"runtime copy stale: src/scripts/{source.name}")
+    for relative in ("contracts/miner/XelisVaultMiner.slx", "docs/entry_chunk_ids.json"):
+        target = runtime / relative
+        if not target.is_file() or (REPO / relative).read_bytes() != target.read_bytes():
+            err(f"runtime copy stale: src/{relative}")
+
+
 def main() -> int:
     check_hashes()
     check_chunks()
+    check_runtime_copies()
     check_versions()
     check_syntax()
     check_entry_ids_header()

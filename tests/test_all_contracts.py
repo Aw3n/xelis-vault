@@ -26,6 +26,12 @@ USAGE:
 PRIVACY: never logs private keys, mnemonics, or wallet balances in plain
 text. Only contract hashes, addresses, public on-chain values, and
 generic error messages are logged.
+
+SCOPE: the numeric entry constants below are this simulator's internal
+v5.0 source-order ids (see docs/ENTRY_IDS.md). They are NOT invoke ids for
+the deployed ABI — real `entry_id` values are the compiled chunk indexes in
+docs/entry_chunk_ids.json. A green --mock run therefore validates simulator
+logic only, never that a live invoke targets the right entry.
 """
 from __future__ import annotations
 
@@ -46,7 +52,7 @@ except ImportError:
     sys.exit(1)
 
 # ============================================================================
-# CONSTANTS — v5.0 entry IDs (canonical, see docs/ENTRY_IDS.md)
+# CONSTANTS — simulator-internal v5.0 source-order ids (NOT invoke ids)
 # ============================================================================
 # StakedOracle
 ORACLE_ADD_FEED                = 0

@@ -266,19 +266,36 @@ only. Wallet balances are masked with `****`.
 
 ## 7. Setting up the aggregation keeper
 
-The `aggregation_keeper.py` script triggers `StakedOracle.aggregate_now
-(feed_id)` (entry ID **6**) every 25 seconds. This is needed because
-aggregation only auto-triggers inside `submit_price` if the cycle has
-elapsed — but if no provider submits in a given window, aggregation never
-runs and the price goes stale.
+The keeper pokes `StakedOracle.aggregate_now(feed_id)` (compiled chunk **17**)
+before each round. Aggregation otherwise only auto-triggers inside
+`submit_price`, and only once `agg_blocks` (storage key `ab`, default 5 blocks
+≈ 13 s) has elapsed since the previous aggregation — if no provider submits in
+a window, the price is never refreshed and the feed ages towards the soft
+(`msb`) and hard (`hsb`, configured to 500 blocks ≈ 22 min on the v12R testnet)
+staleness limits.
+
+`scripts/oracle_keeper3.py` runs one price round every `SUBMIT_EVERY = 200`
+blocks, comfortably below `hsb`. Do not submit every block: 3 providers × 1
+entry per block flooded the mempool on 2026-08-20 and blocked unrelated
+transactions.
+
+> Entry numbers in this guide are **compiled chunk indexes** as generated in
+> `docs/entry_chunk_ids.json` — they are what a wallet invoke must pass. The
+> source-order numbers in `docs/ENTRY_IDS.md` are not invokable.
 
 ### 7.1 Install & run
 
 ```bash
+# keeper used by the CLI: one operator wallet from the CLI config, real prices
+python3 scripts/oracle_keeper3.py \
+    --config ~/.xelis-vault/config/config.json \
+    --rpc http://127.0.0.1:18081/json_rpc
+
+# or the standalone aggregation-only keeper
 python3 scripts/aggregation_keeper.py \
     --feed-ids 0,1,2 \
     --interval 25 \
-    --rpc http://localhost:8080
+    --daemon-rpc http://127.0.0.1:18081/json_rpc
 ```
 
 ### 7.2 Run as a service
@@ -311,12 +328,14 @@ sudo systemctl enable --now xelis-vault-keeper
 
 ### 7.3 CLI flags
 
-| Flag          | Default                  | Description                          |
-|---------------|--------------------------|--------------------------------------|
-| `--feed-ids`  | `0`                      | Comma-separated feed IDs to keep     |
-| `--interval`  | `25`                     | Seconds between aggregate calls      |
-| `--rpc`       | `http://localhost:8080`  | XELIS daemon JSON-RPC URL            |
-| `--dry-run`   | off                      | Log but don't submit                 |
+| Flag             | Default                          | Description                          |
+|------------------|----------------------------------|--------------------------------------|
+| `--feed-ids`     | `0`                              | Comma-separated feed IDs to keep     |
+| `--interval`     | `25`                             | Seconds between aggregate calls      |
+| `--daemon-rpc`   | `http://127.0.0.1:18081/json_rpc`| Daemon JSON-RPC URL (reads)          |
+| `--wallet-rpc`   | `http://127.0.0.1:18082/json_rpc`| Wallet JSON-RPC URL (writes)         |
+| `--auth`         | `wallet:testpass`                | Wallet RPC basic auth `user:pass`    |
+| `--verbose`      | off                              | DEBUG-level logging                  |
 
 ---
 

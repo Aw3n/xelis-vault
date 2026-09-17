@@ -19,14 +19,12 @@ Live environment (testnet):
 from __future__ import annotations
 
 import json
-import ssl
 import sys
 import time
 from pathlib import Path
 from typing import Any, Optional
 
 import requests
-import urllib3
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS = REPO_ROOT / "docs"
@@ -303,27 +301,46 @@ def _post(url: str, method: str, params: Any, auth: Optional[tuple] = None,
     payload: dict = {"jsonrpc": "2.0", "method": method, "id": 1}
     if params is not None:
         payload["params"] = params
+    # A lost response to a write may hide a successful broadcast: never replay it.
+    read_only = method.startswith("get_")
+    attempts = 3 if read_only else 1
     last_exc: Optional[Exception] = None
-    for attempt in range(3):        # public nodes may answer HTML (rate limit / CF)
+    for attempt in range(attempts):
+        retryable = True
         try:
             r = requests.post(url, auth=auth, json=payload, timeout=timeout)
+            r.raise_for_status()
             data = r.json()
+            if not isinstance(data, dict) or not ("result" in data or data.get("error")):
+                raise ValueError("invalid JSON-RPC response")
             if data.get("error"):
                 err = data["error"]
+                if not isinstance(err, dict):
+                    raise ValueError("invalid JSON-RPC error")
                 raise RPCError(f"{method}: {err}",
                                transient=_is_transient(method, err))
             return data.get("result")
-        except (requests.exceptions.SSLError, urllib3.exceptions.SSLError) as e:
+        except requests.exceptions.HTTPError as e:
             last_exc = e
-            time.sleep(2 * (attempt + 1))   # SSL handshake failures are transient
-        except ValueError as e:     # non-JSON body — retry after a pause
+            status = e.response.status_code
+            detail = f"HTTP {status}"
+            retryable = status == 429 or status >= 500
+        except requests.exceptions.SSLError as e:
             last_exc = e
-            time.sleep(2 * (attempt + 1))
-    if isinstance(last_exc, (requests.exceptions.SSLError, urllib3.exceptions.SSLError)):
-        raise RPCError(f"{method}: SSL connection failed to {url} after 3 retries: {last_exc}",
-                       transient=True) from last_exc
-    raise RPCError(f"{method}: non-JSON response from {url}",
-                   transient=True) from last_exc
+            detail = "TLS connection failed"
+            retryable = "CERTIFICATE_VERIFY_FAILED" not in str(e)
+        except requests.RequestException as e:
+            last_exc = e
+            detail = f"network failure ({type(e).__name__})"
+        except ValueError as e:
+            last_exc = e
+            detail = "invalid JSON-RPC response"
+        if not retryable or attempt == attempts - 1:
+            break
+        time.sleep(2 * (attempt + 1))
+    suffix = "" if read_only else "; result unknown, check wallet history before retrying"
+    raise RPCError(f"{method}: {detail} after {attempt + 1} attempt(s){suffix}",
+                   transient=read_only and retryable) from last_exc
 
 
 def _with_retries(fn, attempts: int = 4, delay: float = 8.0):
@@ -336,19 +353,26 @@ def _with_retries(fn, attempts: int = 4, delay: float = 8.0):
             if not e.transient:
                 raise
             last = e
-            time.sleep(delay)
+            if i < attempts - 1:
+                time.sleep(delay)
         except requests.RequestException as e:
-            last = e
-            time.sleep(delay)
+            raise RPCError("Network failure; result unknown, check wallet history before retrying") from e
     raise last
+
+
+def _rpc_url(url: str) -> str:
+    url = url.rstrip("/")
+    return url if url.endswith("/json_rpc") else url + "/json_rpc"
 
 
 class WalletClient:
     """xelis_wallet v1.25 — build_transaction (flattened TransactionTypeBuilder)."""
 
-    def __init__(self, url: str = WALLET_URL, auth: tuple = WALLET_AUTH):
-        self.url = url
+    def __init__(self, url: str = WALLET_URL, auth: tuple = WALLET_AUTH,
+                 daemon_url: str = DAEMON_URL):
+        self.url = _rpc_url(url)
         self.auth = auth
+        self.daemon_url = _rpc_url(daemon_url)
 
     def _call(self, method: str, params: Any = None) -> Any:
         return _post(self.url, method, params, auth=self.auth)
@@ -370,7 +394,7 @@ class WalletClient:
         Waits for the wallet's stored nonce to catch up with the daemon
         (the wallet syncs its nonce lazily), then retries on nonce /
         proof-verification races."""
-        self._wait_nonce_catchup()
+        before = self._wait_nonce_catchup()
 
         def _build() -> str:
             payload = {
@@ -391,8 +415,11 @@ class WalletClient:
                 raise RPCError(f"build_transaction returned no hash: {result}")
             return tx_hash
         tx = _with_retries(_build)
-        # wait for wallet nonce to advance (confirms tx was processed)
-        self.wait_nonce_advance(int(self._call("get_nonce")), timeout=180)
+        if broadcast:
+            try:
+                self.wait_nonce_advance(before, timeout=180)
+            except RPCError:
+                pass  # Preserve the broadcast hash even if the follow-up read fails.
         return tx
 
     def wait_nonce_advance(self, before: int, timeout: int = 120) -> int:
@@ -405,20 +432,18 @@ class WalletClient:
             time.sleep(5)
         return int(self._call("get_nonce"))
 
-    def _wait_nonce_catchup(self, timeout: int = 120) -> None:
-        """Wait until the wallet's stored nonce >= the daemon's account nonce."""
+    def _wait_nonce_catchup(self, timeout: int = 120) -> int:
+        """Wait until the wallet and configured daemon agree on the account nonce."""
         addr = self.address()
-        t0 = time.time()
-        while time.time() - t0 < timeout:
-            try:
-                w = int(self._call("get_nonce"))
-                d = int(_post(DAEMON_URL, "get_nonce",
-                              {"address": addr}).get("nonce", 0))
-                if w >= d:
-                    return
-            except Exception:
-                pass
+        t0 = time.monotonic()
+        while time.monotonic() - t0 < timeout:
+            w = int(self._call("get_nonce"))
+            result = _post(self.daemon_url, "get_nonce", {"address": addr})
+            d = int(result["nonce"] if isinstance(result, dict) else result)
+            if w == d:
+                return w
             time.sleep(5)
+        raise RPCError("Wallet nonce is not synchronized with the configured daemon")
 
     def transfer(self, to: str, amount: int, asset: str = XEL_ASSET,
                  fee: int = INVOKE_FEE) -> str:
@@ -441,7 +466,7 @@ class WalletClient:
 
 class DaemonClient:
     def __init__(self, url: str = DAEMON_URL):
-        self.url = url
+        self.url = _rpc_url(url)
 
     def _call(self, method: str, params: Any = None) -> Any:
         return _post(self.url, method, params)
@@ -458,8 +483,10 @@ class DaemonClient:
         """Read a string-keyed storage cell; returns parsed value or None."""
         try:
             res = self.get_contract_data(contract, val_str(key_str))
-        except RPCError:
-            return None
+        except RPCError as e:
+            if "no data found with requested key" in str(e).lower():
+                return None
+            raise
         data = res.get("data") if isinstance(res, dict) else None
         if data is None:
             return None
@@ -468,8 +495,10 @@ class DaemonClient:
     def read_hash_key(self, contract: str, key: dict) -> Any:
         try:
             res = self.get_contract_data(contract, key)
-        except RPCError:
-            return None
+        except RPCError as e:
+            if "no data found with requested key" in str(e).lower():
+                return None
+            raise
         data = res.get("data") if isinstance(res, dict) else None
         if data is None:
             return None
@@ -514,10 +543,10 @@ class Protocol:
                  wallet_url: str = WALLET_URL,
                  wallet_auth: tuple = WALLET_AUTH,
                  daemon_url: str = DAEMON_URL):
-        if wallet is None:
-            wallet = WalletClient(url=wallet_url, auth=wallet_auth)
         if daemon is None:
             daemon = DaemonClient(url=daemon_url)
+        if wallet is None:
+            wallet = WalletClient(url=wallet_url, auth=wallet_auth, daemon_url=daemon.url)
         self.wallet = wallet
         self.daemon = daemon
         self._registry_cache: dict[str, str] = {}

@@ -239,7 +239,7 @@ def main() -> None:
     d_amt = min(50 * 10 ** 8, vlt2)
     if d_amt > 0:
         ok, d = run(p, "delegation delegate 50 VLT", delegation_delegate,
-                    p, "xet:d3aa2qut6t2p30s50hw49fq6fp9v46yrdqcng6a20n6q77r2s4vsqv3yfva",
+                    p, "xet:REPLACE_WITH_TEST_MINER_ADDRESS",
                     d_amt, False)
         report("delegation_delegate", ok, d)
         time.sleep(2)

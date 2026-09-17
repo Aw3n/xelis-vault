@@ -34,6 +34,7 @@ from tui import (
     render_status,
 )
 from cli_backend import Backend, DECIMALS
+from protocol import RPCError
 
 from config import Config, CONFIG_PATH, VAULT_DIR
 LOG_DIR = VAULT_DIR / "logs"
@@ -90,17 +91,18 @@ def svc_badges(mask):
 
 def fetch_live(b: Backend) -> dict:
     live = {"connected": False, "topo": 0, "balances": {},
-            "miner": {}, "stats": {}, "feeds": [], "relayer": None}
-    topo = b.topo()
-    if not topo:
-        return live
-    live["connected"] = True
-    live["topo"] = topo
-    live["balances"] = b.balances()
-
-    m = b.my_miner()
-    if isinstance(m, list) and len(m) >= 15:
-        try:
+            "miner": {}, "miner_loaded": False, "stats": {}, "feeds": [],
+            "relayer": None, "error": ""}
+    try:
+        topo = b.daemon.topoheight()
+        live["topo"] = topo
+        live["balances"] = b.balances()
+        if not b.address:
+            raise ValueError("Operator address unavailable; check wallet/configuration")
+        m = b.my_miner()
+        if m is not None:
+            if not isinstance(m, list) or len(m) < 15:
+                raise ValueError("Invalid miner record returned by daemon")
             live["miner"] = {
                 "endpoint": str(m[M_ENDPOINT]),
                 "stake": int(m[M_STAKE]),
@@ -115,20 +117,18 @@ def fetch_live(b: Backend) -> dict:
                 "total_submissions": int(m[M_TSUB]),
                 "active": bool(m[M_ACTIVE]),
             }
-        except (ValueError, TypeError):
-            pass
-
-    live["stats"] = b.miner_stats()
-    p = b.price()
-    if p:
-        price_raw, feed_topo, stale = p
-        live["feeds"].append({"name": "XEL/USD", "price_raw": price_raw,
-                              "age": max(0, topo - feed_topo), "stale": stale})
-    if b.has_wallet and b.address:
-        try:
+        live["miner_loaded"] = True
+        live["stats"] = b.miner_stats()
+        p = b.price()
+        if p:
+            price_raw, feed_topo, stale = p
+            live["feeds"].append({"name": "XEL/USD", "price_raw": price_raw,
+                                  "age": max(0, topo - feed_topo), "stale": stale})
+        if b.has_wallet:
             live["relayer"] = b.chat_relayer_status(b.address)
-        except Exception:
-            live["relayer"] = None
+        live["connected"] = True
+    except (RPCError, ValueError, TypeError) as e:
+        live["error"] = str(e)
     return live
 
 
@@ -146,10 +146,12 @@ def render_dashboard(cfg, live, hint=""):
     print(f"{C.GRAY}{'─' * 60}{C.RESET}")
 
     conn = render_ok("CONNECTED") if live["connected"] else \
-        render_error("OFFLINE — is the daemon running?")
+        render_error("UNAVAILABLE / INCOMPLETE READS")
     topo = f"{live['topo']:,}" if live["connected"] else "-"
     print(f"  {C.DIM}{now}{C.RESET}   {C.DIM}Topoheight:{C.RESET} {C.BOLD}{topo}{C.RESET}   {conn}")
     print(f"  {C.DIM}Operator:{C.RESET} {addr}")
+    if live.get("error"):
+        print(f"  {render_warn(live['error'])}")
 
     # ── Miner status ──
     m = live.get("miner") or {}
@@ -163,10 +165,19 @@ def render_dashboard(cfg, live, hint=""):
         hb = m.get("hb_topo", 0)
         if hb and live["connected"]:
             age = max(0, live["topo"] - hb)
-            hb_txt = (render_ok(f"{age} blk ago") if age < 1000
-                      else render_warn(f"{age} blk ago"))
+            stats = live.get("stats") or {}
+            interval = stats.get("heartbeat_interval")
+            timeout = stats.get("heartbeat_timeout")
+            if timeout and age > timeout:
+                hb_txt = render_error(f"{age} blk ago — timeout exceeded")
+            elif interval and age >= interval:
+                hb_txt = render_warn(f"{age} blk ago — due")
+            elif interval and timeout:
+                hb_txt = render_ok(f"{age} blk ago")
+            else:
+                hb_txt = render_warn(f"{age} blk ago — schedule unknown")
         else:
-            hb_txt = f"{C.DIM}never{C.RESET}"
+            hb_txt = f"{C.DIM}unavailable{C.RESET}"
         m_lines = [
             f"  {status}   {render_badge(f'Reputation {rep} · {tier}', tcolor)}",
             render_metrics([
@@ -181,18 +192,25 @@ def render_dashboard(cfg, live, hint=""):
             f"{m.get('total_submissions', 0)} total   "
             f"{C.DIM}Anchors:{C.RESET} {m.get('anchors', 0)}   "
             f"{C.DIM}Slashed:{C.RESET} {C.RED}{bfmt(m.get('slashed'), 'VLT')}{C.RESET}",
-            f"  {C.DIM}Endpoint:{C.RESET} {m.get('endpoint') or '—'}",
+            f"  {C.DIM}On-chain endpoint:{C.RESET} {m.get('endpoint') or '—'}",
             f"  {C.DIM}Reputation:{C.RESET} {tier_bar(rep)} {rep}/10000",
         ]
+        desired = cfg.get("miner_endpoint")
+        if desired and desired != m.get("endpoint"):
+            m_lines += [f"  Configured endpoint: {desired}",
+                        render_warn("Not synchronized — Actions > Update endpoint")]
         print()
         print(render_panel("  MINER  STATUS", m_lines, border_color=C.CYAN, width=58))
     else:
         print()
-        print(render_panel("  MINER  STATUS", [
-            render_warn("Not registered"),
-            f"{C.DIM}This address has no miner profile on-chain yet.",
-            f"{C.DIM}Press {C.BOLD}m{C.RESET}{C.DIM} → Register to start earning VLT.",
-        ], border_color=C.CYAN, width=58))
+        if live.get("miner_loaded"):
+            lines = [render_warn("Not registered"),
+                     "This address has no miner profile on-chain yet.",
+                     "Press m > Register to start earning VLT."]
+        else:
+            lines = [render_warn("Miner status unavailable"),
+                     "Registration could not be checked; refresh after reconnecting."]
+        print(render_panel("  MINER  STATUS", lines, border_color=C.CYAN, width=58))
 
     # ── Wallet balances ──
     bal = live.get("balances") or {}
@@ -209,7 +227,7 @@ def render_dashboard(cfg, live, hint=""):
     if stats.get("total_staked") is not None:
         s_lines.append(f"  Total staked:  {C.BOLD}{bfmt(stats['total_staked'], 'VLT')}{C.RESET}")
     if stats.get("budget") is not None and stats.get("distributed") is not None:
-        pct = stats["distributed"] * 100 // stats["budget"]
+        pct = stats["distributed"] * 100 // stats["budget"] if stats["budget"] > 0 else 0
         s_lines += [
             f"  Budget spent:  {pct}%",
             f"                 {render_bar(pct / 100, 24)}",
@@ -311,8 +329,7 @@ def interactive_setup(cfg):
     print(f"  {C.GREEN}  • http://127.0.0.1:18081{C.RESET}{C.DIM}   — direct local node{C.RESET}")
     print(f"  {C.GREEN}  • ws://1.2.3.4:18081{C.RESET}{C.DIM}      — your own public node{C.RESET}\n")
     new_endp = text_input("Public endpoint URL", endp)
-    endpoint_changed = (new_endp != endp) and bool(endp) and bool(new_endp)
-    cfg.data["miner_endpoint"] = new_endp
+    cfg.data["miner_endpoint"] = new_endp.strip()
     print(f"{C.DIM}  → Cannot be empty and is written on-chain at registration.{C.RESET}")
     time.sleep(0.4)
 
@@ -332,20 +349,8 @@ def interactive_setup(cfg):
         f"Endpoint:  {(cfg.get('miner_endpoint') or '(none)')}", "",
         "Contract addresses load automatically from the network bundle.",
     ]
-    # Auto-update on-chain endpoint if it changed and miner is already registered
-    if endpoint_changed and cfg.get("wallet_url"):
-        try:
-            b2 = Backend(cfg.data)
-            if b2.has_wallet and b2.my_miner():
-                print(f"{C.DIM}  Endpoint changed — updating on-chain...{C.RESET}")
-                res = b2.miner_update_endpoint(cfg.get("miner_endpoint"))
-                if res.ok:
-                    msg_lines.append(render_ok(f"On-chain endpoint updated"))
-                else:
-                    msg_lines.append(render_warn(f"On-chain update failed: {res.reason}"))
-                    msg_lines.append(f"{C.DIM}  Use Actions > Update endpoint to retry.{C.RESET}")
-        except Exception:
-            pass
+    msg_lines += ["Saved locally only; existing on-chain settings are unchanged.",
+                  "Use Actions > Update endpoint to request an on-chain change."]
     info_box("Setup Complete", msg_lines, color=C.GREEN)
 
 
@@ -397,17 +402,18 @@ PROVIDER_GUIDE = [
     ("How the keeper works",
      "• submit_price every round with real exchange data",
      "• poke aggregate_now to unblock the aggregation window",
-     "• heartbeat every ~1000 blocks (within 900-4000 window)",
-     "• small fixed fee 0.001 XEL per tx"),
+     "• heartbeat follows each wallet's on-chain last_heartbeat + hi",
+     "• small fixed fee 0.001 XEL per tx; no cached price submissions"),
     ("Health rules (StakedOracle)",
-     "hard_stale = 500 blk  — feed must refresh before then",
-     "hb_interval = 900      — heartbeat minimum interval",
-     "hb_timeout  = 4000     — miss this and you may be slashed",
+     "Price rounds run every 200 blocks; check the feed's hard_stale.",
+     "hi = heartbeat minimum interval read from the miner contract.",
+     "ht = heartbeat timeout read from the miner contract.",
      "Keep reputation > 5000 (Good) to keep the 1.0x+ multiplier."),
     ("Tips",
      "• Never submit before the window opens (alreadysub deadlock).",
      "• Keep your node + wallet RPC online and synced.",
-     "• One keeper process handles all 3 of your provider wallets."),
+     "• This launcher uses your configured operator wallet only.",
+     "• Restart the keeper after changing wallet/daemon configuration."),
 ]
 
 
@@ -454,12 +460,11 @@ def keeper_running() -> int | None:
         pid = int(KEEPER_PID.read_text().strip())
     except Exception:
         return None
-    try:
-        os.kill(pid, 0)
+    from onboarding import process_alive
+    if process_alive(pid):
         return pid
-    except OSError:
-        KEEPER_PID.unlink(missing_ok=True)
-        return None
+    KEEPER_PID.unlink(missing_ok=True)
+    return None
 
 
 def launch_keeper(cfg) -> None:
@@ -469,15 +474,29 @@ def launch_keeper(cfg) -> None:
         info_box("Keeper", [render_error(f"oracle_keeper3.py not found at {script}")],
                  color=C.RED)
         return
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    logf = open(LOG_DIR / "keeper.log", "ab")
-    py = sys.executable or "python3"
-    proc = subprocess.Popen([py, str(script)], stdout=logf, stderr=logf,
-                            start_new_session=True)
-    KEEPER_PID.write_text(str(proc.pid))
+    if keeper_running():
+        info_box("Keeper", [render_warn("Keeper already running; stop it before restarting.")])
+        return
+    if not all(cfg.get(key) for key in ("rpc_url", "wallet_url", "miner_address")):
+        info_box("Keeper", [render_error("Configure the daemon, wallet and operator address first.")], color=C.RED)
+        return
+    from onboarding import _detached_kwargs
+    try:
+        cfg.save()
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        py = sys.executable or "python3"
+        with open(LOG_DIR / "keeper.log", "ab") as logf:
+            proc = subprocess.Popen(
+                [py, "-u", str(script), "--config", str(CONFIG_PATH),
+                 "--rpc", cfg.get("rpc_url")],
+                stdout=logf, stderr=logf, **_detached_kwargs())
+        KEEPER_PID.write_text(str(proc.pid))
+    except OSError as e:
+        info_box("Keeper", [render_error(f"Could not launch: {e}")], color=C.RED)
+        return
     info_box("Keeper launched", [
-        render_ok(f"Oracle keeper started (pid {proc.pid})"), "",
-        "It submits prices and heartbeats automatically.",
+        render_ok(f"Oracle keeper process launched (pid {proc.pid})"), "",
+        "Uses your configured wallet; initialization and submissions are not yet verified.",
         f"Log: {LOG_DIR / 'keeper.log'}",
     ], color=C.GREEN)
 
@@ -487,12 +506,12 @@ def stop_keeper() -> None:
     if not pid:
         info_box("Keeper", [render_warn("Keeper is not running.")])
         return
-    try:
-        os.kill(pid, 15)
+    from onboarding import terminate_process
+    if terminate_process(pid):
         KEEPER_PID.unlink(missing_ok=True)
         info_box("Keeper stopped", [render_ok(f"Stopped pid {pid}.")], color=C.GREEN)
-    except OSError as e:
-        info_box("Keeper", [render_error(f"Could not stop: {e}")], color=C.RED)
+    else:
+        info_box("Keeper", [render_error(f"Could not stop pid {pid}.")], color=C.RED)
 
 
 # ---------------------------------------------------------------------------
@@ -545,10 +564,10 @@ def action_registration_flow(cfg, b):
         return
     res = b.miner_register(endpoint, mask, stake_atomic)
     if res.ok:
-        info_box("Registered", [
-            render_ok("Miner profile created ✓"), "",
-            f"Tx: {res.tx[:44]}…",
-            "Next: enable services & send a heartbeat from the Actions menu.",
+        info_box("Registration broadcast", [
+            render_ok("Transaction broadcast; registration not yet verified"), "",
+            f"Tx: {res.tx}",
+            "Refresh miner status before sending further actions.",
         ], color=C.GREEN)
     else:
         info_box("Registration rejected", [render_error(f"Reason: {res.reason}")],
@@ -565,8 +584,9 @@ def action_heartbeat(cfg, b):
     res = b.miner_heartbeat()
     if res.ok:
         info_box("Heartbeat sent", [
-            render_ok("Transaction broadcast ✓"), "",
-            f"Tx: {res.tx[:40]}…",
+            render_ok("Transaction broadcast; execution not yet verified"), "",
+            f"Tx: {res.tx}",
+            "Refresh to check the on-chain heartbeat before retrying.",
         ], color=C.GREEN)
     else:
         info_box("Heartbeat rejected", [render_error(f"Reason: {res.reason}")],
@@ -587,8 +607,9 @@ def action_increase_stake(cfg, b):
     if confirm(f"Stake {amt} VLT more?"):
         res = b.miner_increase_stake(atomic)
         if res.ok:
-            info_box("Stake increased", [render_ok("Done ✓"), f"Tx: {res.tx[:40]}…"],
-                     color=C.GREEN)
+            info_box("Stake transaction broadcast", [
+                render_ok("Broadcast; refresh to verify the on-chain stake."), f"Tx: {res.tx}"],
+                color=C.GREEN)
         else:
             info_box("Failed", [render_error(f"Reason: {res.reason}")], color=C.RED)
 
@@ -608,8 +629,9 @@ def action_enable_service(cfg, b):
     if confirm(f"Enable {label} service?"):
         res = b.miner_enable_service(svc)
         if res.ok:
-            info_box("Service enabled", [render_ok(f"{label} on ✓"), f"Tx: {res.tx[:40]}…"],
-                     color=C.GREEN)
+            info_box("Service transaction broadcast", [
+                render_ok(f"Broadcast; refresh to verify {label} is enabled."), f"Tx: {res.tx}"],
+                color=C.GREEN)
         else:
             info_box("Failed", [render_error(f"Reason: {res.reason}")], color=C.RED)
 
@@ -619,25 +641,32 @@ def action_update_endpoint(cfg, b):
     if not b.has_wallet:
         info_box("Update endpoint", [render_error("No wallet connected.")], color=C.RED)
         return
-    if not b.my_miner():
+    try:
+        m = b.my_miner()
+    except RPCError as e:
+        info_box("Update endpoint", [render_error(f"Cannot read miner status: {e}")], color=C.RED)
+        return
+    if not m:
         info_box("Update endpoint", [
             render_error("Not registered yet."),
             "Register first (Actions > Register as miner).",
         ], color=C.RED)
         return
     current = cfg.get("miner_endpoint") or ""
-    on_chain = ""
-    try:
-        m = b.my_miner()
-        if isinstance(m, list) and len(m) > M_ENDPOINT:
-            on_chain = str(m[M_ENDPOINT])
-    except Exception:
-        pass
-    print(f"  {C.DIM}Current config:    {current}{C.RESET}")
-    if on_chain:
-        print(f"  {C.DIM}Current on-chain:  {on_chain}{C.RESET}")
-    new_ep = text_input("New public endpoint URL:", current).strip()
-    if not new_ep or new_ep == current:
+    if not isinstance(m, list) or len(m) < 15:
+        info_box("Update endpoint", [
+            render_error("Invalid miner record returned by daemon."),
+            "Refresh miner status before retrying.",
+        ], color=C.RED)
+        return
+    on_chain = str(m[M_ENDPOINT])
+    new_ep = text_input(f"New public endpoint URL (on-chain: {on_chain}):", current).strip()
+    if not new_ep:
+        return
+    if new_ep == on_chain:
+        cfg.data["miner_endpoint"] = new_ep
+        cfg.save()
+        info_box("Endpoint", [render_ok("Endpoint already matches on-chain; local configuration saved.")])
         return
     if not confirm(f"Update on-chain endpoint to {new_ep}?"):
         return
@@ -645,13 +674,15 @@ def action_update_endpoint(cfg, b):
     cfg.save()
     res = b.miner_update_endpoint(new_ep)
     if res.ok:
-        info_box("Endpoint updated", [
-            render_ok("On-chain endpoint updated"),
-            f"  {C.CYAN}{new_ep}{C.RESET}", "",
-            f"Tx: {res.tx[:40]}...",
-        ], color=C.GREEN)
+        info_box("Endpoint verified", [
+            render_ok("On-chain endpoint verified"),
+            f"  {C.CYAN}{new_ep}{C.RESET}",
+        ] + ([f"Tx: {res.tx}"] if res.tx else []), color=C.GREEN)
     else:
-        info_box("Update failed", [render_error(f"Reason: {res.reason}")], color=C.RED)
+        info_box("Endpoint not verified", [
+            render_warn(f"Reason: {res.reason}"),
+            "Desired endpoint saved locally; the dashboard shows the on-chain value.",
+        ] + ([f"Tx: {res.tx}", "Check transaction/status before retrying."] if res.tx else []), color=C.YELLOW)
 
 
 def action_menu(cfg, b):
@@ -703,10 +734,12 @@ def main():
     parser.add_argument("--rpc", help="Daemon RPC URL")
     parser.add_argument("--wallet-url", help="Wallet RPC URL")
     parser.add_argument("--services", choices=["oracle", "chat", "both"])
-    parser.add_argument("--miner", action="store_true")
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--miner", action="store_true", help="Open the miner actions menu")
+    parser.add_argument("--dry-run", action="store_true", help="Read-only dashboard; no actions or processes")
     parser.add_argument("--setup", action="store_true")
     args = parser.parse_args()
+    if args.dry_run and args.setup:
+        parser.error("--dry-run cannot be combined with --setup")
 
     cfg = Config()
     if args.rpc:
@@ -719,7 +752,8 @@ def main():
         interactive_setup(cfg)
         return
 
-    mode = check_contracts(cfg)
+    if not args.dry_run:
+        check_contracts(cfg)
 
     auto_refresh = True
     running = [True]
@@ -735,12 +769,16 @@ def main():
     try:
         while running[0]:
             b = Backend(cfg.data)
-            live = fetch_live(b) if mode != "demo" or b.topo() else \
-                {"connected": False, "topo": 0, "balances": {}, "miner": {},
-                 "stats": {}, "feeds": [], "relayer": None}
-            render_dashboard(cfg, live, hint)
+            live = fetch_live(b)
+            render_dashboard(cfg, live, "Read-only mode (--dry-run)" if args.dry_run else hint)
             hint = ""
-            key = read_key_timeout(REFRESH_INTERVAL if auto_refresh else 999)
+            if args.miner and not args.dry_run:
+                key = "m"
+                args.miner = False
+            else:
+                key = read_key_timeout(REFRESH_INTERVAL if auto_refresh else 999)
+            if args.dry_run and key in ("s", "m", "p", "h"):
+                continue
             if key is None:
                 if auto_refresh:
                     hint = f"{C.DIM}Auto-refreshed at {datetime.now().strftime('%H:%M:%S')}{C.RESET}"
@@ -755,19 +793,20 @@ def main():
             elif key == "a":
                 auto_refresh = not auto_refresh
                 hint = f"Auto-refresh: {'ON' if auto_refresh else 'OFF'}"
-            elif key == "m":
+            elif key in ("m", "p", "h"):
                 show_cursor()
-                action_menu(cfg, b)
-                hide_cursor()
-            elif key == "p":
-                show_cursor()
-                provider_guide(cfg)
-                hide_cursor()
-            elif key == "h":
-                show_cursor()
-                action_heartbeat(cfg, b)
-                time.sleep(1.2)
-                hide_cursor()
+                try:
+                    if key == "m":
+                        action_menu(cfg, b)
+                    elif key == "p":
+                        provider_guide(cfg)
+                    else:
+                        action_heartbeat(cfg, b)
+                except RPCError as e:
+                    info_box("RPC unavailable", [render_error(str(e)),
+                             "Check transaction/status before retrying an action."], color=C.RED)
+                finally:
+                    hide_cursor()
     finally:
         show_cursor()
         clear()

@@ -196,7 +196,7 @@ CHUNKS = {
                         "set_registry": 10},
     "StakedOracle":   {"submit_price": 16, "aggregate_now": 17},
     "XelisVaultMiner": {"register_miner": 15, "enable_service": 16, "increase_stake": 18,
-                        "submit_heartbeat": 21, "update_endpoint": 22},
+                        "submit_heartbeat": 21, "update_endpoint": 88},
     "GovernanceVault": {"stake": 4, "unstake": 5, "claim_rewards": 6,
                          "get_total_staked": 25, "get_user_staked": 26,
                          "notify_reward_amount": 12, "set_reward_distributor": 13},
@@ -305,13 +305,9 @@ class Backend:
 
         daemon_url = cfg.get("rpc_url") or "http://127.0.0.1:18081"
         wallet_url = cfg.get("wallet_url") or ""
-        if daemon_url and not daemon_url.endswith("/json_rpc"):
-            daemon_url += "/json_rpc"
-        if wallet_url and not wallet_url.endswith("/json_rpc"):
-            wallet_url += "/json_rpc"
         self.daemon = DaemonClient(daemon_url)
         auth = (cfg.get("wallet_user") or "wallet", cfg.get("wallet_pass") or "testpass")
-        self.wallet = WalletClient(wallet_url, auth) if wallet_url else None
+        self.wallet = WalletClient(wallet_url, auth, daemon_url=self.daemon.url) if wallet_url else None
         self._resolve_via_registry()
 
     def _resolve_via_registry(self):
@@ -325,8 +321,8 @@ class Backend:
         for key, name in _REGISTRY_NAMES.items():
             try:
                 h = self.daemon.read_key(reg, f"cur_{name}")
-            except Exception:
-                continue
+            except RPCError:
+                break
             if h and isinstance(h, str) and len(h) == 64:
                 resolved[key] = h                # snake_case alias
                 resolved[name] = h               # canonical CamelCase key
@@ -419,6 +415,10 @@ class Backend:
         if isinstance(tb, int): out["budget"] = tb
         if isinstance(dist, int): out["distributed"] = dist
         if isinstance(ms, int): out["min_stake"] = ms
+        for key, field in (("hi", "heartbeat_interval"), ("ht", "heartbeat_timeout")):
+            value = self.daemon.read_key(mn, key)
+            if isinstance(value, int):
+                out[field] = value
         return out
 
     def my_miner(self) -> Optional[list]:
@@ -427,7 +427,9 @@ class Backend:
         if not mn or not addr:
             return None
         m = self.daemon.read_key(mn, f"miner_{addr}")
-        return m if isinstance(m, list) else None
+        if m is not None and (not isinstance(m, list) or len(m) < 15):
+            raise RPCError("Invalid miner record returned by daemon")
+        return m
 
     def psm_reserves(self) -> dict:
         psm = self.C("psm")
@@ -880,9 +882,47 @@ class Backend:
             deposits=dep, max_gas=25_000_000)
 
     def miner_update_endpoint(self, new_endpoint: str) -> OpResult:
-        """Update the miner's public endpoint URL on-chain (update_endpoint entry)."""
-        return self._invoke("XelisVaultMiner", "update_endpoint",
-                            [val_str(new_endpoint)], max_gas=5_000_000)
+        new_endpoint = new_endpoint.strip()
+        if not new_endpoint:
+            return OpResult(False, reason="Endpoint cannot be empty")
+        if not self.wallet:
+            return OpResult(False, reason="No wallet connected (read-only mode)")
+        try:
+            if self.wallet.address() != self.address:
+                return OpResult(False, reason="Configured miner address does not match the wallet")
+            miner = self.my_miner()
+            if not miner:
+                return OpResult(False, reason="Miner is not registered")
+            if miner[1] == new_endpoint:
+                return OpResult(True)
+            contract = self.C("miner")
+            result = self.daemon._call("get_contract_module", {"contract": contract})
+            chunks = result["data"]["module"]["chunks"]
+            index = CHUNKS["XelisVaultMiner"]["update_endpoint"]
+            if (not isinstance(chunks, list) or len(chunks) <= index
+                    or not isinstance(chunks[index], dict)
+                    or chunks[index].get("type") != "entry"
+                    or not isinstance(chunks[index].get("value"), dict)
+                    or chunks[index]["value"].get("parameters") != [{"type": "string"}]):
+                return OpResult(False, reason="Deployed miner contract does not support update_endpoint; developer deployment/migration required")
+        except (RPCError, KeyError, TypeError, IndexError) as e:
+            return OpResult(False, reason=f"Cannot verify deployed miner: {e}")
+        res = self._invoke("XelisVaultMiner", "update_endpoint",
+                           [val_str(new_endpoint)], max_gas=5_000_000)
+        if not res.ok:
+            return res
+        deadline = time.monotonic() + 20
+        while True:
+            try:
+                miner = self.my_miner()
+                if miner and miner[1] == new_endpoint:
+                    return res
+            except RPCError:
+                break
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(2)
+        return OpResult(False, tx=res.tx, reason="Transaction broadcast; endpoint not yet verified on-chain. Check status before retrying.")
 
     def miner_stake_min(self) -> int | None:
         """The contract's MIN_STAKE (atomic) — used as the registration default."""

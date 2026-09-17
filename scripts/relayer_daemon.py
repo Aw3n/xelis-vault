@@ -31,6 +31,8 @@ LOG_DIR = VAULT_DIR / "logs"
 LOG_FILE = LOG_DIR / "relayer.log"
 PENDING_DIR = VAULT_DIR / "chat" / "relayer_pending"
 
+DEFAULT_BATCH_INTERVAL = 1000
+
 # ── Config ──────────────────────────────────────────────────────────────────
 class Config:
     def __init__(self):
@@ -43,7 +45,7 @@ class Config:
             "listen_host": "0.0.0.0",
             "listen_port": 8080,
             "p2p_port": 9000,
-            "batch_interval": 1000,
+            "batch_interval": DEFAULT_BATCH_INTERVAL,
             "free_daily_limit": 100,
             "free_wallet_slots": 100,
             "vaultchat_contract": "",
@@ -59,7 +61,7 @@ class Config:
                 stored = json.loads(CONFIG_PATH.read_text())
                 for k in self.data:
                     if k in stored: self.data[k] = stored[k]
-            except: pass
+            except Exception: pass
 
     def save(self):
         CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -89,7 +91,7 @@ class XelisClient:
                 return data.get("result")
             self.connected = False
             return None
-        except:
+        except Exception:
             self.connected = False
             return None
 
@@ -100,7 +102,7 @@ class XelisClient:
             }, timeout=10)
             data = r.json()
             return data.get("result") if not data.get("error") else None
-        except: return None
+        except Exception: return None
 
     def refresh(self):
         r = self.rpc("get_topoheight")
@@ -119,7 +121,7 @@ class XelisClient:
             }, timeout=30)
             data = r.json()
             return data.get("result") if not data.get("error") else None
-        except: return None
+        except Exception: return None
 
 # ── Logger ──────────────────────────────────────────────────────────────────
 def log(msg, level="INFO"):
@@ -141,7 +143,7 @@ class MessageQueue:
         for f in PENDING_DIR.glob("*.json"):
             try:
                 self.messages.append(json.loads(f.read_text()))
-            except: pass
+            except Exception: pass
 
     def add(self, recipient, encrypted_blob, sender, timestamp):
         msg = {
@@ -207,7 +209,7 @@ class P2PSync:
             elif msg.get("type") == "message":
                 # Received a message from another relayer
                 log(f"Received P2P message from {addr[0]}")
-        except: pass
+        except Exception: pass
         finally:
             conn.close()
 
@@ -287,7 +289,7 @@ class HTTPServer:
         except Exception as e:
             log(f"HTTP request error: {e}", "ERROR")
             try: conn.send(b"HTTP/1.1 500 Error\r\n\r\n")
-            except: pass
+            except Exception: pass
         finally:
             conn.close()
 
@@ -319,7 +321,7 @@ class Batcher:
                 # Call VaultChat.store_message(recipient, encrypted_blob, timestamp)
                 self.client.invoke(
                     self.cfg.get("vaultchat_contract"),
-                    "store_message",  # Entry name (would be entry ID in production)
+                    38,  # store_message entry ID
                     [msg["recipient"], msg["encrypted_blob"], msg["timestamp"]]
                 )
                 time.sleep(0.1)  # Rate limit
@@ -332,7 +334,7 @@ class Batcher:
         try:
             self.client.invoke(
                 self.cfg.get("vaultchat_contract"),
-                "anchor_batch",
+                11,  # anchor_messages entry ID
                 [merkle_root, len(batch)]
             )
             self.batch_count += 1

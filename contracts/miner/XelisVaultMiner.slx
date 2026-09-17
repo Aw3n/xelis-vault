@@ -469,21 +469,6 @@ entry register_miner(endpoint_url: string, miner_pubkey: Hash, services_mask: u8
     return 0
 }
 
-// Update the miner's public endpoint URL
-// @caller: the miner themselves (must already be registered)
-// @params: new_endpoint - the new public endpoint URL
-// @returns: 0 on success
-entry update_endpoint(new_endpoint: string) -> u64 {
-    when_not_paused()
-    require(new_endpoint != "", "badurl")
-    let s: Storage = Storage::new()
-    let caller: Address = get_caller().expect("err")
-    let miner: Miner = s.load(MINER_PREFIX + caller.to_string()).expect("err")
-    miner.endpoint_url = new_endpoint
-    s.store(MINER_PREFIX + caller.to_string(), miner)
-    return 0
-}
-
 // ID 1: enable_service
 // Enable an additional service bit on an already-registered miner account.
 // @caller: the miner themselves (must already be registered)
@@ -1677,5 +1662,17 @@ pub fn set_min_stake_cross(new_min_stake: u64) -> u64 {
     let s: Storage = Storage::new()
     s.store(MIN_STAKE_KEY, new_min_stake)
     emit_event(0u64, ["MinStakeUpdated", new_min_stake.to_string(10u32)])
+    return 0
+}
+
+// Append new entries to preserve cross-contract chunk indices.
+entry update_endpoint(new_endpoint: string) -> u64 {
+    when_not_paused()
+    require(new_endpoint != "", "badurl")
+    let s: Storage = Storage::new()
+    let caller: Address = get_caller().expect("err")
+    let miner: Miner = s.load(MINER_PREFIX + caller.to_string()).expect("err")
+    miner.endpoint_url = new_endpoint
+    s.store(MINER_PREFIX + caller.to_string(), miner)
     return 0
 }

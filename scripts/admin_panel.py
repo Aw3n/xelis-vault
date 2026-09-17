@@ -3,18 +3,18 @@
 ============================================================================
  XELIS Vault v10.6 — Admin Panel
 ============================================================================
-Module des fonctions réservées à l'admin du protocole.
-Accessible via: xvault --admin  (ou menu Settings → Admin Panel)
+Protocol admin functions module.
+Accessible via: xvault --admin  (or menu Settings → Admin Panel)
 
-L'admin peut :
-  - Gérer les contrats (pause, unpause, set parameters)
-  - Distribuer le faucet (testnet)
-  - Gérer l'airdrop (freeze, finalize, set merkle root, batch add points)
-  - Gérer les miners (slash, set rewards, register service)
-  - Gérer le FeeDistributor (set founder, set treasury)
-  - Gérer FounderVesting (claim tokens, set founder)
-  - Gérer RevenueShareDelegation (set share, revoke, extend)
-  - Emergency shutdown (si EmergencyShutdown déployé)
+The admin can:
+  - Manage contracts (pause, unpause, set parameters)
+  - Distribute the faucet (testnet)
+  - Manage airdrop (freeze, finalize, set merkle root, batch add points)
+  - Manage miners (slash, set rewards, register service)
+  - Manage FeeDistributor (set founder, set treasury)
+  - Manage FounderVesting (claim tokens, set founder)
+  - Manage RevenueShareDelegation (set share, revoke, extend)
+  - Emergency shutdown (if EmergencyShutdown deployed)
 ============================================================================
 """
 from __future__ import annotations

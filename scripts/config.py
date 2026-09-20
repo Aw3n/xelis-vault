@@ -25,6 +25,8 @@ DEFAULTS = {
 class Config:
     def __init__(self):
         self.data = dict(DEFAULTS)
+        # Monotone même via __init__ (l'écran Settings recharge par ce chemin).
+        self._version = getattr(self, "_version", 0) + 1
         self.load()
 
     def load(self):
@@ -43,6 +45,9 @@ class Config:
             os.chmod(CONFIG_PATH, 0o600)
         except Exception:
             pass
+        # Les écrans mettent en cache le Backend construit à partir de `data` :
+        # ce compteur est la seule trace qu'il faut le reconstruire.
+        self._version += 1
 
     def get(self, key, default=""):
         return self.data.get(key, default)

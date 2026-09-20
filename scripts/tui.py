@@ -86,8 +86,37 @@ else:
     _PILL_LEFT = "["
     _PILL_RIGHT = "]"
 
+def _enable_vt() -> bool:
+    """Vrai si l'écran peut recevoir des séquences ANSI (VT activé côté Windows)."""
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-11)              # STD_OUTPUT_HANDLE
+        mode = ctypes.c_uint32()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False                                 # stdout redirigé
+        ENABLE_VT_PROCESSING = 0x0004
+        if not mode.value & ENABLE_VT_PROCESSING:
+            if not kernel32.SetConsoleMode(handle, mode.value | ENABLE_VT_PROCESSING):
+                return False
+        return True
+    except Exception:
+        return False
+
+
+_VT_CLEAR = _enable_vt()
+
+
 def clear():
-    os.system("cls" if os.name == "nt" else "clear")
+    # os.system("cls") fork cmd.exe à chaque rafraîchissement ; la séquence ANSI
+    # coûte une écriture. Le repli garde les consoles qui ne peuvent pas la lire.
+    if _VT_CLEAR:
+        sys.stdout.write("\033[H\033[2J")
+        sys.stdout.flush()
+    else:
+        os.system("cls" if os.name == "nt" else "clear")
 
 def hide_cursor():
     sys.stdout.write("\033[?25l")

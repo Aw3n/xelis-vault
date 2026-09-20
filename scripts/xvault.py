@@ -34,6 +34,13 @@ from cli_backend import (
 )
 
 from config import Config, CONFIG_PATH, VAULT_DIR
+import onboarding
+
+# Le wallet est sondé à chaque tour de menu ; un probe RPC qui répond coûte
+# ~300 ms vers la boucle locale. 10 s de validité = un redémarrage manuel du
+# wallet reste visible au tour suivant sans re-sonder entre les deux.
+_WALLET_ALIVE_CACHE: dict = {}
+_WALLET_ALIVE_TTL = 10.0
 
 
 # ---------------------------------------------------------------------------
@@ -1852,7 +1859,6 @@ def ensure_wallet_alive(cfg: Config) -> bool:
     comes from the public node and the local wallet process is (re)started
     transparently in the background.
     """
-    import onboarding
     binary = cfg.get("wallet_binary")
     wpath = cfg.get("wallet_path")
     password = cfg.get("wallet_password")
@@ -1860,34 +1866,40 @@ def ensure_wallet_alive(cfg: Config) -> bool:
         return False
     port = int(cfg.get("wallet_rpc_port") or 18082)
     url = f"http://127.0.0.1:{port}"
+    user = cfg.get("wallet_user", "wallet")
+    pwd = cfg.get("wallet_pass", "testpass")
+    cache_key = (url, user)
+    cached = _WALLET_ALIVE_CACHE.get(cache_key)
+    if cached and time.time() - cached[0] < _WALLET_ALIVE_TTL:
+        return cached[1]
     try:
-        onboarding.rpc_call(url, "get_address",
-                            auth=(cfg.get("wallet_user", "wallet"),
-                                  cfg.get("wallet_pass", "testpass")), timeout=3)
+        onboarding.rpc_call(url, "get_address", auth=(user, pwd), timeout=3)
+        _WALLET_ALIVE_CACHE[cache_key] = (time.time(), True)
         return True  # already up
     except Exception:
         pass
     try:
         network = cfg.get("wallet_network", "testnet")
         daemon = cfg.get("rpc_url") or onboarding.PUBLIC_NODE
-        user = cfg.get("wallet_user", "wallet")
-        pwd = cfg.get("wallet_pass", "testpass")
         onboarding.launch_wallet(binary, network, daemon, password,
                                  Path(wpath), port, rpc_user=user, rpc_pass=pwd)
         addr = onboarding.wait_for_wallet(url, (user, pwd), timeout_s=240)
         if addr:
+            _WALLET_ALIVE_CACHE[cache_key] = (time.time(), True)
             return True
         try:
             print(f"  {C.YELLOW}Auto-relaunched wallet did not answer on {url} "
                   f"after 240s. See ~/.xelis-vault/logs/wallet.log{C.RESET}")
         except Exception:
             pass
+        _WALLET_ALIVE_CACHE[cache_key] = (time.time(), False)
         return False
     except Exception as e:
         try:
             print(f"  {C.RED}Auto-relaunch of wallet failed: {e}{C.RESET}")
         except Exception:
             pass
+        _WALLET_ALIVE_CACHE[cache_key] = (time.time(), False)
         return False
 
 
@@ -1909,12 +1921,19 @@ def main():
             print(f"{k}: {b.fmt(v)}")
         return
 
+    backend = None
+    backend_version = None
     while True:
         # transparently bring the managed wallet back before building Backend
         if not first_run and cfg.get("wallet_binary"):
             ensure_wallet_alive(cfg)
 
-        b = Backend(cfg.data)
+        # Backend (re)lit le bundle et interroge le registre : le reconstruire à
+        # chaque tour de menu coûtait un aller-retour réseau pour rien.
+        if backend is None or backend_version != cfg._version:
+            backend = Backend(cfg.data)
+            backend_version = cfg._version
+        b = backend
         online = b.topo() > 0
         wallet_ok = bool(b.wallet)
         if wallet_ok:

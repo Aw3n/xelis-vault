@@ -1426,3 +1426,59 @@ transaction** (statut : tout est local ; le redéploiement miner reste la main d
   entry 4, cooldown 720 blocs, `prev_<Name>` conservé).
 - `_miner_v2.slxc` (non suivi) **ne doit pas** être déployé ; ne pas toucher à
   `seed_backup/`, `wallets/`, `config/config.json`.
+
+# ✅ v12R-21 — Port des perfs amont sur `main` : lectures live parallèles + caches (2026-09-20)
+
+Branche `chore/port-upstream-perf` (PR vers `Aw3n:main`), report des 4 commits `perf:` de
+l'amont (`ed1968f`, `d9e3d23`, `55dd2c1`, `c836dae`) — zéro transaction, zéro déploiement,
+bundle et cartes de chunks **intactes**.
+
+## 1. Ce qui a été porté (et adapté, pas appliqué tel quel)
+- **`fetch_live` parallèle** (`xvault-miner.py`) : un seul `ThreadPoolExecutor` module
+  (`_FETCH_EXECUTOR`, 6 fils ≥ nb de lectures) et assemblage **dans l'ordre de priorité
+  d'avant** → sémantique `miner_loaded` / `connected` / « première panne = seul message »
+  conservée à l'identique, les 98 tests `test_miner_console.py` passent sans modification.
+- **Cache du bundle** (`cli_backend.load_bundle`) : clé = chemin, invalidation par `mtime`,
+  et **copie profonde** au retour (l'amont partage un dict mutable entre tous les Backend).
+- **Cache de résolution du registre** (`_resolve_via_registry`) : clé = `(url du nœud, hash
+  du registre)`, TTL 300 s, plafond `_REGISTRY_MAX=128` avec purge. Une passe **interrompue
+  ou vide n'est jamais mémorisée** (sinon les hash de repli gèleraient 5 min).
+- **`clear_network_caches()`** : seul point d'entrée après un redéploiement / pour les tests.
+- **`tui.clear()`** : `\033[H\033[2J` au lieu de `os.system("cls")` (un fork `cmd.exe` par
+  rafraîchissement). `ENABLE_VIRTUAL_TERMINAL_PROCESSING` est activé au démarrage via ctypes ;
+  si la console ne peut pas le lire **ou si stdout est redirigé**, repli sur `os.system`.
+  La version amont écrivait `\033c` dans les deux cas → glyphes parasites dans les logs.
+- **Sonde de vie du wallet** (`xvault.ensure_wallet_alive`) : cache TTL 10 s, l'horodatage
+  est pris **après** le éventuel relaunch (l'amont stockait l'heure d'avant les 240 s
+  d'attente → entrée déjà périmée). Le `b.wallet.balance()` du menu continue de valider
+  l'affichage « ● wallet open » à chaque tour.
+- **Backend unique par process** dans `xvault.main()` et la boucle de `xvault-miner` :
+  invalidation par `Config._version` (incrémenté par `save()` **et** `__init__()`, donc le
+  « Reset local configuration » de l'écran Settings reconstruit bien le Backend).
+- **`import onboarding` / `_RICH`** sortis de la boucle (import par tour de menu).
+
+## 2. Ce qui a été refusé, volontairement
+- Le cache de résultat `fetch_live` de 2 s de l'amont : le dashboard afficherait des chiffres
+  périmés en disant « CONNECTED ». La latence est déjà réglée par le parallélisme.
+- `protocol._post` timeout 60 s → 8 s : le nœud public est derrière Cloudflare, un 429/530
+  lent devenait une fausse panne RPC affichée en « UNAVAILABLE ».
+- La désanonymisation `protocol.ADMIN` (`55dd2c1`) : l'adresse réelle de l'admin ne doit pas
+  revenir dans le dépôt. Le placeholder `xet:YOUR_ADMIN_ADDRESS_HERE` reste.
+- Le `load_bundle()` de `check_contracts()` : notre `Backend.C("miner")` gère déjà les alias
+  snake/camel du bundle, et les tests durent l'appeler ainsi.
+
+## 3. Validation (hors ligne, `PYTHONUTF8=1` et `PYTHONUTF8=0`)
+- **310 tests** (`test_rpc_endpoint` 76 · `test_tx_ledger` 6 · `test_oracle_keeper` 42 ·
+  `test_tunnel` 40 · `test_process_status` 16 · `test_miner_console` 98 ·
+  **`test_perf_caches` 32**, nouveaux, exécutés sur les deux arbres).
+- `test_perf_caches.py` verrouille : relecture du bundle seulement au changement de `mtime`,
+  absence d'empoisonnement du cache, TTL + clé par nœud + non-cache d'un échec partiel du
+  registre, **concurrence réelle** des 5 lectures (barrière à 5 : séquentiel ⇒ `BrokenBarrier`),
+  latence d'un rafraîchissement ≈ la lecture la plus lente et non leur somme, premier échec
+  en ordre de priorité même si les réponses arrivent en vrac, `clear()` ANSI/repli, TTL de la
+  sonde wallet, monotonie de `Config._version`.
+- `check_consistency.py` : 0 erreur ; `test_all_contracts.py --mock` : 26 / 0 échec ;
+  les 5 fichiers modifiés resynchronisés dans `src/scripts/`.
+- ⚠️ Un `Backend` construit une fois par process : après un **redéploiement live**, appeler
+  `cli_backend.clear_network_caches()` (ou relancer le CLI) pour forcer la relecture du
+  registre ; sinon le TTL de 300 s peut masquer les nouveaux hash.

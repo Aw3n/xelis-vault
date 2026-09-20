@@ -19,6 +19,7 @@
 """
 from __future__ import annotations
 
+import copy
 import json
 import sys
 import time
@@ -47,13 +48,36 @@ def _bundle_candidates() -> list:
     ]
 
 
+_BUNDLE_CACHE: dict = {}        # chemin -> (mtime, contenu analysé)
+_REGISTRY_CACHE: dict = {}      # (url du nœud, hash du registre) -> (horodatage, résolu)
+_REGISTRY_TTL = 300             # s — une instance live change rarement, jamais à chaud
+_REGISTRY_MAX = 128
+
+
+def clear_network_caches() -> None:
+    """Oublier bundle et résolutions de registre (tests, redéploiement)."""
+    _BUNDLE_CACHE.clear()
+    _REGISTRY_CACHE.clear()
+
+
 def load_bundle() -> dict:
     for c in _bundle_candidates():
-        if c.exists():
-            try:
-                return json.loads(c.read_text())
-            except Exception:
-                pass
+        if not c.exists():
+            continue
+        try:
+            mtime = c.stat().st_mtime
+        except OSError:
+            continue
+        path = str(c)
+        cached = _BUNDLE_CACHE.get(path)
+        if cached and cached[0] == mtime:
+            return copy.deepcopy(cached[1])
+        try:
+            parsed = json.loads(c.read_text())
+        except Exception:
+            continue
+        _BUNDLE_CACHE[path] = (mtime, parsed)
+        return copy.deepcopy(parsed)
     return {}
 
 
@@ -317,16 +341,30 @@ class Backend:
                or self.contracts.get("contract_registry"))
         if not reg:
             return
+        cache_key = (getattr(self.daemon, "url", ""), reg)
+        cached = _REGISTRY_CACHE.get(cache_key)
+        if cached and time.time() - cached[0] < _REGISTRY_TTL:
+            self.contracts.update(cached[1])
+            return
         resolved = {}
+        complete = True
         for key, name in _REGISTRY_NAMES.items():
             try:
                 h = self.daemon.read_key(reg, f"cur_{name}")
             except RPCError:
+                complete = False
                 break
             if h and isinstance(h, str) and len(h) == 64:
                 resolved[key] = h                # snake_case alias
                 resolved[name] = h               # canonical CamelCase key
         self.contracts.update(resolved)
+        # Une passe interrompue ou vide n'est pas une réponse : la mettre en
+        # cache figerait les hash de repli pendant le TTL.
+        if not (complete and resolved):
+            return
+        if len(_REGISTRY_CACHE) >= _REGISTRY_MAX:
+            _REGISTRY_CACHE.clear()
+        _REGISTRY_CACHE[cache_key] = (time.time(), resolved)
 
     # -- helpers ----------------------------------------------------------
 

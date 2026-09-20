@@ -23,6 +23,7 @@ import platform
 import signal
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +41,12 @@ from config import Config, CONFIG_PATH, VAULT_DIR
 LOG_DIR = VAULT_DIR / "logs"
 
 REFRESH_INTERVAL = 5
+
+# Les lectures live sont des appels RPC indépendants ; le nœud public étant
+# distant, les émettre en parallèle divise la latence d'un rafraîchissement.
+# Assez de fils pour toutes les lectures d'un cycle (cinq aujourd'hui), sinon le
+# fan-out se réduit silencieusement à une file séquentielle.
+_FETCH_EXECUTOR = ThreadPoolExecutor(max_workers=6, thread_name_prefix="fetch")
 
 # Miner struct field order (XelisVaultMiner.slx `Miner`) returned for key
 # `miner_<addr>`:
@@ -89,47 +96,82 @@ def svc_badges(mask):
 # Live data collection (real reads via the backend)
 # ---------------------------------------------------------------------------
 
+def _read_or_error(fn):
+    """Exécuter une lecture seule sans laisser une panne vider les autres panneaux."""
+    try:
+        return fn(), ""
+    except (RPCError, ValueError, TypeError) as e:
+        return None, str(e)
+
+
 def fetch_live(b: Backend) -> dict:
     live = {"connected": False, "topo": 0, "balances": {},
             "miner": {}, "miner_loaded": False, "stats": {}, "feeds": [],
             "relayer": None, "error": "", "endpoint_updatable": None}
     try:
         topo = b.daemon.topoheight()
-        live["topo"] = topo
-        live["balances"] = b.balances()
-        if not b.address:
-            raise ValueError("Operator address unavailable; check wallet/configuration")
-        m = b.my_miner()
+    except (RPCError, ValueError, TypeError) as e:
+        live["error"] = str(e)
+        return live
+    live["topo"] = topo
+
+    # Les lectures n'ont aucune dépendance entre elles : elles partent en même
+    # temps, puis sont assemblées dans l'ordre de priorité d'avant — la première
+    # en échec garde seule la main sur live["error"] et vide les panneaux suivants.
+    jobs = {"balances": b.balances}
+    if b.address:
+        jobs["miner"] = b.my_miner
+        jobs["stats"] = b.miner_stats
+        jobs["price"] = b.price
+        if b.has_wallet:
+            jobs["relayer"] = lambda: b.chat_relayer_status(b.address)
+    futures = {name: _FETCH_EXECUTOR.submit(_read_or_error, fn)
+               for name, fn in jobs.items()}
+
+    value, failure = futures["balances"].result()
+    live["balances"] = value or {}
+    if not failure and not b.address:
+        failure = "Operator address unavailable; check wallet/configuration"
+    if not failure and "miner" in futures:
+        m, failure = futures["miner"].result()
         if m is not None:
             if not isinstance(m, list) or len(m) < 15:
-                raise ValueError("Invalid miner record returned by daemon")
-            live["miner"] = {
-                "endpoint": str(m[M_ENDPOINT]),
-                "stake": int(m[M_STAKE]),
-                "mask": int(m[M_MASK]),
-                "registered_at": int(m[M_AT]),
-                "hb_topo": int(m[M_HB]),
-                "rewards": int(m[M_REW]),
-                "slashed": int(m[M_SLASH]),
-                "reputation": int(m[M_REP]),
-                "valid_submissions": int(m[M_VSUB]),
-                "anchors": int(m[M_ANCH]),
-                "total_submissions": int(m[M_TSUB]),
-                "active": bool(m[M_ACTIVE]),
-            }
-            live["endpoint_updatable"] = b.miner_supports_update_endpoint()
-        live["miner_loaded"] = True
-        live["stats"] = b.miner_stats()
-        p = b.price()
+                failure = "Invalid miner record returned by daemon"
+            else:
+                try:
+                    live["miner"] = {
+                        "endpoint": str(m[M_ENDPOINT]),
+                        "stake": int(m[M_STAKE]),
+                        "mask": int(m[M_MASK]),
+                        "registered_at": int(m[M_AT]),
+                        "hb_topo": int(m[M_HB]),
+                        "rewards": int(m[M_REW]),
+                        "slashed": int(m[M_SLASH]),
+                        "reputation": int(m[M_REP]),
+                        "valid_submissions": int(m[M_VSUB]),
+                        "anchors": int(m[M_ANCH]),
+                        "total_submissions": int(m[M_TSUB]),
+                        "active": bool(m[M_ACTIVE]),
+                    }
+                    live["endpoint_updatable"] = b.miner_supports_update_endpoint()
+                except (ValueError, TypeError):
+                    failure = "Invalid miner record returned by daemon"
+                    live["miner"] = {}
+        live["miner_loaded"] = not failure
+    if not failure and "stats" in futures:
+        live["stats"], failure = futures["stats"].result()
+        live["stats"] = live["stats"] or {}
+    if not failure and "price" in futures:
+        p, price_failure = futures["price"].result()
         if p:
             price_raw, feed_topo, stale = p
             live["feeds"].append({"name": "XEL/USD", "price_raw": price_raw,
                                   "age": max(0, topo - feed_topo), "stale": stale})
-        if b.has_wallet:
-            live["relayer"] = b.chat_relayer_status(b.address)
-        live["connected"] = True
-    except (RPCError, ValueError, TypeError) as e:
-        live["error"] = str(e)
+        failure = price_failure
+    if not failure and "relayer" in futures:
+        live["relayer"], failure = futures["relayer"].result()
+    live["error"] = failure
+    live["connected"] = not failure
     return live
 
 
@@ -776,10 +818,12 @@ def main():
     signal.signal(signal.SIGTERM, on_signal)
 
     hint = ""
+    # Un Backend par process : le précédent se reconstruisait à chaque tour, donc
+    # relisait le bundle et re-interrogeait le registre pour rien.
+    b = Backend(cfg.data)
     hide_cursor()
     try:
         while running[0]:
-            b = Backend(cfg.data)
             live = fetch_live(b)
             render_dashboard(cfg, live, "Read-only mode (--dry-run)" if args.dry_run else hint)
             hint = ""
@@ -798,6 +842,7 @@ def main():
             elif key == "s":
                 show_cursor()
                 interactive_setup(cfg)
+                b = Backend(cfg.data)
                 hide_cursor()
             elif key == "r":
                 hint = f"{C.GREEN}Manual refresh at {datetime.now().strftime('%H:%M:%S')}{C.RESET}"
